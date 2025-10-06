@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-tachometer-alt"></i> Mi Dashboard</h1>
+                <div class="text-muted">
+                    Bienvenido, {{ current_user.first_name }}
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.reels_count }}</h4>
+                                    <p class="card-text">Mis Reels</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-video fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if current_user.can_create_avatars() %}
+                <div class="col-md-4">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.avatars_count }}</h4>
+                                    <p class="card-text">Mis Avatars</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-user-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="col-md-4">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.commissions_count }}</h4>
+                                    <p class="card-text">Comisiones</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-dollar-sign fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-bolt"></i> Acciones Rápidas</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% if current_user.can_create_reels() %}
+                                <div class="col-md-3">
+                                    <a href="#" class="btn btn-outline-primary btn-lg w-100">
+                                        <i class="fas fa-plus-circle"></i><br>
+                                        Crear Reel
+                                    </a>
+                                </div>
+                                {% endif %}
+                                
+                                {% if current_user.can_create_avatars() %}
+                                <div class="col-md-3">
+                                    <a href="#" class="btn btn-outline-success btn-lg w-100">
+                                        <i class="fas fa-user-plus"></i><br>
+                                        Crear Avatar
+                                    </a>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('user.profile') }}" class="btn btn-outline-info btn-lg w-100">
+                                        <i class="fas fa-user-edit"></i><br>
+                                        Mi Perfil
+                                    </a>
+                                </div>
+                                
+                                <div class="col-md-3">
+                                    <a href="#" class="btn btn-outline-warning btn-lg w-100">
+                                        <i class="fas fa-chart-bar"></i><br>
+                                        Estadísticas
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-clock"></i> Actividad Reciente</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_reels %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Título</th>
+                                                <th>Estado</th>
+                                                <th>Fecha</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for reel in recent_reels %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ reel.title }}</strong>
+                                                    {% if reel.description %}
+                                                        <br><small class="text-muted">{{ reel.description[:50] }}{% if reel.description|length > 50 %}...{% endif %}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-{{ 'success' if reel.status.value == 'published' else 'warning' if reel.status.value == 'pending' else 'info' }}">
+                                                        {{ reel.status.value.title() }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ reel.created_at.strftime('%d/%m/%Y') }}</td>
+                                                <td>
+                                                    <a href="#" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye"></i> Ver
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No tienes reels aún</h5>
+                                    <p class="text-muted">¡Crea tu primer reel para comenzar!</p>
+                                    {% if current_user.can_create_reels() %}
+                                        <a href="#" class="btn btn-primary">
+                                            <i class="fas fa-plus"></i> Crear mi primer Reel
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

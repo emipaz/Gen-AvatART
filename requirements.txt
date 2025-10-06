@@ -7,12 +7,12 @@ Flask-Mail==0.9.1
 Flask-JWT-Extended==4.5.3
 WTForms==3.0.1
 Werkzeug==2.3.7
-SQLAlchemy==2.0.23
-psycopg2-binary==2.9.7
+SQLAlchemy==2.0.41
+psycopg2-binary==2.9.10
 python-dotenv==1.0.0
 requests==2.31.0
 bcrypt==4.0.1
-Pillow==10.0.1
+Pillow
 gunicorn==21.2.0
 celery==5.3.1
 redis==4.6.0

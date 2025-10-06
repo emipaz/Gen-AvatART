@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Comisiones - Admin - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 px-0">
+            <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+                <div class="p-3">
+                    <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.users') }}">
+                        <i class="fas fa-users"></i> Usuarios
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.producers') }}">
+                        <i class="fas fa-industry"></i> Productores
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.avatars') }}">
+                        <i class="fas fa-user-circle"></i> Avatars
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.reels') }}">
+                        <i class="fas fa-video"></i> Reels
+                    </a>
+                    <a class="nav-link active" href="{{ url_for('admin.commissions') }}">
+                        <i class="fas fa-dollar-sign"></i> Comisiones
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-dollar-sign"></i> Gestión de Comisiones</h1>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Estado</label>
+                            <select name="status" class="form-select">
+                                <option value="">Todos los estados</option>
+                                <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>Pendiente</option>
+                                <option value="approved" {{ 'selected' if request.args.get('status') == 'approved' }}>Aprobado</option>
+                                <option value="paid" {{ 'selected' if request.args.get('status') == 'paid' }}>Pagado</option>
+                                <option value="rejected" {{ 'selected' if request.args.get('status') == 'rejected' }}>Rechazado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter"></i> Filtrar
+                                </button>
+                                <a href="{{ url_for('admin.commissions') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de Comisiones -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Comisiones ({{ commissions.total }} total)</h5>
+                </div>
+                <div class="card-body">
+                    {% if commissions.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Tipo</th>
+                                        <th>Reel</th>
+                                        <th>Monto</th>
+                                        <th>Porcentaje</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for commission in commissions.items %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ url_for('admin.user_detail', user_id=commission.user.id) }}">
+                                                {{ commission.user.full_name }}
+                                            </a>
+                                            <br><small class="text-muted">@{{ commission.user.username }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark">
+                                                {{ commission.commission_type.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {{ commission.reel.title }}
+                                        </td>
+                                        <td>
+                                            <strong>${{ "%.2f"|format(commission.amount) }}</strong>
+                                            {% if commission.currency and commission.currency != 'USD' %}
+                                                <small class="text-muted">{{ commission.currency }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ commission.percentage }}%</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if commission.status.value == 'paid' else 'primary' if commission.status.value == 'approved' else 'warning' if commission.status.value == 'pending' else 'danger' }}">
+                                                {{ commission.status.value.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {{ commission.created_at.strftime('%d/%m/%Y') }}
+                                            <br><small class="text-muted">{{ commission.created_at.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                {% if commission.status.value == 'pending' %}
+                                                    <form method="POST" action="{{ url_for('admin.approve_commission', commission_id=commission.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('¿Aprobar esta comisión?')">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                {% if commission.status.value == 'approved' %}
+                                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#markPaidModal{{ commission.id }}">
+                                                        <i class="fas fa-money-bill"></i> Marcar Pagado
+                                                    </button>
+                                                    
+                                                    <!-- Modal para marcar como pagado -->
+                                                    <div class="modal fade" id="markPaidModal{{ commission.id }}" tabindex="-1">
+                                                        <div class="modal-dialog">
+                                                            <div class="modal-content">
+                                                                <form method="POST" action="{{ url_for('admin.mark_commission_paid', commission_id=commission.id) }}">
+                                                                    <div class="modal-header">
+                                                                        <h5 class="modal-title">Marcar Comisión como Pagada</h5>
+                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                                    </div>
+                                                                    <div class="modal-body">
+                                                                        <div class="mb-3">
+                                                                            <label class="form-label">Método de Pago</label>
+                                                                            <select name="payment_method" class="form-select" required>
+                                                                                <option value="">Seleccionar método</option>
+                                                                                <option value="bank_transfer">Transferencia Bancaria</option>
+                                                                                <option value="paypal">PayPal</option>
+                                                                                <option value="crypto">Criptomoneda</option>
+                                                                                <option value="other">Otro</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="mb-3">
+                                                                            <label class="form-label">Referencia de Pago</label>
+                                                                            <input type="text" name="payment_reference" class="form-control" placeholder="ID de transacción, número de referencia, etc." required>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="modal-footer">
+                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                                        <button type="submit" class="btn btn-primary">Marcar como Pagado</button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginación -->
+                        {% if commissions.pages > 1 %}
+                            <nav aria-label="Paginación">
+                                <ul class="pagination justify-content-center">
+                                    {% if commissions.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.commissions', page=commissions.prev_num, **request.args) }}">Anterior</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in commissions.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != commissions.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('admin.commissions', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if commissions.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.commissions', page=commissions.next_num, **request.args) }}">Siguiente</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-dollar-sign fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay comisiones</h5>
+                            <p class="text-muted">No se encontraron comisiones con los filtros seleccionados.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

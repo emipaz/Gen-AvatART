@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Usuarios - Admin - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 px-0">
+            <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+                <div class="p-3">
+                    <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a class="nav-link active" href="{{ url_for('admin.users') }}">
+                        <i class="fas fa-users"></i> Usuarios
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.producers') }}">
+                        <i class="fas fa-industry"></i> Productores
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.avatars') }}">
+                        <i class="fas fa-user-circle"></i> Avatars
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.reels') }}">
+                        <i class="fas fa-video"></i> Reels
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.commissions') }}">
+                        <i class="fas fa-dollar-sign"></i> Comisiones
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-users"></i> Gestión de Usuarios</h1>
+                <a href="{{ url_for('admin.create_producer') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Crear Productor
+                </a>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Rol</label>
+                            <select name="role" class="form-select">
+                                <option value="">Todos los roles</option>
+                                <option value="admin" {{ 'selected' if request.args.get('role') == 'admin' }}>Administrador</option>
+                                <option value="producer" {{ 'selected' if request.args.get('role') == 'producer' }}>Productor</option>
+                                <option value="subproducer" {{ 'selected' if request.args.get('role') == 'subproducer' }}>Sub-productor</option>
+                                <option value="affiliate" {{ 'selected' if request.args.get('role') == 'affiliate' }}>Afiliado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Estado</label>
+                            <select name="status" class="form-select">
+                                <option value="">Todos los estados</option>
+                                <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>Pendiente</option>
+                                <option value="active" {{ 'selected' if request.args.get('status') == 'active' }}>Activo</option>
+                                <option value="suspended" {{ 'selected' if request.args.get('status') == 'suspended' }}>Suspendido</option>
+                                <option value="rejected" {{ 'selected' if request.args.get('status') == 'rejected' }}>Rechazado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar</label>
+                            <input type="text" name="search" class="form-control" placeholder="Nombre, email, username..." value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de Usuarios -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Usuarios ({{ users.total }} total)</h5>
+                </div>
+                <div class="card-body">
+                    {% if users.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Email</th>
+                                        <th>Rol</th>
+                                        <th>Estado</th>
+                                        <th>Registro</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if user.avatar_url %}
+                                                    <img src="{{ user.avatar_url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="Avatar">
+                                                {% else %}
+                                                    <i class="fas fa-user-circle fa-2x text-muted me-2"></i>
+                                                {% endif %}
+                                                <div>
+                                                    <strong>{{ user.full_name }}</strong>
+                                                    <br><small class="text-muted">@{{ user.username }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ user.email }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'danger' if user.role.value == 'admin' else 'primary' if user.role.value == 'producer' else 'success' if user.role.value == 'subproducer' else 'info' }}">
+                                                {{ user.role.value.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if user.status.value == 'active' else 'warning' if user.status.value == 'pending' else 'danger' if user.status.value == 'suspended' else 'secondary' }}">
+                                                {{ user.status.value.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {{ user.created_at.strftime('%d/%m/%Y') }}
+                                            <br><small class="text-muted">{{ user.created_at.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> Ver
+                                                </a>
+                                                {% if user.status.value == 'pending' %}
+                                                    <form method="POST" action="{{ url_for('admin.approve_user', user_id=user.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('¿Aprobar este usuario?')">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                {% if user.status.value == 'active' and not user.is_admin() %}
+                                                    <form method="POST" action="{{ url_for('admin.suspend_user', user_id=user.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('¿Suspender este usuario?')">
+                                                            <i class="fas fa-ban"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginación -->
+                        {% if users.pages > 1 %}
+                            <nav aria-label="Paginación">
+                                <ul class="pagination justify-content-center">
+                                    {% if users.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.users', page=users.prev_num, **request.args) }}">Anterior</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in users.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != users.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('admin.users', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if users.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.users', page=users.next_num, **request.args) }}">Siguiente</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No se encontraron usuarios</h5>
+                            <p class="text-muted">No hay usuarios que coincidan con los filtros seleccionados.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

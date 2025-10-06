@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Productores - Admin - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 px-0">
+            <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+                <div class="p-3">
+                    <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.users') }}">
+                        <i class="fas fa-users"></i> Usuarios
+                    </a>
+                    <a class="nav-link active" href="{{ url_for('admin.producers') }}">
+                        <i class="fas fa-industry"></i> Productores
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.avatars') }}">
+                        <i class="fas fa-user-circle"></i> Avatars
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.reels') }}">
+                        <i class="fas fa-video"></i> Reels
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.commissions') }}">
+                        <i class="fas fa-dollar-sign"></i> Comisiones
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-industry"></i> Gestión de Productores</h1>
+                <a href="{{ url_for('admin.create_producer') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Crear Nuevo Productor
+                </a>
+            </div>
+
+            <!-- Lista de Productores -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Productores ({{ producers.total }} total)</h5>
+                </div>
+                <div class="card-body">
+                    {% if producers.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Productor</th>
+                                        <th>Empresa</th>
+                                        <th>API Status</th>
+                                        <th>Límites</th>
+                                        <th>Estadísticas</th>
+                                        <th>Registro</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for producer in producers.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if producer.user.avatar_url %}
+                                                    <img src="{{ producer.user.avatar_url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="Avatar">
+                                                {% else %}
+                                                    <i class="fas fa-user-circle fa-2x text-muted me-2"></i>
+                                                {% endif %}
+                                                <div>
+                                                    <strong>{{ producer.user.full_name }}</strong>
+                                                    <br><small class="text-muted">@{{ producer.user.username }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if producer.company_name %}
+                                                <strong>{{ producer.company_name }}</strong>
+                                                {% if producer.business_type %}
+                                                    <br><small class="text-muted">{{ producer.business_type }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">No especificado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if producer.api_key_status == 'valid' else 'warning' if producer.api_key_status == 'pending' else 'danger' }}">
+                                                {{ producer.api_key_status.title() if producer.api_key_status else 'N/A' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small>
+                                                <strong>Sub-productores:</strong> {{ producer.current_subproducers_count or 0 }}/{{ producer.max_subproducers or 0 }}<br>
+                                                <strong>Afiliados:</strong> {{ producer.current_affiliates_count or 0 }}/{{ producer.max_affiliates or 0 }}<br>
+                                                <strong>API:</strong> {{ producer.api_calls_this_month or 0 }}/{{ producer.monthly_api_limit or 0 }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <small>
+                                                <strong>Reels:</strong> {{ producer.total_reels_created or 0 }}<br>
+                                                <strong>Ganancias:</strong> ${{ "%.2f"|format(producer.total_earnings or 0) }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {{ producer.created_at.strftime('%d/%m/%Y') }}
+                                            <br><small class="text-muted">{{ producer.created_at.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('admin.user_detail', user_id=producer.user.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> Ver
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginación -->
+                        {% if producers.pages > 1 %}
+                            <nav aria-label="Paginación">
+                                <ul class="pagination justify-content-center">
+                                    {% if producers.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.producers', page=producers.prev_num) }}">Anterior</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in producers.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != producers.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('admin.producers', page=page_num) }}">{{ page_num }}</a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if producers.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.producers', page=producers.next_num) }}">Siguiente</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-industry fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay productores</h5>
+                            <p class="text-muted">Aún no se han registrado productores en el sistema.</p>
+                            <a href="{{ url_for('admin.create_producer') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Primer Productor
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

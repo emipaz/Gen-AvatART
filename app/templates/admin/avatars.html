@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Avatars - Admin - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 px-0">
+            <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+                <div class="p-3">
+                    <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.users') }}">
+                        <i class="fas fa-users"></i> Usuarios
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.producers') }}">
+                        <i class="fas fa-industry"></i> Productores
+                    </a>
+                    <a class="nav-link active" href="{{ url_for('admin.avatars') }}">
+                        <i class="fas fa-user-circle"></i> Avatars
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.reels') }}">
+                        <i class="fas fa-video"></i> Reels
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.commissions') }}">
+                        <i class="fas fa-dollar-sign"></i> Comisiones
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-user-circle"></i> Gestión de Avatars</h1>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Estado</label>
+                            <select name="status" class="form-select">
+                                <option value="">Todos los estados</option>
+                                <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>Pendiente</option>
+                                <option value="approved" {{ 'selected' if request.args.get('status') == 'approved' }}>Aprobado</option>
+                                <option value="rejected" {{ 'selected' if request.args.get('status') == 'rejected' }}>Rechazado</option>
+                                <option value="processing" {{ 'selected' if request.args.get('status') == 'processing' }}>Procesando</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter"></i> Filtrar
+                                </button>
+                                <a href="{{ url_for('admin.avatars') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de Avatars -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Avatars ({{ avatars.total }} total)</h5>
+                </div>
+                <div class="card-body">
+                    {% if avatars.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Avatar</th>
+                                        <th>Creador</th>
+                                        <th>Estado</th>
+                                        <th>Tipo</th>
+                                        <th>Público</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for avatar in avatars.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if avatar.thumbnail_url %}
+                                                    <img src="{{ avatar.thumbnail_url }}" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="Avatar">
+                                                {% else %}
+                                                    <i class="fas fa-user-circle fa-2x text-muted me-2"></i>
+                                                {% endif %}
+                                                <div>
+                                                    <strong>{{ avatar.name }}</strong>
+                                                    {% if avatar.description %}
+                                                        <br><small class="text-muted">{{ avatar.description[:50] }}{% if avatar.description|length > 50 %}...{% endif %}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin.user_detail', user_id=avatar.created_by.id) }}">
+                                                {{ avatar.created_by.full_name }}
+                                            </a>
+                                            <br><small class="text-muted">@{{ avatar.created_by.username }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if avatar.status.value == 'approved' else 'warning' if avatar.status.value == 'pending' else 'danger' if avatar.status.value == 'rejected' else 'info' }}">
+                                                {{ avatar.status.value.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark">
+                                                {{ avatar.avatar_type.title() if avatar.avatar_type else 'N/A' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if avatar.is_public %}
+                                                <i class="fas fa-globe text-success" title="Público"></i>
+                                            {% else %}
+                                                <i class="fas fa-lock text-warning" title="Privado"></i>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ avatar.created_at.strftime('%d/%m/%Y') }}
+                                            <br><small class="text-muted">{{ avatar.created_at.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('admin.avatar_detail', avatar_id=avatar.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> Ver
+                                                </a>
+                                                {% if avatar.status.value == 'pending' %}
+                                                    <form method="POST" action="{{ url_for('admin.approve_avatar', avatar_id=avatar.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('¿Aprobar este avatar?')">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </form>
+                                                    <form method="POST" action="{{ url_for('admin.reject_avatar', avatar_id=avatar.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Rechazar este avatar?')">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginación -->
+                        {% if avatars.pages > 1 %}
+                            <nav aria-label="Paginación">
+                                <ul class="pagination justify-content-center">
+                                    {% if avatars.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.avatars', page=avatars.prev_num, **request.args) }}">Anterior</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in avatars.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != avatars.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('admin.avatars', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if avatars.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.avatars', page=avatars.next_num, **request.args) }}">Siguiente</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-user-circle fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay avatars</h5>
+                            <p class="text-muted">No se encontraron avatars con los filtros seleccionados.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

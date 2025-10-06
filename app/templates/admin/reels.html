@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Reels - Admin - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 px-0">
+            <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+                <div class="p-3">
+                    <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.users') }}">
+                        <i class="fas fa-users"></i> Usuarios
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.producers') }}">
+                        <i class="fas fa-industry"></i> Productores
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.avatars') }}">
+                        <i class="fas fa-user-circle"></i> Avatars
+                    </a>
+                    <a class="nav-link active" href="{{ url_for('admin.reels') }}">
+                        <i class="fas fa-video"></i> Reels
+                    </a>
+                    <a class="nav-link" href="{{ url_for('admin.commissions') }}">
+                        <i class="fas fa-dollar-sign"></i> Comisiones
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-video"></i> Gestión de Reels</h1>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Estado</label>
+                            <select name="status" class="form-select">
+                                <option value="">Todos los estados</option>
+                                <option value="draft" {{ 'selected' if request.args.get('status') == 'draft' }}>Borrador</option>
+                                <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>Pendiente</option>
+                                <option value="processing" {{ 'selected' if request.args.get('status') == 'processing' }}>Procesando</option>
+                                <option value="completed" {{ 'selected' if request.args.get('status') == 'completed' }}>Completado</option>
+                                <option value="published" {{ 'selected' if request.args.get('status') == 'published' }}>Publicado</option>
+                                <option value="failed" {{ 'selected' if request.args.get('status') == 'failed' }}>Error</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter"></i> Filtrar
+                                </button>
+                                <a href="{{ url_for('admin.reels') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de Reels -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Reels ({{ reels.total }} total)</h5>
+                </div>
+                <div class="card-body">
+                    {% if reels.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Reel</th>
+                                        <th>Creador</th>
+                                        <th>Avatar</th>
+                                        <th>Estado</th>
+                                        <th>Duración</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for reel in reels.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if reel.thumbnail_url %}
+                                                    <img src="{{ reel.thumbnail_url }}" class="rounded me-2" style="width: 60px; height: 40px; object-fit: cover;" alt="Thumbnail">
+                                                {% else %}
+                                                    <div class="bg-light rounded me-2 d-flex align-items-center justify-content-center" style="width: 60px; height: 40px;">
+                                                        <i class="fas fa-video text-muted"></i>
+                                                    </div>
+                                                {% endif %}
+                                                <div>
+                                                    <strong>{{ reel.title }}</strong>
+                                                    {% if reel.description %}
+                                                        <br><small class="text-muted">{{ reel.description[:50] }}{% if reel.description|length > 50 %}...{% endif %}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin.user_detail', user_id=reel.creator.id) }}">
+                                                {{ reel.creator.full_name }}
+                                            </a>
+                                            <br><small class="text-muted">@{{ reel.creator.username }}</small>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin.avatar_detail', avatar_id=reel.avatar.id) }}">
+                                                {{ reel.avatar.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if reel.status.value == 'published' else 'primary' if reel.status.value == 'completed' else 'warning' if reel.status.value == 'pending' else 'info' if reel.status.value == 'processing' else 'danger' if reel.status.value == 'failed' else 'secondary' }}">
+                                                {{ reel.status.value.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if reel.duration %}
+                                                {{ "%.1f"|format(reel.duration) }}s
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ reel.created_at.strftime('%d/%m/%Y') }}
+                                            <br><small class="text-muted">{{ reel.created_at.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="#" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> Ver
+                                                </a>
+                                                {% if reel.video_url %}
+                                                    <a href="{{ reel.video_url }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                                        <i class="fas fa-play"></i> Video
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginación -->
+                        {% if reels.pages > 1 %}
+                            <nav aria-label="Paginación">
+                                <ul class="pagination justify-content-center">
+                                    {% if reels.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.reels', page=reels.prev_num, **request.args) }}">Anterior</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in reels.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != reels.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('admin.reels', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if reels.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.reels', page=reels.next_num, **request.args) }}">Siguiente</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay reels</h5>
+                            <p class="text-muted">No se encontraron reels con los filtros seleccionados.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

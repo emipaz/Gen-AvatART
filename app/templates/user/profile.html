@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Perfil - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-user-edit"></i> Mi Perfil</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Avatar -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 text-center">
+                                {% if current_user.avatar_url %}
+                                    <img src="{{ current_user.avatar_url }}" class="img-fluid rounded-circle" style="max-width: 150px;" alt="Avatar">
+                                {% else %}
+                                    <i class="fas fa-user-circle fa-8x text-muted"></i>
+                                {% endif %}
+                                <div class="mt-2">
+                                    <label for="avatar" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-camera"></i> Cambiar Avatar
+                                    </label>
+                                    {{ form.avatar(id="avatar", style="display: none;") }}
+                                </div>
+                            </div>
+                            <div class="col-md-9">
+                                <h5>{{ current_user.full_name }}</h5>
+                                <p class="text-muted">@{{ current_user.username }}</p>
+                                <span class="badge bg-primary">{{ current_user.role.value.title() }}</span>
+                                <span class="badge bg-{{ 'success' if current_user.status.value == 'active' else 'warning' }}">
+                                    {{ current_user.status.value.title() }}
+                                </span>
+                                {% if current_user.is_verified %}
+                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Verificado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Información Personal -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.first_name.label(class="form-label") }}
+                                {{ form.first_name(class="form-control") }}
+                                {% if form.first_name.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.first_name.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.last_name.label(class="form-label") }}
+                                {{ form.last_name(class="form-control") }}
+                                {% if form.last_name.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.last_name.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.email.label(class="form-label") }}
+                                {{ form.email(class="form-control") }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.email.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.phone.label(class="form-label") }}
+                                {{ form.phone(class="form-control") }}
+                                {% if form.phone.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.phone.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Cambiar Contraseña -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="fas fa-lock"></i> Cambiar Contraseña</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        {{ form.current_password.label(class="form-label") }}
+                                        {{ form.current_password(class="form-control") }}
+                                        {% if form.current_password.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.current_password.errors %}
+                                                    <small>{{ error }}</small>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        {{ form.new_password.label(class="form-label") }}
+                                        {{ form.new_password(class="form-control") }}
+                                        {% if form.new_password.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.new_password.errors %}
+                                                    <small>{{ error }}</small>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ form.confirm_password.label(class="form-label") }}
+                                        {{ form.confirm_password(class="form-control") }}
+                                        {% if form.confirm_password.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.confirm_password.errors %}
+                                                    <small>{{ error }}</small>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información del Sistema -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="fas fa-info-circle"></i> Información del Sistema</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Miembro desde:</strong><br>
+                                        <span class="text-muted">{{ current_user.created_at.strftime('%d de %B de %Y') }}</span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        {% if current_user.last_login %}
+                                            <strong>Último acceso:</strong><br>
+                                            <span class="text-muted">{{ current_user.last_login.strftime('%d/%m/%Y %H:%M') }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                {% if current_user.invited_by %}
+                                    <div class="row mt-3">
+                                        <div class="col-md-12">
+                                            <strong>Invitado por:</strong><br>
+                                            <span class="text-muted">{{ current_user.invited_by.full_name }}</span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Estadísticas del Usuario -->
+                        {% if current_user.can_create_reels() %}
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="fas fa-chart-bar"></i> Mis Estadísticas</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-4">
+                                        <h4 class="text-primary">{{ current_user.reels.count() }}</h4>
+                                        <small class="text-muted">Reels Creados</small>
+                                    </div>
+                                    {% if current_user.can_create_avatars() %}
+                                    <div class="col-md-4">
+                                        <h4 class="text-success">{{ current_user.created_avatars.count() }}</h4>
+                                        <small class="text-muted">Avatars Creados</small>
+                                    </div>
+                                    {% endif %}
+                                    <div class="col-md-4">
+                                        <h4 class="text-info">{{ current_user.commissions_earned.count() }}</h4>
+                                        <small class="text-muted">Comisiones</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Botones de Acción -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script para previsualizar avatar -->
+<script>
+document.getElementById('avatar').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.querySelector('img');
+            if (img) {
+                img.src = e.target.result;
+            } else {
+                // Si no hay imagen, crear una nueva
+                const icon = document.querySelector('.fa-user-circle');
+                const imgElement = document.createElement('img');
+                imgElement.src = e.target.result;
+                imgElement.className = 'img-fluid rounded-circle';
+                imgElement.style.maxWidth = '150px';
+                imgElement.alt = 'Avatar';
+                icon.parentNode.replaceChild(imgElement, icon);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}

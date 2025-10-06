@@ -5,35 +5,35 @@ from datetime import datetime
 from enum import Enum
 
 class UserRole(Enum):
-    ADMIN = "admin"
-    PRODUCER = "producer"
+    ADMIN       = "admin"
+    PRODUCER    = "producer"
     SUBPRODUCER = "subproducer"
-    AFFILIATE = "affiliate"
+    AFFILIATE   = "affiliate"
 
 class UserStatus(Enum):
-    PENDING = "pending"
-    ACTIVE = "active"
+    PENDING   = "pending"
+    ACTIVE    = "active"
     SUSPENDED = "suspended"
-    REJECTED = "rejected"
+    REJECTED  = "rejected"
 
 class User(UserMixin, db.Model):
     """Modelo base para todos los usuarios"""
     __tablename__ = 'users'
     
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    id            = db.Column(db.Integer, primary_key=True)
+    email         = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    username      = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128), nullable=False)
     
     # Información personal
     first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50), nullable=False)
-    phone = db.Column(db.String(20))
+    last_name  = db.Column(db.String(50), nullable=False)
+    phone      = db.Column(db.String(20))
     avatar_url = db.Column(db.String(200))
     
     # Información del sistema
-    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.AFFILIATE)
-    status = db.Column(db.Enum(UserStatus), nullable=False, default=UserStatus.PENDING)
+    role        = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.AFFILIATE)
+    status      = db.Column(db.Enum(UserStatus), nullable=False, default=UserStatus.PENDING)
     is_verified = db.Column(db.Boolean, default=False)
     
     # Timestamps
@@ -43,13 +43,13 @@ class User(UserMixin, db.Model):
     
     # Relaciones
     invited_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    invited_by = db.relationship('User', remote_side=[id], backref='invited_users')
+    invited_by    = db.relationship('User', remote_side=[id], backref='invited_users')
     
     # Relación con Producer (si es producer)
     producer_profile = db.relationship('Producer', backref='user', uselist=False, cascade='all, delete-orphan')
     
     # Relación con reels creados
-    reels = db.relationship('Reel', backref='creator', lazy='dynamic')
+    reels = db.relationship('Reel', foreign_keys='Reel.creator_id', backref='creator', lazy='dynamic')
     
     # Relación con comisiones
     commissions_earned = db.relationship('Commission', backref='user', lazy='dynamic')
@@ -106,13 +106,13 @@ class User(UserMixin, db.Model):
     def to_dict(self):
         """Convertir a diccionario para JSON"""
         return {
-            'id': self.id,
-            'email': self.email,
-            'username': self.username,
-            'full_name': self.full_name,
-            'role': self.role.value,
-            'status': self.status.value,
+            'id'         : self.id,
+            'email'      : self.email,
+            'username'   : self.username,
+            'full_name'  : self.full_name,
+            'role'       : self.role.value,
+            'status'     : self.status.value,
             'is_verified': self.is_verified,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'last_login': self.last_login.isoformat() if self.last_login else None
+            'created_at' : self.created_at.isoformat() if self.created_at else None,
+            'last_login' : self.last_login.isoformat() if self.last_login else None
         }

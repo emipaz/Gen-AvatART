@@ -4,6 +4,7 @@ from werkzeug.security import check_password_hash
 from app import db
 from app.models.user import User, UserRole, UserStatus
 from app.models.producer import Producer
+from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -200,5 +201,3 @@ def validate_email():
     
     return jsonify({'valid': True, 'message': 'Email disponible'})
 
-# Importar datetime para uso en el login
-from datetime import datetime

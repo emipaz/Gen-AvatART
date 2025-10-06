@@ -49,10 +49,16 @@ def dashboard():
     # Reels recientes
     recent_reels = Reel.query.order_by(Reel.created_at.desc()).limit(5).all()
     
+    # Elementos pendientes para el template
+    pending_avatars = Avatar.query.filter_by(status=AvatarStatus.PENDING).limit(5).all()
+    pending_reels = Reel.query.filter_by(status=ReelStatus.PENDING).limit(5).all()
+    
     return render_template('admin/dashboard.html', 
                          stats=stats, 
                          recent_users=recent_users, 
-                         recent_reels=recent_reels)
+                         recent_reels=recent_reels,
+                         pending_avatars=pending_avatars,
+                         pending_reels=pending_reels)
 
 @admin_bp.route('/users')
 @login_required
@@ -304,6 +310,55 @@ def mark_commission_paid(commission_id):
     
     flash('Comisión marcada como pagada', 'success')
     return redirect(url_for('admin.commissions'))
+
+@admin_bp.route('/avatars')
+@login_required
+@admin_required
+def avatars():
+    """Lista de todos los avatars"""
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status')
+    
+    query = Avatar.query
+    
+    if status_filter:
+        query = query.filter_by(status=AvatarStatus(status_filter))
+    
+    avatars = query.order_by(Avatar.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    return render_template('admin/avatars.html', avatars=avatars)
+
+@admin_bp.route('/avatars/<int:avatar_id>')
+@login_required
+@admin_required
+def avatar_detail(avatar_id):
+    """Detalle de un avatar específico"""
+    avatar = Avatar.query.get_or_404(avatar_id)
+    return render_template('admin/avatar_detail.html', avatar=avatar)
+
+@admin_bp.route('/avatars/<int:avatar_id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_avatar(avatar_id):
+    """Aprobar un avatar"""
+    avatar = Avatar.query.get_or_404(avatar_id)
+    avatar.approve(current_user)
+    
+    flash(f'Avatar {avatar.name} aprobado exitosamente', 'success')
+    return redirect(url_for('admin.avatar_detail', avatar_id=avatar_id))
+
+@admin_bp.route('/avatars/<int:avatar_id>/reject', methods=['POST'])
+@login_required
+@admin_required
+def reject_avatar(avatar_id):
+    """Rechazar un avatar"""
+    avatar = Avatar.query.get_or_404(avatar_id)
+    avatar.reject()
+    
+    flash(f'Avatar {avatar.name} rechazado', 'warning')
+    return redirect(url_for('admin.avatar_detail', avatar_id=avatar_id))
 
 @admin_bp.route('/api/stats')
 @login_required

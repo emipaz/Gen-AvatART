@@ -14,9 +14,9 @@ class Config:
     HEYGEN_BASE_URL = config('HEYGEN_BASE_URL', default='https://api.heygen.com')
     
     # Mail Configuration
-    MAIL_SERVER = config('MAIL_SERVER', default='smtp.gmail.com')
-    MAIL_PORT = int(config('MAIL_PORT', default=587))
-    MAIL_USE_TLS = config('MAIL_USE_TLS', default=True, cast=bool)
+    MAIL_SERVER   = config('MAIL_SERVER', default='smtp.gmail.com')
+    MAIL_PORT     = int(config('MAIL_PORT', default=587))
+    MAIL_USE_TLS  = config('MAIL_USE_TLS', default=True, cast=bool)
     MAIL_USERNAME = config('MAIL_USERNAME', default='')
     MAIL_PASSWORD = config('MAIL_PASSWORD', default='')
     
