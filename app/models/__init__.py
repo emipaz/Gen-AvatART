@@ -32,6 +32,9 @@ from .reel import Reel, ReelStatus
 # Modelo de comisiones con estados de pago
 from .commission import Commission, CommissionStatus
 
+# Modelo de permisos granulares por clone según README
+from .clone_permission import ClonePermission, PermissionSubjectType, PermissionStatus
+
 # Lista explícita de todos los símbolos exportados por este módulo
 # Esto controla qué elementos están disponibles cuando se hace:
 # from app.models import *
@@ -46,6 +49,9 @@ __all__ = [
     'ReelStatus',
     'Commission', 
     'CommissionStatus'
+    'ClonePermission',
+    'PermissionSubjectType',
+    'PermissionStatus',
 ]
 
 # Nota: Al usar __all__, se mejora la legibilidad del código y se previene

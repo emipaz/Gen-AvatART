@@ -6,24 +6,24 @@ la integración con HeyGen. Los reels son videos creados usando avatares digital
 que pronuncian un script específico y pueden incluir fondos personalizados.
 
 El módulo incluye:
-    - Enum ReelStatus: Estados posibles de un reel durante su ciclo de vida
-    - Clase Reel: Modelo principal para gestión de videos generados
+    - Enum ReelStatus: Estados posibles de un reel durante su ciclo de vida (ACTUALIZADO)
+    - Clase Reel: Modelo principal para gestión de videos generados (ACTUALIZADO según README)
 
 Funcionalidades principales:
-    - Gestión del ciclo de vida de videos (creación, procesamiento, aprobación)
-    - Integración con HeyGen para generación de videos
-    - Sistema de comisiones automático al aprobar reels
+    - Gestión del ciclo de vida de videos (creación, procesamiento, completado)
+    - Integración con HeyGen para generación de videos via jobs
+    - Sistema de comisiones automático con Stripe Connect (ACTUALIZADO)
     - Control de configuraciones de video (resolución, fondos, etc.)
     - Estadísticas de visualización y descarga
     - Sistema de etiquetas y categorización
-    - Gestión de monetización y costos
+    - Gestión de monetización y costos via Stripe
 
-Flujo de trabajo típico:
-    1. PENDING: Reel creado, pendiente de revisión
-    2. PROCESSING: Enviado a HeyGen para generación
-    3. COMPLETED: Video generado exitosamente
-    4. APPROVED: Aprobado por administrador (genera comisiones)
-    5. Publicado para visualización pública
+Flujo de trabajo típico (ACTUALIZADO según README):
+    1. PENDING: Reel creado, listo para enviar a HeyGen
+    2. PROCESSING: Enviado a HeyGen como job
+    3. COMPLETED: Video generado exitosamente via webhook
+    4. FAILED: Falló la generación (webhook error)
+    5. Publicado para visualización
 """
 
 
@@ -35,39 +35,41 @@ class ReelStatus(Enum):
     """
     Enumeración que define los estados posibles de un reel durante su ciclo de vida.
     
-    Estados disponibles:
-        PENDING    : Reel creado, pendiente de revisión administrativa
-        APPROVED   : Reel aprobado por administrador, listo para procesamiento
-        REJECTED   : Reel rechazado por administrador
-        PROCESSING : Reel en proceso de generación en HeyGen
+    Estados disponibles (ACTUALIZADO según README):
+        PENDING    : Reel creado, listo para enviar a HeyGen
+        PROCESSING : Reel enviado a HeyGen como job, esperando resultado
         COMPLETED  : Video generado exitosamente por HeyGen
         FAILED     : Falló la generación del video en HeyGen
+        PUBLISHED  : ✅ NUEVO - Reel publicado y disponible públicamente
     """
-    PENDING    = "pending"     # Pendiente de revisión
-    APPROVED   = "approved"    # Aprobado para procesamiento
-    REJECTED   = "rejected"    # Rechazado por administrador
+    
+    PENDING    = "pending"     # Listo para enviar a HeyGen
     PROCESSING = "processing"  # En proceso de generación
     COMPLETED  = "completed"   # Video generado exitosamente
     FAILED     = "failed"      # Falló la generación
-
+    PUBLISHED  = "published"   # Publicado y disponible
+    
 class Reel(db.Model):
     """
     Modelo de datos para reels/videos generados con avatares digitales.
     
     Este modelo gestiona todo el ciclo de vida de los videos creados con HeyGen,
     desde su creación inicial hasta su publicación final, incluyendo el sistema
-    de comisiones, estadísticas y configuraciones técnicas.
+    de comisiones via Stripe Connect, estadísticas y configuraciones técnicas.
+    
+    ACTUALIZADO según README para integración con Stripe Connect y simplificación
+    del flujo de trabajo.
     
     Attributes:
         id (int)                           : Identificador único del reel
         creator_id (int)                   : ID del usuario que creó el reel
-        avatar_id (int)                    : ID del avatar utilizado para el video
-        approved_by_id (int)               : ID del usuario que aprobó el reel
+        avatar_id (int)                    : ID del avatar/clone utilizado para el video
         title (str)                        : Título del reel
         description (str)                  : Descripción detallada del contenido
         script (str)                       : Texto que pronunciará el avatar
         duration (float)                   : Duración del video en segundos
         heygen_video_id (str)              : ID único del video en HeyGen
+        heygen_job_id (str)                : ID del job en HeyGen para tracking
         video_url (str)                    : URL del video generado
         thumbnail_url (str)                : URL de la imagen miniatura
         status (ReelStatus)                : Estado actual del reel
@@ -85,10 +87,11 @@ class Reel(db.Model):
         download_count (int)               : Contador de descargas
         cost (float)                       : Costo de producción del reel
         price (float)                      : Precio de venta si aplica
+        stripe_payment_intent_id (str)     : ID del Payment Intent de Stripe
         created_at (datetime)              : Fecha de creación
         updated_at (datetime)              : Fecha de última actualización
-        approved_at (datetime)             : Fecha de aprobación
         published_at (datetime)            : Fecha de publicación
+        stripe_payment_intent_id (str)     : ID del Payment Intent de Stripe para tracking de pagos
     """
     __tablename__ = 'reels'
     
@@ -98,7 +101,6 @@ class Reel(db.Model):
     # Relaciones con otras tablas
     creator_id     = db.Column(db.Integer, db.ForeignKey('users.id'),   nullable = False)
     avatar_id      = db.Column(db.Integer, db.ForeignKey('avatars.id'), nullable = False)
-    approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'),   nullable = True)
     
     # Información básica del reel
     title       = db.Column(db.String(200), nullable = False)  # Título del video
@@ -108,8 +110,9 @@ class Reel(db.Model):
     
     # Datos de integración con HeyGen
     heygen_video_id = db.Column(db.String(100), unique = True)  # ID único en HeyGen
-    video_url       = db.Column(db.String(500))               # URL del video generado
-    thumbnail_url   = db.Column(db.String(500))               # URL de la miniatura
+    heygen_job_id   = db.Column(db.String(100), index=True)     # ID del job en HeyGen
+    video_url       = db.Column(db.String(500))                 # URL del video generado
+    thumbnail_url   = db.Column(db.String(500))                 # URL de la miniatura
     
     # Estado y configuración de acceso
     status    = db.Column(db.Enum(ReelStatus), nullable = False, default = ReelStatus.PENDING)
@@ -137,16 +140,18 @@ class Reel(db.Model):
     # Configuración de monetización
     cost  = db.Column(db.Float, default = 0.0)  # Costo de producción
     price = db.Column(db.Float, default = 0.0)  # Precio de venta si aplica
-
+    
+    stripe_payment_intent_id = db.Column(db.String(100), index=True)  # Para tracking de pagos
+    
     # Campos de auditoría y timestamps
     created_at   = db.Column(db.DateTime, default = datetime.utcnow)                           # Fecha de creación
-    updated_at   = db.Column(db.DateTime, default = datetime.utcnow, onupdate = datetime.utcnow) # Última actualización
-    approved_at  = db.Column(db.DateTime)                                                    # Fecha de aprobación
+    updated_at   = db.Column(db.DateTime, default = datetime.utcnow, onupdate = datetime.utcnow) # Última actualización                                                    # Fecha de aprobación
     published_at = db.Column(db.DateTime)                                                    # Fecha de publicación
     
     # Definición de relaciones con otros modelos
-    approved_by = db.relationship('User',       foreign_keys = [approved_by_id], backref = 'approved_reels')
     commissions = db.relationship('Commission', backref = 'reel', lazy = 'dynamic')
+    
+      
     
     def __repr__(self):
         """
@@ -166,17 +171,7 @@ class Reel(db.Model):
             str: Nombre completo del usuario creador o 'Desconocido'
         """
         return self.creator.full_name if self.creator else 'Desconocido'
-    
-    @property
-    def approver_name(self):
-        """
-        Obtiene el nombre completo del usuario que aprobó el reel.
         
-        Returns:
-            str or None: Nombre completo del aprobador o None si no está aprobado
-        """
-        return self.approved_by.full_name if self.approved_by else None
-    
     @property
     def avatar_name(self):
         """
@@ -219,9 +214,12 @@ class Reel(db.Model):
         Args:
             tag_list (list): Lista de strings con las etiquetas
         """
-        self.tags = ', '.join([tag.strip() for tag in tag_list if tag.strip()])
-    
-    def start_processing(self):
+        self.tags = ', '.join([tag.strip() 
+                                for tag in tag_list 
+                                    if tag.strip()
+                                ])
+
+    def start_processing(self, job_id=None):
         """
         Marca el inicio del procesamiento del reel en HeyGen.
         
@@ -231,27 +229,37 @@ class Reel(db.Model):
         Note:
             Realiza commit automático a la base de datos
         """
-        self.status = ReelStatus.PROCESSING
+        self.status                = ReelStatus.PROCESSING
         self.processing_started_at = datetime.utcnow()
+        if job_id:
+            self.heygen_job_id = job_id
         db.session.commit()
     
-    def complete_processing(self, video_url, thumbnail_url=None):
+    def complete_processing(self, video_url, thumbnail_url=None, video_id=None):
         """
         Marca el procesamiento como completado exitosamente.
         
         Args:
             video_url (str): URL del video generado por HeyGen
             thumbnail_url (str, opcional): URL de la imagen miniatura
+            video_id (str, opcional): ID del video en HeyGen
         
         Note:
+            ✅ ACTUALIZADO - Ahora acepta video_id según README
             Cambia el estado a COMPLETED y registra las URLs del contenido generado.
             Realiza commit automático a la base de datos
         """
         self.status                  = ReelStatus.COMPLETED
         self.processing_completed_at = datetime.utcnow()
         self.video_url               = video_url
+
         if thumbnail_url:
             self.thumbnail_url = thumbnail_url
+            
+        # ✅ NUEVO - Guardar video_id si se proporciona
+        if video_id:
+            self.heygen_video_id = video_id
+            
         db.session.commit()
     
     def fail_processing(self, error_message):
@@ -269,38 +277,7 @@ class Reel(db.Model):
         self.processing_completed_at  = datetime.utcnow()
         self.error_message            = error_message
         db.session.commit()
-    
-    def approve(self, approved_by_user):
-        """
-        Aprueba el reel para su uso y genera las comisiones correspondientes.
-        
-        Args:
-            approved_by_user (User): Usuario que aprueba el reel
-        
-        Note:
-            Cambia el estado a APPROVED, registra quién y cuándo lo aprobó,
-            y automáticamente genera las comisiones para la cadena de usuarios.
-            Realiza commit automático a la base de datos
-        """
-        self.status          = ReelStatus.APPROVED
-        self.approved_by_id  = approved_by_user.id
-        self.approved_at     = datetime.utcnow()
-        db.session.commit()
-        
-        # Generar comisiones cuando se aprueba
-        self.generate_commissions()
-    
-    def reject(self):
-        """
-        Rechaza el reel.
-        
-        Note:
-            Cambia el estado a REJECTED. El reel no podrá ser procesado ni usado.
-            Realiza commit automático a la base de datos
-        """
-        self.status = ReelStatus.REJECTED
-        db.session.commit()
-    
+
     def publish(self):
         """
         Publica el reel para acceso público.
@@ -309,6 +286,7 @@ class Reel(db.Model):
             Marca el reel como público y registra la fecha de publicación.
             Realiza commit automático a la base de datos
         """
+        self.status       = ReelStatus.PUBLISHED
         self.is_public    = True
         self.published_at = datetime.utcnow()
         db.session.commit()
@@ -334,75 +312,151 @@ class Reel(db.Model):
         """
         self.download_count += 1
         db.session.commit()
+        
+    def set_stripe_payment(self, payment_intent_id):
+        """
+        Establece el Payment Intent de Stripe para este reel.
+        
+        Args:
+            payment_intent_id (str): ID del Payment Intent de Stripe
+            
+        Note:
+            ✅ NUEVO - Para tracking de pagos via Stripe Connect
+        """
+        self.stripe_payment_intent_id = payment_intent_id
+        db.session.commit()
     
     def generate_commissions(self):
         """
         Genera comisiones automáticamente para la cadena de usuarios.
-        
-        Crea comisiones para el productor, subproductor y/o afiliado según
-        corresponda, basándose en el rol del creador y las tasas configuradas.
-        
+
+        LÓGICA CORREGIDA según README:
+        - FINAL_USER: PAGA (no recibe comisión) - es quien genera el reel y paga por él
+        - PRODUCTOR: RECIBE el pago principal (100% menos lo que comparte)
+        - SUBPRODUCER: RECIBE parte del pago del productor (solo si él creó el reel)
+        - PLATAFORMA: RECIBE application_fee via Stripe Connect automáticamente
+
+        TASAS PARAMETRIZADAS (fáciles de cambiar):
+            SUBPRODUCER_COMMISSION_RATE = 10%  # Del total, va al subproducer
+            PRODUCER_KEEPS_RATE = 90%          # Del total, se queda el productor
+
         Tipos de comisiones generadas:
-            - Producer: Comisión base para el productor principal
-            - Subproducer: 10% si el creador es subproductor
-            - Affiliate: 5% si el creador es afiliado
-        
+            - 'producer': Comisión que se queda el productor
+            - 'subproducer': Comisión para el subproducer (solo si él creó el reel)
+
         Note:
             Solo genera comisiones si el reel tiene un costo definido mayor a 0.
+            El FINAL_USER nunca recibe comisión porque él es quien PAGA.
             Realiza commit automático a la base de datos
         """
         from app.models.commission import Commission
         from app.models.user import UserRole
+
+        # ✅ TASAS PARAMETRIZADAS - Fáciles de cambiar
+        SUBPRODUCER_COMMISSION_RATE = 0.10  # 10% del total va al subproducer
+        PRODUCER_KEEPS_RATE = 0.90          # 90% del total se queda el productor
+
         # Solo generar comisiones si hay un costo definido
         if not self.cost or self.cost <= 0:
             return
-        
-        # Comisión para el productor
+
+        # Obtener el productor asociado
         producer = self.creator.get_producer()
-        if producer:
-            producer_commission = Commission(
-                user_id         = producer.user_id,
-                reel_id         = self.id,
-                commission_type = 'producer',
-                amount          = self.cost * producer.commission_rate,
-                percentage      = producer.commission_rate * 100
-            )
-            db.session.add(producer_commission)
-        
-        # Comisión para el subproductor (si aplica)
+        if not producer:
+            return
+
+        # ✅ LÓGICA CORREGIDA según tipo de creador:
+
         if self.creator.role == UserRole.SUBPRODUCER:
-            subproducer_rate       = 0.10  # 10% por defecto
+            # CASO 1: SUBPRODUCER creó el reel
+            # - Subproducer recibe su comisión (10%)
+            # - Productor se queda con el resto (90%)
+
             subproducer_commission = Commission(
-                user_id            = self.creator_id,
-                reel_id            = self.id,
-                commission_type    = 'subproducer',
-                amount             = self.cost * subproducer_rate,
-                percentage         = subproducer_rate * 100
+                user_id                  = self.creator_id,
+                producer_id              = producer.id,
+                reel_id                  = self.id,
+                commission_type          = 'subproducer',
+                amount                   = self.cost * SUBPRODUCER_COMMISSION_RATE,
+                percentage               = SUBPRODUCER_COMMISSION_RATE * 100,
+                stripe_payment_intent_id = self.stripe_payment_intent_id
             )
             db.session.add(subproducer_commission)
-        
-        # Comisión para el afiliado (si aplica)
-        if self.creator.role == UserRole.AFFILIATE:
-            affiliate_rate         = 0.05  # 5% por defecto
-            affiliate_commission   = Commission(
-                user_id            = self.creator_id,
-                reel_id            = self.id,
-                commission_type    = 'affiliate',
-                amount             = self.cost * affiliate_rate,
-                percentage         = affiliate_rate * 100
+
+            producer_commission = Commission(
+                user_id                   = producer.user_id,
+                producer_id               = producer.id,
+                reel_id                   = self.id,
+                commission_type           = 'producer',
+                amount                    = self.cost * PRODUCER_KEEPS_RATE,
+                percentage                = PRODUCER_KEEPS_RATE * 100,
+                stripe_payment_intent_id  = self.stripe_payment_intent_id
             )
-            db.session.add(affiliate_commission)
-        
+            db.session.add(producer_commission)
+
+        elif self.creator.role == UserRole.FINAL_USER:
+            # CASO 2: FINAL_USER creó el reel
+            # - Final_user PAGA (no recibe nada)
+            # - Productor recibe TODO (100%)
+
+            producer_commission = Commission(
+                user_id                   = producer.user_id,
+                producer_id               = producer.id,
+                reel_id                   = self.id,
+                commission_type           = 'producer',
+                amount                    = self.cost,  # 100% del costo
+                percentage                = 100.0,
+                stripe_payment_intent_id  = self.stripe_payment_intent_id
+            )
+            db.session.add(producer_commission)
+
+        elif self.creator.role == UserRole.PRODUCER:
+            # CASO 3: PRODUCTOR creó su propio reel
+            # - Productor recibe TODO (100%)
+
+            producer_commission = Commission(
+                user_id                   = producer.user_id,
+                producer_id               = producer.id,
+                reel_id                   = self.id,
+                commission_type           = 'producer',
+                amount                    = self.cost,  # 100% del costo
+                percentage                = 100.0,
+                stripe_payment_intent_id  = self.stripe_payment_intent_id
+            )
+            db.session.add(producer_commission)
         db.session.commit()
     
+    # ✅ NUEVO método según README - Auto-generar comisiones al completar
+    def complete_and_generate_commissions(self, video_url, thumbnail_url=None, video_id=None):
+        """
+        Completa el procesamiento y genera comisiones automáticamente.
+        
+        Args:
+            video_url (str): URL del video generado
+            thumbnail_url (str, opcional): URL de la miniatura
+            video_id (str, opcional): ID del video en HeyGen
+            
+        Note:
+            ✅ NUEVO - Combina complete_processing() y generate_commissions()
+            según el flujo simplificado del README
+        """
+        # Completar procesamiento
+        self.complete_processing(video_url, thumbnail_url, video_id)
+        
+        # Generar comisiones automáticamente
+        self.generate_commissions()
+
+
+    # TAMBIÉN CORREGIR el to_dict() para remover campos que ya no existen:
     def to_dict(self):
         """
         Convierte el objeto Reel a un diccionario para serialización JSON.
-        
+
         Returns:
             dict: Diccionario con todos los campos importantes del reel
-        
+
         Note:
+            ✅ ACTUALIZADO - Removidos campos de aprobación según README
             Las fechas se convierten a formato ISO para compatibilidad JSON.
             Incluye propiedades calculadas como processing_time y contadores.
         """
@@ -417,7 +471,6 @@ class Reel(db.Model):
             'resolution'                : self.resolution,
             'background_type'           : self.background_type,
             'creator_name'              : self.creator_name,
-            'approver_name'             : self.approver_name,
             'avatar_name'               : self.avatar_name,
             'category'                  : self.category,
             'tags'                      : self.tag_list,
@@ -427,10 +480,17 @@ class Reel(db.Model):
             'price'                     : self.price,
             'video_url'                 : self.video_url,
             'thumbnail_url'             : self.thumbnail_url,
+            'heygen_job_id'             : self.heygen_job_id,                  # ✅ NUEVO
+            'stripe_payment_intent_id'  : self.stripe_payment_intent_id,      # ✅ NUEVO
             'processing_time'           : self.processing_time,
             'created_at'                : self.created_at.isoformat() if self.created_at else None,
-            'approved_at'               : self.approved_at.isoformat() if self.approved_at else None,
             'published_at'              : self.published_at.isoformat() if self.published_at else None,
             'processing_started_at'     : self.processing_started_at.isoformat() if self.processing_started_at else None,
             'processing_completed_at'   : self.processing_completed_at.isoformat() if self.processing_completed_at else None
+
+            # ❌ CAMPOS REMOVIDOS - Ya no existen según README
+            # 'approver_name'             : self.approver_name,     # approved_by removido
+            # 'approved_at'               : self.approved_at.isoformat() if self.approved_at else None,  # approved_at removido
         }
+    
+    
