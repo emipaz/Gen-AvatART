@@ -77,15 +77,15 @@ class Avatar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     
     # Relaciones con otras tablas
-    producer_id    = db.Column(db.Integer, db.ForeignKey('producers.id'), nullable=False)
-    created_by_id  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    producer_id    = db.Column(db.Integer, db.ForeignKey('producers.id'), nullable = False)
+    created_by_id  = db.Column(db.Integer, db.ForeignKey('users.id'),     nullable = False)
     # approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     
     # Información básica del avatar
-    name        = db.Column(db.String(100), nullable=False)
+    name        = db.Column(db.String(100), nullable = False)
     description = db.Column(db.Text)
     avatar_type = db.Column(db.String(50))  # male, female, custom
-    language    = db.Column(db.String(10), default='es')  # Idioma principal
+    language    = db.Column(db.String(10), default = 'es')  # Idioma principal
     
     
     # Datos de integración con HeyGen
@@ -100,7 +100,7 @@ class Avatar(db.Model):
     thumbnail_url     = db.Column(db.String(500))
     
     # Estado y configuración de acceso
-    status     = db.Column(db.Enum(AvatarStatus), nullable=False, default=AvatarStatus.PENDING)
+    status     = db.Column(db.Enum(AvatarStatus), nullable = False, default = AvatarStatus.PROCESSING)
     
     # is_public  = db.Column(db.Boolean, default=False)  # Si otros usuarios pueden usarlo
     # is_premium = db.Column(db.Boolean, default=False)  # Si requiere plan premium
