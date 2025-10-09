@@ -97,7 +97,7 @@ class ClonePermission(db.Model):
         total_used (int)                : Total de generaciones realizadas
         expires_at (datetime)           : Fecha de expiración del permiso (opcional)
         notes (str)                     : Notas adicionales del productor
-        metadata (dict)                 : Configuraciones adicionales en JSON
+        meta_data (dict)                : Configuraciones adicionales en JSON
         created_at (datetime)           : Fecha de creación del permiso
         updated_at (datetime)           : Fecha de última actualización
         last_used_at (datetime)         : Fecha del último uso del permiso
@@ -129,9 +129,9 @@ class ClonePermission(db.Model):
     total_used   = db.Column(db.Integer, default = 0)  # Uso total histórico
 
     # Configuración adicional
-    expires_at = db.Column(db.DateTime)  # Fecha de expiración opcional
-    notes      = db.Column(db.Text)      # Notas del productor
-    metadata   = db.Column(db.JSON)      # Configuraciones adicionales
+    expires_at  = db.Column(db.DateTime)  # Fecha de expiración opcional
+    notes       = db.Column(db.Text)      # Notas del productor
+    meta_data   = db.Column(db.JSON)      # Configuraciones adicionales
     
     # Campos de auditoría y timestamps
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
@@ -557,7 +557,7 @@ class ClonePermission(db.Model):
             'can_use'           : can_use,
             'can_use_reason'    : reason,
             'notes'             : self.notes,
-            'metadata'          : self.metadata or {},
+            'metadata'          : self.meta_data or {},
             'expires_at'        : self.expires_at.isoformat() if self.expires_at else None,
             'created_at'        : self.created_at.isoformat() if self.created_at else None,
             'updated_at'        : self.updated_at.isoformat() if self.updated_at else None,

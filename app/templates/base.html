@@ -1,74 +1,241 @@
+{# 
+Template base principal para la aplicación Gem-AvatART.
+
+Este template define la estructura HTML base que será extendida por todos los demás
+templates de la aplicación. Implementa un diseño responsive moderno usando Bootstrap 5.3.0
+con navegación dinámica según roles de usuario y sistema de mensajes flash.
+
+El template incluye:
+    - Estructura HTML5 responsive con viewport meta
+    - Navegación principal con menús específicos por rol de usuario
+    - Sistema de flash messages con categorías Bootstrap
+    - Footer informativo con enlaces institucionales
+    - Estilos CSS personalizados con gradientes y efectos
+    - Scripts JavaScript base (Bootstrap, Chart.js)
+
+Clases Bootstrap utilizadas:
+    - Layout      : container, container-fluid, row, col-*, d-flex, justify-content-*
+    - Navegación  : navbar, navbar-expand-lg, navbar-light, nav-link, dropdown
+    - Componentes : card, btn, alert, shadow-sm
+    - Utilitarias : mt-*, mb-*, py-*, px-*, text-*, bg-*
+
+IDs utilizados:
+    - navbarNav      : Collapse target para navegación responsive
+    - navbarDropdown : Dropdown toggle para menú de usuario
+
+Variables Jinja disponibles:
+    - current_user           : Usuario autenticado actual (Flask-Login)
+    - url_for()              : Generador de URLs para rutas Flask
+    - get_flashed_messages() : Sistema de mensajes flash de Flask
+
+Bloques Jinja extendibles:
+    - title       : Título de la página (default: "Gem-AvatART")
+    - extra_css   : CSS adicional específico por página
+    - content     : Contenido principal de cada página
+    - extra_js    : JavaScript adicional específico por página
+#}
+
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- Meta tags básicos para HTML5 responsive -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Título dinámico usando bloque Jinja con fallback -->
     <title>{% block title %}Gem-AvatART{% endblock %}</title>
     
-    <!-- Bootstrap CSS -->
+    <!-- CDN Bootstrap 5.3.0 - Framework CSS principal -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
+    
+    <!-- CDN Font Awesome 6.4.0 - Iconografía completa -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Estilos CSS personalizados para la marca Gem-AvatART -->
+    <style>
+        /* Sidebar principal con gradiente corporativo */
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Branding del navbar con color corporativo */
+        .navbar-brand {
+            font-weight: bold;
+            color: #667eea !important;
+        }
+        
+        /* Cards con sombra sutil y efecto hover */
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: box-shadow 0.15s ease-in-out;
+        }
+        
+        .card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Cards de estadísticas con gradiente corporativo */
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        /* Botones primarios con gradiente corporativo */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+    </style>
+    
+    <!-- Bloque para CSS adicional específico por página -->
     {% block extra_css %}{% endblock %}
 </head>
+
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
+    <!-- Navegación principal responsive con Bootstrap navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container-fluid">
+            <!-- Brand/Logo con enlace al home usando url_for -->
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
-                <i class="fas fa-gem"></i> Gem-AvatART
+                <i class="fas fa-video"></i> Gem-AvatART
             </a>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <!-- Botón hamburguesa para navegación mobile (Bootstrap collapse) -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
+            <!-- Contenedor colapsable de la navegación -->
             <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- Navegación principal izquierda (enlaces según autenticación) -->
                 <ul class="navbar-nav me-auto">
+                    <!-- Menú solo visible para usuarios autenticados -->
                     {% if current_user.is_authenticated %}
+                        <!-- Dashboard link (redirige según rol en la ruta) -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                        </li>
+                        
+                        <!-- Menú específico para administradores -->
                         {% if current_user.is_admin() %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
-                                    <i class="fas fa-tachometer-alt"></i> Admin
+                                <a class="nav-link" href="{{ url_for('admin.users') }}">
+                                    <i class="fas fa-users-cog"></i> Gestión Usuarios
                                 </a>
                             </li>
-                        {% endif %}
-                        
-                        {% if current_user.is_producer() %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('producer.dashboard') }}">
-                                    <i class="fas fa-industry"></i> Producer
+                                <a class="nav-link" href="{{ url_for('admin.system_settings') }}">
+                                    <i class="fas fa-cogs"></i> Configuración
+                                </a>
+                            </li>
+                        
+                        <!-- Menú específico para productores -->
+                        {% elif current_user.is_producer() %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('producer.avatars') }}">
+                                    <i class="fas fa-user-circle"></i> Mis Avatares
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('producer.team') }}">
+                                    <i class="fas fa-users"></i> Mi Equipo
+                                </a>
+                            </li>
+                        
+                        <!-- Menú específico para subproductores -->
+                        {% elif current_user.is_subproducer() %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('subproducer.reels') }}">
+                                    <i class="fas fa-video"></i> Mis Reels
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('subproducer.avatars') }}">
+                                    <i class="fas fa-user-circle"></i> Avatares
+                                </a>
+                            </li>
+                        
+                        <!-- Menú específico para usuarios finales -->
+                        {% elif current_user.is_final_user() %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('user.reels') }}">
+                                    <i class="fas fa-video"></i> Mis Reels
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('user.browse_avatars') }}">
+                                    <i class="fas fa-search"></i> Explorar Avatares
                                 </a>
                             </li>
                         {% endif %}
                     {% endif %}
                 </ul>
                 
+                <!-- Navegación derecha (usuario/autenticación) -->
                 <ul class="navbar-nav">
+                    <!-- Menú de usuario autenticado con dropdown -->
                     {% if current_user.is_authenticated %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-user"></i> {{ current_user.username }}
+                            <!-- Dropdown toggle con nombre de usuario -->
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user-circle"></i> {{ current_user.full_name or current_user.username }}
                             </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ url_for('user.profile') }}">
-                                    <i class="fas fa-user-edit"></i> Perfil
-                                </a></li>
+                            
+                            <!-- Dropdown menu con opciones de usuario -->
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('auth.profile') }}">
+                                        <i class="fas fa-user"></i> Mi Perfil
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('auth.settings') }}">
+                                        <i class="fas fa-cog"></i> Configuración
+                                    </a>
+                                </li>
+                                
+                                <!-- Separador visual -->
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                                </a></li>
+                                
+                                <!-- Enlace de logout -->
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                                    </a>
+                                </li>
                             </ul>
                         </li>
+                    
+                    <!-- Enlaces para usuarios no autenticados -->
                     {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.about') }}">
+                                <i class="fas fa-info-circle"></i> Acerca de
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.pricing') }}">
+                                <i class="fas fa-dollar-sign"></i> Precios
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('auth.login') }}">
                                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.register') }}">
+                            <a class="nav-link btn btn-primary text-white ms-2 px-3" href="{{ url_for('auth.register') }}">
                                 <i class="fas fa-user-plus"></i> Registrarse
                             </a>
                         </li>
@@ -78,42 +245,102 @@
         </div>
     </nav>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="container mt-3">
+    <!-- Contenedor para mensajes flash de Flask -->
+    <div class="container mt-3">
+        <!-- Jinja macro para iterar mensajes flash con categorías -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
                 {% for category, message in messages %}
+                    <!-- Alert Bootstrap con categoría dinámica y botón de cierre -->
                     <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+            {% endif %}
+        {% endwith %}
+    </div>
 
-    <!-- Main Content -->
-    <main class="container-fluid py-4">
+    <!-- Contenedor principal para el contenido de cada página -->
+    <main>
+        <!-- Bloque principal que será sobrescrito por cada template hijo -->
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-light mt-5 py-4">
+    <!-- Footer institucional con información corporativa -->
+    <footer class="bg-light mt-5 py-4">
         <div class="container">
             <div class="row">
-                <div class="col-md-6">
-                    <h5><i class="fas fa-gem"></i> Gem-AvatART</h5>
-                    <p>Plataforma de creación de avatars con IA</p>
+                <!-- Columna izquierda: Información de la empresa -->
+                <div class="col-md-4">
+                    <h5><i class="fas fa-video text-primary"></i> Gem-AvatART</h5>
+                    <p class="text-muted">Plataforma de creación de videos con avatares AI</p>
+                    
+                    <!-- Enlaces a redes sociales -->
+                    <div class="social-links">
+                        <a href="#" class="text-muted me-3"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-muted me-3"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="text-muted me-3"><i class="fab fa-youtube"></i></a>
+                    </div>
                 </div>
-                <div class="col-md-6 text-end">
-                    <p>&copy; 2024 Gem-AvatART. Todos los derechos reservados.</p>
+                
+                <!-- Columna central: Enlaces útiles -->
+                <div class="col-md-4">
+                    <h6>Enlaces Útiles</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="{{ url_for('main.about') }}" class="text-muted">Acerca de</a></li>
+                        <li><a href="{{ url_for('main.pricing') }}" class="text-muted">Precios</a></li>
+                        <li><a href="{{ url_for('main.contact') }}" class="text-muted">Contacto</a></li>
+                        <li><a href="#" class="text-muted">Términos de Servicio</a></li>
+                        <li><a href="#" class="text-muted">Política de Privacidad</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Columna derecha: Información de contacto y copyright -->
+                <div class="col-md-4">
+                    <h6>Contacto</h6>
+                    <p class="text-muted mb-1">
+                        <i class="fas fa-envelope"></i> support@gem-avatart.com
+                    </p>
+                    <p class="text-muted mb-3">
+                        <i class="fas fa-phone"></i> +1 (555) 123-4567
+                    </p>
+                    
+                    <!-- Copyright -->
+                    <small class="text-muted">
+                        © 2025 Gem-AvatART. Todos los derechos reservados.
+                    </small>
                 </div>
             </div>
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
+    <!-- Scripts JavaScript esenciales -->
+    
+    <!-- Bootstrap 5.3.0 Bundle JS (incluye Popper.js para dropdowns y tooltips) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Chart.js para gráficos y estadísticas en dashboards -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Script personalizado para funcionalidades globales -->
+    <script>
+        // Auto-ocultar alerts después de 5 segundos
+        document.addEventListener('DOMContentLoaded', function() {
+            // Seleccionar todos los alerts visibles
+            const alerts = document.querySelectorAll('.alert');
+            // iterar y configurar temporizador para cada uno
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+    </script>
+    
+    <!-- Bloque para JavaScript adicional específico por página -->
     {% block extra_js %}{% endblock %}
+
 </body>
 </html>

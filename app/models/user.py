@@ -102,7 +102,7 @@ class User(UserMixin, db.Model):
     avatar_url = db.Column(db.String(200))
     
     # Información personal del usuario
-    role        = db.Column(db.Enum(UserRole),   nullable = False, default = UserRole.AFFILIATE)
+    role        = db.Column(db.Enum(UserRole),   nullable = False, default = UserRole.FINAL_USER)
     status      = db.Column(db.Enum(UserStatus), nullable = False, default = UserStatus.PENDING)
     is_verified = db.Column(db.Boolean, default = False)
 
@@ -388,3 +388,4 @@ class User(UserMixin, db.Model):
             'created_at' : self.created_at.isoformat() if self.created_at else None,
             'last_login' : self.last_login.isoformat() if self.last_login else None
         }
+        

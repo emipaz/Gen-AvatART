@@ -1,63 +1,242 @@
+{#
+Template de perfil de usuario para Gem-AvatART.
+
+Este template implementa la página completa de gestión de perfil personal donde
+los usuarios pueden editar su información personal, cambiar contraseña, subir
+avatar y visualizar estadísticas. Incluye validación de formularios y
+previsualización de avatar en tiempo real.
+
+El template incluye:
+    - Formulario completo de edición de perfil con WTForms
+    - Sistema de subida y previsualización de avatar
+    - Sección de cambio de contraseña con validación
+    - Información del sistema (fechas, invitaciones)
+    - Estadísticas personales según rol del usuario
+    - Badges de estado y verificación
+    - Validación de errores con mensajes específicos
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, mx-auto, d-flex, justify-content-between
+    - Cards: card, card-body, card-header
+    - Forms: form-label, form-control, btn
+    - Images: img-fluid, rounded-circle
+    - Badges: badge, bg-primary, bg-success, bg-warning, bg-info
+    - Typography: text-muted, text-center, text-danger, text-primary, text-success, text-info
+    - Spacing: mb-*, mt-*, fa-8x
+
+Variables Jinja utilizadas:
+    - current_user: Usuario autenticado con todos sus campos
+    - form: Objeto WTForms con campos del formulario
+    - form.field_name: Campos específicos del formulario
+    - form.field_name.errors: Errores de validación por campo
+
+Campos del formulario WTForms:
+    - avatar: Campo de archivo para subir imagen de avatar
+    - first_name: Nombre del usuario
+    - last_name: Apellido del usuario
+    - email: Dirección de correo electrónico
+    - phone: Número de teléfono
+    - current_password: Contraseña actual para verificación
+    - new_password: Nueva contraseña
+    - confirm_password: Confirmación de nueva contraseña
+    - hidden_tag(): Token CSRF para seguridad
+
+Rutas Flask referenciadas (url_for):
+    - main.index: Volver a página principal
+
+Iconografía Font Awesome:
+    - fas fa-user-edit: Edición de perfil
+    - fas fa-user-circle: Avatar placeholder
+    - fas fa-camera: Cambiar avatar
+    - fas fa-check-circle: Usuario verificado
+    - fas fa-lock: Cambiar contraseña
+    - fas fa-info-circle: Información del sistema
+    - fas fa-chart-bar: Estadísticas del usuario
+    - fas fa-arrow-left: Volver
+    - fas fa-save: Guardar cambios
+
+Propiedades del usuario mostradas:
+    - full_name: Nombre completo del usuario
+    - username: Nombre de usuario único
+    - role: Rol del usuario (con capitalización)
+    - status: Estado de la cuenta
+    - is_verified: Estado de verificación
+    - avatar_url: URL del avatar actual
+    - created_at: Fecha de registro
+    - last_login: Último acceso
+    - invited_by: Usuario que lo invitó (si aplica)
+
+Estadísticas condicionales mostradas:
+    - reels.count(): Número de reels creados (si puede crear reels)
+    - created_avatars.count(): Número de avatars creados (si puede crear avatars)
+    - commissions_earned.count(): Número de comisiones ganadas
+
+Métodos Jinja utilizados:
+    - current_user.role.value.title(): Capitalización del rol
+    - current_user.status.value.title(): Capitalización del estado
+    - current_user.created_at.strftime(): Formateo de fecha de registro
+    - current_user.last_login.strftime(): Formateo de última conexión
+    - current_user.can_create_reels(): Verificación de permisos
+    - current_user.can_create_avatars(): Verificación de permisos
+
+Estilos inline utilizados:
+    - display: none: Campo de archivo oculto
+    - max-width: 150px: Tamaño máximo del avatar
+
+Funcionalidades JavaScript:
+    - addEventListener('change'): Detección de cambio en input de archivo
+    - FileReader API: Lectura de archivo para previsualización
+    - DOM manipulation: Reemplazo de icono por imagen previsualizada
+    - readAsDataURL(): Conversión de archivo a URL de datos
+
+Validación de errores:
+    - Iteración sobre form.field.errors para mostrar errores específicos
+    - Clases text-danger para styling de errores
+    - Validación tanto del lado cliente como servidor
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Mi Perfil - Gem-AvatART{% endblock %}
 
 {% block content %}
+<!-- Contenedor principal del perfil con layout Bootstrap responsivo -->
+<!-- Utiliza container para centralizar el contenido con márgenes automáticos -->
 <div class="container">
+    <!-- Fila responsive que se adapta a diferentes tamaños de pantalla -->
     <div class="row">
+        <!-- Columna centrada que ocupa 8/12 del ancho en pantallas medianas o mayores -->
+        <!-- mx-auto centra la columna horizontalmente cuando no ocupa el ancho completo -->
         <div class="col-md-8 mx-auto">
+            <!-- Card principal que contiene todo el formulario de perfil -->
+            <!-- Utiliza el sistema de cards de Bootstrap para estructura y sombreado -->
             <div class="card">
+                <!-- Header del card con título e icono descriptivo -->
+                <!-- card-header proporciona background diferenciado y padding -->
                 <div class="card-header">
+                    <!-- Título con icono Font Awesome de edición de usuario -->
                     <h4><i class="fas fa-user-edit"></i> Mi Perfil</h4>
                 </div>
+                
+                <!-- Cuerpo del card que contiene el formulario completo -->
+                <!-- card-body proporciona padding consistente para el contenido -->
                 <div class="card-body">
+                    <!-- Formulario principal con método POST y encoding para archivos -->
+                    <!-- enctype="multipart/form-data" es necesario para subida de archivos -->
                     <form method="POST" enctype="multipart/form-data">
+                        <!-- Token CSRF oculto generado por WTForms para seguridad -->
+                        <!-- Previene ataques de falsificación de peticiones entre sitios -->
                         {{ form.hidden_tag() }}
                         
-                        <!-- Avatar -->
+                        <!-- Sección de gestión de avatar del usuario -->
+                        <!-- Utiliza row y columnas para layout responsivo del avatar -->
                         <div class="row mb-4">
+                            <!-- Columna de 3/12 del ancho en pantallas medianas, centrada -->
+                            <!-- text-center alinea todo el contenido al centro -->
                             <div class="col-md-3 text-center">
+                                <!-- Condicional Jinja para mostrar avatar existente o placeholder -->
                                 {% if current_user.avatar_url %}
+                                    <!-- Imagen del avatar actual del usuario -->
+                                    <!-- img-fluid hace la imagen responsiva -->
+                                    <!-- rounded-circle aplica border-radius: 50% para forma circular -->
+                                    <!-- max-width: 150px limita el tamaño máximo del avatar -->
                                     <img src="{{ current_user.avatar_url }}" class="img-fluid rounded-circle" style="max-width: 150px;" alt="Avatar">
                                 {% else %}
+                                    <!-- Placeholder de avatar cuando el usuario no tiene imagen -->
+                                    <!-- fa-8x hace el icono 8 veces más grande que el tamaño base -->
+                                    <!-- text-muted aplica color gris para indicar elemento inactivo -->
                                     <i class="fas fa-user-circle fa-8x text-muted"></i>
                                 {% endif %}
+                                
+                                <!-- Sección de botón para cambiar avatar -->
+                                <!-- mt-2 aplica margen superior de 0.5rem -->
                                 <div class="mt-2">
+                                    <!-- Label que actúa como botón personalizado para el input file -->
+                                    <!-- btn-sm reduce el tamaño del botón -->
+                                    <!-- btn-outline-primary usa borde azul sin fondo -->
                                     <label for="avatar" class="btn btn-sm btn-outline-primary">
+                                        <!-- Icono de cámara para indicar función de subir imagen -->
                                         <i class="fas fa-camera"></i> Cambiar Avatar
                                     </label>
+                                    
+                                    <!-- Campo de archivo WTForms oculto -->
+                                    <!-- style="display: none;" oculta el input file nativo -->
+                                    <!-- Se activa al hacer clic en el label asociado -->
                                     {{ form.avatar(id="avatar", style="display: none;") }}
                                 </div>
                             </div>
+                            
+                            <!-- Columna principal con información del usuario -->
+                            <!-- col-md-9 ocupa 9/12 del ancho en pantallas medianas o mayores -->
                             <div class="col-md-9">
+                                <!-- Nombre completo del usuario como título principal -->
+                                <!-- Utiliza método full_name del modelo User -->
                                 <h5>{{ current_user.full_name }}</h5>
+                                
+                                <!-- Username con estilo de texto secundario -->
+                                <!-- text-muted aplica color gris para información secundaria -->
+                                <!-- Prefijo @ indica que es un nombre de usuario -->
                                 <p class="text-muted">@{{ current_user.username }}</p>
+                                
+                                <!-- Badge del rol del usuario -->
+                                <!-- bg-primary aplica fondo azul para indicar información importante -->
+                                <!-- current_user.role.value.title() capitaliza el valor del enum -->
                                 <span class="badge bg-primary">{{ current_user.role.value.title() }}</span>
+                                
+                                <!-- Badge del estado del usuario con color condicional -->
+                                <!-- Utiliza operador ternario de Jinja para color dinámico -->
+                                <!-- bg-success para activo, bg-warning para otros estados -->
                                 <span class="badge bg-{{ 'success' if current_user.status.value == 'active' else 'warning' }}">
                                     {{ current_user.status.value.title() }}
                                 </span>
+                                
+                                <!-- Badge de verificación condicional -->
+                                <!-- Solo se muestra si current_user.is_verified es True -->
                                 {% if current_user.is_verified %}
+                                    <!-- bg-success indica estado positivo con icono de verificación -->
                                     <span class="badge bg-success"><i class="fas fa-check-circle"></i> Verificado</span>
                                 {% endif %}
                             </div>
                         </div>
 
-                        <!-- Información Personal -->
+                        <!-- Sección de información personal editable -->
+                        <!-- Utiliza row para layout de formulario en dos columnas -->
                         <div class="row mb-3">
+                            <!-- Columna para el campo de nombre -->
+                            <!-- col-md-6 ocupa la mitad del ancho en pantallas medianas -->
                             <div class="col-md-6">
+                                <!-- Label del campo generado por WTForms con clase Bootstrap -->
+                                <!-- form-label aplica estilos consistentes para etiquetas -->
                                 {{ form.first_name.label(class="form-label") }}
+                                
+                                <!-- Campo de entrada generado por WTForms -->
+                                <!-- form-control aplica estilos de Bootstrap para inputs -->
                                 {{ form.first_name(class="form-control") }}
+                                
+                                <!-- Bloque condicional para mostrar errores de validación -->
                                 {% if form.first_name.errors %}
+                                    <!-- Contenedor con estilo de error para mensajes -->
+                                    <!-- text-danger aplica color rojo para indicar errores -->
                                     <div class="text-danger">
+                                        <!-- Iteración sobre todos los errores del campo -->
                                         {% for error in form.first_name.errors %}
+                                            <!-- Cada error se muestra en texto pequeño -->
                                             <small>{{ error }}</small>
                                         {% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
+                            
+                            <!-- Columna para el campo de apellido -->
+                            <!-- Sigue el mismo patrón de estructura que el nombre -->
                             <div class="col-md-6">
+                                <!-- Label del apellido con estilos Bootstrap -->
                                 {{ form.last_name.label(class="form-label") }}
+                                
+                                <!-- Campo de entrada para apellido -->
                                 {{ form.last_name(class="form-control") }}
+                                
+                                <!-- Validación de errores para el campo apellido -->
                                 {% if form.last_name.errors %}
                                     <div class="text-danger">
                                         {% for error in form.last_name.errors %}
@@ -68,10 +247,18 @@
                             </div>
                         </div>
 
+                        <!-- Segunda fila de campos del formulario -->
+                        <!-- Contiene email y teléfono en layout de dos columnas -->
                         <div class="row mb-3">
+                            <!-- Columna para el campo de email -->
                             <div class="col-md-6">
+                                <!-- Label del email con validación de formato -->
                                 {{ form.email.label(class="form-label") }}
+                                
+                                <!-- Campo de entrada para email con validación HTML5 -->
                                 {{ form.email(class="form-control") }}
+                                
+                                <!-- Validación de errores específicos del email -->
                                 {% if form.email.errors %}
                                     <div class="text-danger">
                                         {% for error in form.email.errors %}
@@ -80,9 +267,16 @@
                                     </div>
                                 {% endif %}
                             </div>
+                            
+                            <!-- Columna para el campo de teléfono -->
                             <div class="col-md-6">
+                                <!-- Label del teléfono con formato internacional -->
                                 {{ form.phone.label(class="form-label") }}
+                                
+                                <!-- Campo de entrada para número de teléfono -->
                                 {{ form.phone(class="form-control") }}
+                                
+                                <!-- Validación de errores del formato de teléfono -->
                                 {% if form.phone.errors %}
                                     <div class="text-danger">
                                         {% for error in form.phone.errors %}
@@ -93,16 +287,29 @@
                             </div>
                         </div>
 
-                        <!-- Cambiar Contraseña -->
+                        <!-- Sección separada para cambio de contraseña -->
+                        <!-- Utiliza card anidado para separar visualmente esta funcionalidad -->
+                        <!-- mt-4 aplica margen superior de 1.5rem para separación -->
                         <div class="card mt-4">
+                            <!-- Header específico para la sección de contraseña -->
                             <div class="card-header">
+                                <!-- Título con icono de candado para indicar seguridad -->
                                 <h6><i class="fas fa-lock"></i> Cambiar Contraseña</h6>
                             </div>
+                            
+                            <!-- Cuerpo del card con campos de contraseña -->
                             <div class="card-body">
+                                <!-- Fila para la contraseña actual -->
                                 <div class="row mb-3">
+                                    <!-- Columna de ancho completo para contraseña actual -->
                                     <div class="col-md-12">
+                                        <!-- Label para verificación de contraseña actual -->
                                         {{ form.current_password.label(class="form-label") }}
+                                        
+                                        <!-- Campo de contraseña actual para verificación -->
                                         {{ form.current_password(class="form-control") }}
+                                        
+                                        <!-- Validación de errores de contraseña actual -->
                                         {% if form.current_password.errors %}
                                             <div class="text-danger">
                                                 {% for error in form.current_password.errors %}
@@ -112,10 +319,19 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                
+                                <!-- Fila para nueva contraseña y confirmación -->
+                                <!-- Layout de dos columnas para campos relacionados -->
                                 <div class="row mb-3">
+                                    <!-- Columna para nueva contraseña -->
                                     <div class="col-md-6">
+                                        <!-- Label para nueva contraseña -->
                                         {{ form.new_password.label(class="form-label") }}
+                                        
+                                        <!-- Campo de nueva contraseña con validación -->
                                         {{ form.new_password(class="form-control") }}
+                                        
+                                        <!-- Validación de errores de nueva contraseña -->
                                         {% if form.new_password.errors %}
                                             <div class="text-danger">
                                                 {% for error in form.new_password.errors %}
@@ -124,9 +340,16 @@
                                             </div>
                                         {% endif %}
                                     </div>
+                                    
+                                    <!-- Columna para confirmación de contraseña -->
                                     <div class="col-md-6">
+                                        <!-- Label para confirmación de nueva contraseña -->
                                         {{ form.confirm_password.label(class="form-label") }}
+                                        
+                                        <!-- Campo de confirmación de contraseña -->
                                         {{ form.confirm_password(class="form-control") }}
+                                        
+                                        <!-- Validación de errores de confirmación -->
                                         {% if form.confirm_password.errors %}
                                             <div class="text-danger">
                                                 {% for error in form.confirm_password.errors %}
@@ -139,29 +362,54 @@
                             </div>
                         </div>
 
-                        <!-- Información del Sistema -->
+                        <!-- Sección de información del sistema -->
+                        <!-- Card separado para mostrar datos no editables del usuario -->
                         <div class="card mt-4">
+                            <!-- Header con icono informativo -->
                             <div class="card-header">
+                                <!-- Título con icono de información para datos del sistema -->
                                 <h6><i class="fas fa-info-circle"></i> Información del Sistema</h6>
                             </div>
+                            
+                            <!-- Cuerpo con información de fechas y sistema -->
                             <div class="card-body">
+                                <!-- Fila con información de fechas en dos columnas -->
                                 <div class="row">
+                                    <!-- Columna para fecha de registro -->
                                     <div class="col-md-6">
+                                        <!-- Etiqueta en negrita para fecha de registro -->
                                         <strong>Miembro desde:</strong><br>
+                                        
+                                        <!-- Fecha formateada en español con texto secundario -->
+                                        <!-- strftime formatea la fecha en formato legible -->
                                         <span class="text-muted">{{ current_user.created_at.strftime('%d de %B de %Y') }}</span>
                                     </div>
+                                    
+                                    <!-- Columna para último acceso -->
                                     <div class="col-md-6">
+                                        <!-- Condicional para mostrar último acceso solo si existe -->
                                         {% if current_user.last_login %}
+                                            <!-- Etiqueta para último acceso -->
                                             <strong>Último acceso:</strong><br>
+                                            
+                                            <!-- Fecha y hora del último acceso formateadas -->
                                             <span class="text-muted">{{ current_user.last_login.strftime('%d/%m/%Y %H:%M') }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
                                 
+                                <!-- Sección condicional para usuario que invitó -->
+                                <!-- Solo se muestra si el usuario fue invitado por alguien -->
                                 {% if current_user.invited_by %}
+                                    <!-- Fila adicional para información de invitación -->
+                                    <!-- mt-3 aplica margen superior para separación -->
                                     <div class="row mt-3">
                                         <div class="col-md-12">
+                                            <!-- Etiqueta para usuario invitador -->
                                             <strong>Invitado por:</strong><br>
+                                            
+                                            <!-- Nombre completo del usuario que invitó -->
+                                            <!-- Accede a la relación invited_by del modelo -->
                                             <span class="text-muted">{{ current_user.invited_by.full_name }}</span>
                                         </div>
                                     </div>
@@ -169,26 +417,51 @@
                             </div>
                         </div>
 
-                        <!-- Estadísticas del Usuario -->
+                        <!-- Sección de estadísticas personales del usuario -->
+                        <!-- Solo se muestra si el usuario tiene permisos para crear reels -->
                         {% if current_user.can_create_reels() %}
                         <div class="card mt-4">
+                            <!-- Header con icono de gráfico de barras -->
                             <div class="card-header">
+                                <!-- Título con icono para indicar estadísticas -->
                                 <h6><i class="fas fa-chart-bar"></i> Mis Estadísticas</h6>
                             </div>
+                            
+                            <!-- Cuerpo con métricas del usuario -->
                             <div class="card-body">
+                                <!-- Fila con estadísticas centradas -->
+                                <!-- text-center alinea todo el contenido al centro -->
                                 <div class="row text-center">
+                                    <!-- Columna para estadística de reels -->
                                     <div class="col-md-4">
+                                        <!-- Número destacado con color primario -->
+                                        <!-- current_user.reels.count() cuenta los reels del usuario -->
                                         <h4 class="text-primary">{{ current_user.reels.count() }}</h4>
+                                        
+                                        <!-- Descripción con texto secundario -->
                                         <small class="text-muted">Reels Creados</small>
                                     </div>
+                                    
+                                    <!-- Columna condicional para avatars creados -->
+                                    <!-- Solo se muestra si el usuario puede crear avatars -->
                                     {% if current_user.can_create_avatars() %}
                                     <div class="col-md-4">
+                                        <!-- Número con color de éxito (verde) -->
+                                        <!-- created_avatars.count() cuenta los avatars creados -->
                                         <h4 class="text-success">{{ current_user.created_avatars.count() }}</h4>
+                                        
+                                        <!-- Descripción de avatars creados -->
                                         <small class="text-muted">Avatars Creados</small>
                                     </div>
                                     {% endif %}
+                                    
+                                    <!-- Columna para estadística de comisiones -->
                                     <div class="col-md-4">
+                                        <!-- Número con color informativo (azul claro) -->
+                                        <!-- commissions_earned.count() cuenta las comisiones ganadas -->
                                         <h4 class="text-info">{{ current_user.commissions_earned.count() }}</h4>
+                                        
+                                        <!-- Descripción de comisiones -->
                                         <small class="text-muted">Comisiones</small>
                                     </div>
                                 </div>
@@ -196,12 +469,23 @@
                         </div>
                         {% endif %}
 
-                        <!-- Botones de Acción -->
+                        <!-- Sección de botones de acción del formulario -->
+                        <!-- d-flex crea un contenedor flexbox -->
+                        <!-- justify-content-between distribuye los elementos en extremos opuestos -->
+                        <!-- mt-4 aplica margen superior de 1.5rem -->
                         <div class="d-flex justify-content-between mt-4">
+                            <!-- Botón de navegación de retorno -->
+                            <!-- btn-secondary usa colores grises para acción secundaria -->
                             <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                                <!-- Icono de flecha hacia la izquierda -->
                                 <i class="fas fa-arrow-left"></i> Volver
                             </a>
+                            
+                            <!-- Botón de envío del formulario -->
+                            <!-- type="submit" hace que envíe el formulario -->
+                            <!-- btn-primary usa el color principal de la aplicación -->
                             <button type="submit" class="btn btn-primary">
+                                <!-- Icono de guardar para indicar acción de guardado -->
                                 <i class="fas fa-save"></i> Guardar Cambios
                             </button>
                         </div>
@@ -212,27 +496,45 @@
     </div>
 </div>
 
-<!-- Script para previsualizar avatar -->
+<!-- Script JavaScript para previsualización de avatar en tiempo real -->
+<!-- Permite ver la imagen seleccionada antes de enviar el formulario -->
 <script>
+// Event listener para el campo de archivo de avatar
+// Se activa cuando el usuario selecciona un archivo
 document.getElementById('avatar').addEventListener('change', function(e) {
+    // Obtiene el primer archivo seleccionado
     const file = e.target.files[0];
+    
+    // Verifica que se haya seleccionado un archivo
     if (file) {
+        // Crea un FileReader para leer el archivo como URL de datos
         const reader = new FileReader();
+        
+        // Define función que se ejecuta cuando la lectura se completa
         reader.onload = function(e) {
+            // Busca si ya existe una imagen de avatar
             const img = document.querySelector('img');
+            
             if (img) {
+                // Si existe imagen, actualiza su source con la nueva imagen
                 img.src = e.target.result;
             } else {
-                // Si no hay imagen, crear una nueva
+                // Si no hay imagen (solo icono placeholder), crea elemento imagen
                 const icon = document.querySelector('.fa-user-circle');
+                
+                // Crea nuevo elemento img con la imagen seleccionada
                 const imgElement = document.createElement('img');
                 imgElement.src = e.target.result;
                 imgElement.className = 'img-fluid rounded-circle';
                 imgElement.style.maxWidth = '150px';
                 imgElement.alt = 'Avatar';
+                
+                // Reemplaza el icono placeholder con la nueva imagen
                 icon.parentNode.replaceChild(imgElement, icon);
             }
         };
+        
+        // Inicia la lectura del archivo como URL de datos (base64)
         reader.readAsDataURL(file);
     }
 });

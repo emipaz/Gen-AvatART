@@ -1,32 +1,161 @@
+{#
+Template de gestión de comisiones para administradores en Gem-AvatART.
+
+Este template implementa la interfaz completa de administración de comisiones donde
+los administradores pueden visualizar, filtrar, aprobar y marcar como pagadas las
+comisiones generadas por los usuarios del sistema. Incluye funcionalidades de
+filtrado avanzado, paginación y gestión de estados de pago.
+
+El template incluye:
+    - Panel de navegación lateral de administrador
+    - Sistema de filtrado por estado de comisión
+    - Tabla responsive con información detallada de comisiones
+    - Acciones contextuales para aprobar y marcar como pagado
+    - Modal para registro de información de pago
+    - Sistema de paginación para grandes volúmenes de datos
+    - Estados de comisión con badges codificados por color
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-md-*, col-lg-*, px-0, d-flex, justify-content-between
+    - Navigation: nav, nav-link, flex-column, active
+    - Cards: card, card-header, card-body
+    - Tables: table, table-responsive, table-hover, thead, tbody
+    - Forms: form-label, form-select, form-control, btn, btn-group
+    - Modals: modal, modal-dialog, modal-content, modal-header, modal-body, modal-footer
+    - Badges: badge, bg-success, bg-primary, bg-warning, bg-danger, bg-light
+    - Pagination: pagination, page-item, page-link, justify-content-center
+    - Typography: text-muted, text-center, text-dark
+    - Spacing: mb-*, py-*, g-3
+
+Variables Jinja utilizadas:
+    - commissions: Objeto de paginación con comisiones
+    - commissions.items: Lista de comisiones de la página actual
+    - commissions.total: Número total de comisiones
+    - commissions.pages: Número total de páginas
+    - commission: Objeto individual de comisión
+    - request.args: Parámetros de filtrado de la URL
+
+Propiedades de comisión utilizadas:
+    - commission.user: Usuario que generó la comisión
+    - commission.commission_type: Tipo de comisión
+    - commission.reel: Reel asociado a la comisión
+    - commission.amount: Monto de la comisión
+    - commission.currency: Moneda de la comisión
+    - commission.percentage: Porcentaje de comisión
+    - commission.status: Estado actual de la comisión
+    - commission.created_at: Fecha de creación
+
+Rutas Flask referenciadas (url_for):
+    - admin.dashboard: Panel principal de administrador
+    - admin.users: Gestión de usuarios
+    - admin.producers: Gestión de productores
+    - admin.avatars: Gestión de avatars
+    - admin.reels: Gestión de reels
+    - admin.commissions: Gestión de comisiones (actual)
+    - admin.user_detail: Detalle de usuario específico
+    - admin.approve_commission: Aprobar comisión
+    - admin.mark_commission_paid: Marcar comisión como pagada
+
+Estados de comisión manejados:
+    - pending: Pendiente de aprobación (badge warning)
+    - approved: Aprobado para pago (badge primary)
+    - paid: Pagado (badge success)
+    - rejected: Rechazado (badge danger)
+
+Métodos de pago soportados:
+    - bank_transfer: Transferencia bancaria
+    - paypal: PayPal
+    - crypto: Criptomoneda
+    - other: Otro método
+
+Funcionalidades de paginación:
+    - commissions.has_prev: Tiene página anterior
+    - commissions.has_next: Tiene página siguiente
+    - commissions.prev_num: Número de página anterior
+    - commissions.next_num: Número de página siguiente
+    - commissions.iter_pages(): Iterador de números de página
+
+Iconografía Font Awesome:
+    - fas fa-tachometer-alt: Panel de administrador
+    - fas fa-dollar-sign: Comisiones y moneda
+    - fas fa-filter: Filtrar resultados
+    - fas fa-times: Limpiar filtros
+    - fas fa-check: Aprobar comisión
+    - fas fa-money-bill: Marcar como pagado
+    - fas fa-home: Dashboard
+    - fas fa-users: Usuarios
+    - fas fa-industry: Productores
+    - fas fa-user-circle: Avatars
+    - fas fa-video: Reels
+
+Modales implementados:
+    - markPaidModal{commission.id}: Modal para registrar pago de comisión específica
+
+Filtros de búsqueda:
+    - status: Filtro por estado de comisión
+    - Parámetros GET preservados en paginación
+
+Validaciones JavaScript:
+    - confirm(): Confirmación antes de aprobar comisión
+    - required: Validación de campos obligatorios en modal
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Comisiones - Admin - Gem-AvatART{% endblock %}
 
 {% block content %}
+<!-- Contenedor principal con layout fluido para aprovechar todo el ancho -->
+<!-- container-fluid permite usar toda la anchura de la pantalla -->
 <div class="container-fluid">
+    <!-- Fila principal que divide sidebar y contenido -->
     <div class="row">
-        <!-- Sidebar -->
+        <!-- Sidebar de navegación administrativa -->
+        <!-- col-md-3 ocupa 3/12 del ancho en pantallas medianas -->
+        <!-- col-lg-2 ocupa 2/12 del ancho en pantallas grandes para mejor aprovechamiento -->
+        <!-- px-0 elimina padding horizontal para que la sidebar toque los bordes -->
         <div class="col-md-3 col-lg-2 px-0">
+            <!-- Contenedor de la sidebar con fondo claro y altura mínima -->
+            <!-- bg-light aplica fondo gris claro -->
+            <!-- min-height calc() asegura que ocupe toda la altura visible menos header/footer -->
             <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+                <!-- Header de la sidebar con título del panel -->
+                <!-- p-3 aplica padding de 1rem en todas las direcciones -->
                 <div class="p-3">
+                    <!-- Título con icono de dashboard administrativo -->
                     <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
                 </div>
+                
+                <!-- Navegación vertical con enlaces a secciones administrativas -->
+                <!-- nav con flex-column organiza los enlaces verticalmente -->
                 <nav class="nav flex-column">
+                    <!-- Enlace al dashboard principal -->
                     <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
                         <i class="fas fa-home"></i> Dashboard
                     </a>
+                    
+                    <!-- Enlace a gestión de usuarios -->
                     <a class="nav-link" href="{{ url_for('admin.users') }}">
                         <i class="fas fa-users"></i> Usuarios
                     </a>
+                    
+                    <!-- Enlace a gestión de productores -->
                     <a class="nav-link" href="{{ url_for('admin.producers') }}">
                         <i class="fas fa-industry"></i> Productores
                     </a>
+                    
+                    <!-- Enlace a gestión de avatars -->
                     <a class="nav-link" href="{{ url_for('admin.avatars') }}">
                         <i class="fas fa-user-circle"></i> Avatars
                     </a>
+                    
+                    <!-- Enlace a gestión de reels -->
                     <a class="nav-link" href="{{ url_for('admin.reels') }}">
                         <i class="fas fa-video"></i> Reels
                     </a>
+                    
+                    <!-- Enlace actual a gestión de comisiones -->
+                    <!-- active indica la sección actual con estilo diferenciado -->
                     <a class="nav-link active" href="{{ url_for('admin.commissions') }}">
                         <i class="fas fa-dollar-sign"></i> Comisiones
                     </a>
@@ -34,32 +163,71 @@
             </div>
         </div>
 
-        <!-- Main Content -->
+        <!-- Área de contenido principal -->
+        <!-- col-md-9 ocupa 9/12 del ancho en pantallas medianas -->
+        <!-- col-lg-10 ocupa 10/12 del ancho en pantallas grandes -->
         <div class="col-md-9 col-lg-10">
+            <!-- Header de la página con título principal -->
+            <!-- d-flex con justify-content-between alinea elementos en extremos opuestos -->
+            <!-- align-items-center centra verticalmente -->
+            <!-- mb-4 aplica margen inferior de 1.5rem -->
             <div class="d-flex justify-content-between align-items-center mb-4">
+                <!-- Título principal con icono de comisiones -->
                 <h1><i class="fas fa-dollar-sign"></i> Gestión de Comisiones</h1>
             </div>
 
-            <!-- Filtros -->
+            <!-- Sección de filtros de búsqueda -->
+            <!-- Card para contener los controles de filtrado -->
+            <!-- mb-4 aplica margen inferior para separar de la tabla -->
             <div class="card mb-4">
+                <!-- Cuerpo del card con formulario de filtros -->
                 <div class="card-body">
+                    <!-- Formulario de filtros con método GET para parámetros en URL -->
+                    <!-- row con g-3 aplica gap de 1rem entre columnas -->
                     <form method="GET" class="row g-3">
+                        <!-- Columna para filtro de estado -->
+                        <!-- col-md-3 ocupa 3/12 del ancho en pantallas medianas -->
                         <div class="col-md-3">
+                            <!-- Label del filtro de estado -->
                             <label class="form-label">Estado</label>
+                            
+                            <!-- Select para filtrar por estado de comisión -->
+                            <!-- form-select aplica estilos de Bootstrap para selects -->
                             <select name="status" class="form-select">
+                                <!-- Opción por defecto para mostrar todos -->
                                 <option value="">Todos los estados</option>
+                                
+                                <!-- Opción para comisiones pendientes -->
+                                <!-- selected condicional basado en parámetro GET actual -->
                                 <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>Pendiente</option>
+                                
+                                <!-- Opción para comisiones aprobadas -->
                                 <option value="approved" {{ 'selected' if request.args.get('status') == 'approved' }}>Aprobado</option>
+                                
+                                <!-- Opción para comisiones pagadas -->
                                 <option value="paid" {{ 'selected' if request.args.get('status') == 'paid' }}>Pagado</option>
+                                
+                                <!-- Opción para comisiones rechazadas -->
                                 <option value="rejected" {{ 'selected' if request.args.get('status') == 'rejected' }}>Rechazado</option>
                             </select>
                         </div>
+                        
+                        <!-- Columna para botones de acción -->
                         <div class="col-md-3">
+                            <!-- Label vacío para alineación con otros campos -->
                             <label class="form-label">&nbsp;</label>
+                            
+                            <!-- Contenedor para botones de filtro -->
                             <div>
+                                <!-- Botón para aplicar filtros -->
+                                <!-- btn-primary usa el color principal del tema -->
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-filter"></i> Filtrar
                                 </button>
+                                
+                                <!-- Enlace para limpiar filtros -->
+                                <!-- btn-outline-secondary usa borde sin fondo -->
+                                <!-- Redirige a la misma página sin parámetros -->
                                 <a href="{{ url_for('admin.commissions') }}" class="btn btn-outline-secondary">
                                     <i class="fas fa-times"></i> Limpiar
                                 </a>
@@ -69,101 +237,218 @@
                 </div>
             </div>
 
-            <!-- Lista de Comisiones -->
+            <!-- Sección principal de lista de comisiones -->
+            <!-- Card que contiene la tabla y controles de paginación -->
             <div class="card">
+                <!-- Header del card con contador de resultados -->
                 <div class="card-header">
+                    <!-- Título con número total de comisiones -->
+                    <!-- commissions.total muestra el total incluyendo todas las páginas -->
                     <h5>Comisiones ({{ commissions.total }} total)</h5>
                 </div>
+                
+                <!-- Cuerpo del card con tabla o mensaje de vacío -->
                 <div class="card-body">
+                    <!-- Condicional para mostrar tabla solo si hay comisiones -->
                     {% if commissions.items %}
+                        <!-- Contenedor responsive para tabla en pantallas pequeñas -->
+                        <!-- table-responsive permite scroll horizontal en móviles -->
                         <div class="table-responsive">
+                            <!-- Tabla principal con hover effect -->
+                            <!-- table-hover resalta filas al pasar el mouse -->
                             <table class="table table-hover">
+                                <!-- Header de la tabla con columnas descriptivas -->
                                 <thead>
                                     <tr>
+                                        <!-- Columna para información del usuario -->
                                         <th>Usuario</th>
+                                        
+                                        <!-- Columna para tipo de comisión -->
                                         <th>Tipo</th>
+                                        
+                                        <!-- Columna para reel asociado -->
                                         <th>Reel</th>
+                                        
+                                        <!-- Columna para monto de la comisión -->
                                         <th>Monto</th>
+                                        
+                                        <!-- Columna para porcentaje de comisión -->
                                         <th>Porcentaje</th>
+                                        
+                                        <!-- Columna para estado actual -->
                                         <th>Estado</th>
+                                        
+                                        <!-- Columna para fecha de creación -->
                                         <th>Fecha</th>
+                                        
+                                        <!-- Columna para acciones administrativas -->
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
+                                
+                                <!-- Cuerpo de la tabla con datos de comisiones -->
                                 <tbody>
+                                    <!-- Iteración sobre todas las comisiones de la página actual -->
                                     {% for commission in commissions.items %}
                                     <tr>
+                                        <!-- Celda con información del usuario -->
                                         <td>
+                                            <!-- Enlace al detalle del usuario -->
+                                            <!-- user_detail permite ver información completa del usuario -->
                                             <a href="{{ url_for('admin.user_detail', user_id=commission.user.id) }}">
                                                 {{ commission.user.full_name }}
                                             </a>
+                                            
+                                            <!-- Username en segunda línea con estilo secundario -->
                                             <br><small class="text-muted">@{{ commission.user.username }}</small>
                                         </td>
+                                        
+                                        <!-- Celda con tipo de comisión -->
                                         <td>
+                                            <!-- Badge con tipo de comisión capitalizado -->
+                                            <!-- bg-light text-dark para contraste neutral -->
                                             <span class="badge bg-light text-dark">
                                                 {{ commission.commission_type.title() }}
                                             </span>
                                         </td>
+                                        
+                                        <!-- Celda con título del reel asociado -->
                                         <td>
                                             {{ commission.reel.title }}
                                         </td>
+                                        
+                                        <!-- Celda con monto de la comisión -->
                                         <td>
+                                            <!-- Monto formateado con 2 decimales en negrita -->
                                             <strong>${{ "%.2f"|format(commission.amount) }}</strong>
+                                            
+                                            <!-- Moneda condicional si no es USD -->
                                             {% if commission.currency and commission.currency != 'USD' %}
                                                 <small class="text-muted">{{ commission.currency }}</small>
                                             {% endif %}
                                         </td>
+                                        
+                                        <!-- Celda con porcentaje de comisión -->
                                         <td>{{ commission.percentage }}%</td>
+                                        
+                                        <!-- Celda con estado de la comisión -->
                                         <td>
+                                            <!-- Badge con color dinámico según estado -->
+                                            <!-- bg-success para paid, bg-primary para approved -->
+                                            <!-- bg-warning para pending, bg-danger para rejected -->
                                             <span class="badge bg-{{ 'success' if commission.status.value == 'paid' else 'primary' if commission.status.value == 'approved' else 'warning' if commission.status.value == 'pending' else 'danger' }}">
                                                 {{ commission.status.value.title() }}
                                             </span>
                                         </td>
+                                        
+                                        <!-- Celda con fecha de creación -->
                                         <td>
+                                            <!-- Fecha formateada en formato español -->
                                             {{ commission.created_at.strftime('%d/%m/%Y') }}
+                                            
+                                            <!-- Hora en segunda línea con estilo secundario -->
                                             <br><small class="text-muted">{{ commission.created_at.strftime('%H:%M') }}</small>
                                         </td>
+                                        
+                                        <!-- Celda con acciones disponibles según estado -->
                                         <td>
+                                            <!-- Grupo de botones para organizar acciones relacionadas -->
+                                            <!-- btn-group agrupa botones visualmente -->
                                             <div class="btn-group" role="group">
+                                                <!-- Acción condicional para comisiones pendientes -->
                                                 {% if commission.status.value == 'pending' %}
+                                                    <!-- Formulario para aprobar comisión -->
+                                                    <!-- d-inline evita que el form rompa el layout -->
                                                     <form method="POST" action="{{ url_for('admin.approve_commission', commission_id=commission.id) }}" class="d-inline">
+                                                        <!-- Botón de aprobación con confirmación JavaScript -->
+                                                        <!-- btn-sm reduce el tamaño para mejor ajuste -->
+                                                        <!-- btn-success usa color verde para acción positiva -->
+                                                        <!-- onclick con confirm() pide confirmación al usuario -->
                                                         <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('¿Aprobar esta comisión?')">
                                                             <i class="fas fa-check"></i>
                                                         </button>
                                                     </form>
                                                 {% endif %}
+                                                
+                                                <!-- Acción condicional para comisiones aprobadas -->
                                                 {% if commission.status.value == 'approved' %}
+                                                    <!-- Botón para abrir modal de pago -->
+                                                    <!-- data-bs-toggle y data-bs-target controlan el modal -->
                                                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#markPaidModal{{ commission.id }}">
                                                         <i class="fas fa-money-bill"></i> Marcar Pagado
                                                     </button>
                                                     
-                                                    <!-- Modal para marcar como pagado -->
+                                                    <!-- Modal específico para marcar comisión como pagada -->
+                                                    <!-- ID único por comisión para evitar conflictos -->
+                                                    <!-- modal fade aplica animación de aparición -->
+                                                    <!-- tabindex="-1" para manejo de foco -->
                                                     <div class="modal fade" id="markPaidModal{{ commission.id }}" tabindex="-1">
+                                                        <!-- modal-dialog contiene el contenido del modal -->
                                                         <div class="modal-dialog">
+                                                            <!-- modal-content es el contenedor principal -->
                                                             <div class="modal-content">
+                                                                <!-- Formulario para enviar datos de pago -->
                                                                 <form method="POST" action="{{ url_for('admin.mark_commission_paid', commission_id=commission.id) }}">
+                                                                    <!-- Header del modal con título y botón cerrar -->
                                                                     <div class="modal-header">
+                                                                        <!-- Título descriptivo del modal -->
                                                                         <h5 class="modal-title">Marcar Comisión como Pagada</h5>
+                                                                        
+                                                                        <!-- Botón para cerrar modal -->
+                                                                        <!-- btn-close es el estilo estándar de Bootstrap -->
+                                                                        <!-- data-bs-dismiss cierra el modal -->
                                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                                     </div>
+                                                                    
+                                                                    <!-- Cuerpo del modal con campos del formulario -->
                                                                     <div class="modal-body">
+                                                                        <!-- Campo para método de pago -->
+                                                                        <!-- mb-3 aplica margen inferior -->
                                                                         <div class="mb-3">
+                                                                            <!-- Label del método de pago -->
                                                                             <label class="form-label">Método de Pago</label>
+                                                                            
+                                                                            <!-- Select con métodos de pago disponibles -->
+                                                                            <!-- required hace el campo obligatorio -->
                                                                             <select name="payment_method" class="form-select" required>
+                                                                                <!-- Opción por defecto -->
                                                                                 <option value="">Seleccionar método</option>
+                                                                                
+                                                                                <!-- Transferencia bancaria -->
                                                                                 <option value="bank_transfer">Transferencia Bancaria</option>
+                                                                                
+                                                                                <!-- PayPal -->
                                                                                 <option value="paypal">PayPal</option>
+                                                                                
+                                                                                <!-- Criptomoneda -->
                                                                                 <option value="crypto">Criptomoneda</option>
+                                                                                
+                                                                                <!-- Otro método -->
                                                                                 <option value="other">Otro</option>
                                                                             </select>
                                                                         </div>
+                                                                        
+                                                                        <!-- Campo para referencia de pago -->
                                                                         <div class="mb-3">
+                                                                            <!-- Label para referencia de pago -->
                                                                             <label class="form-label">Referencia de Pago</label>
+                                                                            
+                                                                            <!-- Input de texto para ID de transacción o referencia -->
+                                                                            <!-- placeholder proporciona ejemplo del tipo de dato esperado -->
+                                                                            <!-- required hace el campo obligatorio -->
                                                                             <input type="text" name="payment_reference" class="form-control" placeholder="ID de transacción, número de referencia, etc." required>
                                                                         </div>
                                                                     </div>
+                                                                    
+                                                                    <!-- Footer del modal con botones de acción -->
                                                                     <div class="modal-footer">
+                                                                        <!-- Botón para cancelar y cerrar modal -->
+                                                                        <!-- btn-secondary usa colores neutros para acción secundaria -->
+                                                                        <!-- data-bs-dismiss cierra el modal sin enviar formulario -->
                                                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                                        
+                                                                        <!-- Botón para enviar formulario -->
+                                                                        <!-- btn-primary destaca la acción principal -->
                                                                         <button type="submit" class="btn btn-primary">Marcar como Pagado</button>
                                                                     </div>
                                                                 </form>
@@ -179,36 +464,53 @@
                             </table>
                         </div>
 
-                        <!-- Paginación -->
+                        <!-- Sistema de paginación para navegación entre páginas -->
+                        <!-- Solo se muestra si hay más de una página -->
                         {% if commissions.pages > 1 %}
+                            <!-- Navegación semántica para paginación -->
+                            <!-- aria-label mejora la accesibilidad -->
                             <nav aria-label="Paginación">
+                                <!-- Lista de paginación centrada -->
+                                <!-- justify-content-center centra la paginación -->
                                 <ul class="pagination justify-content-center">
+                                    <!-- Enlace a página anterior si existe -->
                                     {% if commissions.has_prev %}
                                         <li class="page-item">
+                                            <!-- Enlace que preserva los filtros actuales -->
+                                            <!-- **request.args mantiene los parámetros de filtrado -->
                                             <a class="page-link" href="{{ url_for('admin.commissions', page=commissions.prev_num, **request.args) }}">Anterior</a>
                                         </li>
                                     {% endif %}
                                     
+                                    <!-- Iteración sobre números de página disponibles -->
                                     {% for page_num in commissions.iter_pages() %}
                                         {% if page_num %}
+                                            <!-- Enlace para páginas que no son la actual -->
                                             {% if page_num != commissions.page %}
                                                 <li class="page-item">
+                                                    <!-- Enlace a página específica preservando filtros -->
                                                     <a class="page-link" href="{{ url_for('admin.commissions', page=page_num, **request.args) }}">{{ page_num }}</a>
                                                 </li>
                                             {% else %}
+                                                <!-- Página actual sin enlace pero resaltada -->
+                                                <!-- active aplica estilo de página seleccionada -->
                                                 <li class="page-item active">
                                                     <span class="page-link">{{ page_num }}</span>
                                                 </li>
                                             {% endif %}
                                         {% else %}
+                                            <!-- Separador de páginas con puntos suspensivos -->
+                                            <!-- disabled indica que no es clickeable -->
                                             <li class="page-item disabled">
                                                 <span class="page-link">...</span>
                                             </li>
                                         {% endif %}
                                     {% endfor %}
                                     
+                                    <!-- Enlace a página siguiente si existe -->
                                     {% if commissions.has_next %}
                                         <li class="page-item">
+                                            <!-- Enlace que preserva filtros y va a la siguiente página -->
                                             <a class="page-link" href="{{ url_for('admin.commissions', page=commissions.next_num, **request.args) }}">Siguiente</a>
                                         </li>
                                     {% endif %}
@@ -216,9 +518,20 @@
                             </nav>
                         {% endif %}
                     {% else %}
+                        <!-- Estado vacío cuando no hay comisiones -->
+                        <!-- text-center centra todo el contenido -->
+                        <!-- py-4 aplica padding vertical de 1.5rem -->
                         <div class="text-center py-4">
+                            <!-- Icono grande para representar estado vacío -->
+                            <!-- fa-3x hace el icono 3 veces más grande -->
+                            <!-- text-muted aplica color gris para indicar estado inactivo -->
+                            <!-- mb-3 aplica margen inferior -->
                             <i class="fas fa-dollar-sign fa-3x text-muted mb-3"></i>
+                            
+                            <!-- Título del estado vacío -->
                             <h5 class="text-muted">No hay comisiones</h5>
+                            
+                            <!-- Descripción explicativa del estado vacío -->
                             <p class="text-muted">No se encontraron comisiones con los filtros seleccionados.</p>
                         </div>
                     {% endif %}

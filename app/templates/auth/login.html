@@ -1,29 +1,84 @@
-{% extends "base/layout.html" %}
+{#
+Template de inicio de sesión para Gem-AvatART.
+
+Este template implementa el formulario de autenticación de usuarios con diseño
+centrado y responsive. Incluye validación HTML5, opción de "recordarme" y
+enlaces para registro de nuevos usuarios.
+
+El template incluye:
+    - Formulario de login centrado con email y contraseña
+    - Checkbox para sesión persistente (remember me)
+    - Validación HTML5 con campos requeridos
+    - Enlaces de navegación hacia registro
+    - Diseño card con header colorido
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, justify-content-center, d-grid
+    - Components: card, card-header, card-body, card-footer, form-control, btn
+    - Form: form-label, form-check, form-check-input, form-check-label
+    - Utilities: py-*, mb-*, shadow, text-center, text-muted, bg-primary, text-white
+
+IDs de elementos:
+    - email: Campo de input para dirección de correo
+    - password: Campo de input para contraseña
+    - remember: Checkbox para sesión persistente
+
+Campos del formulario (name attributes):
+    - email: Dirección de correo electrónico del usuario
+    - password: Contraseña del usuario
+    - remember: Opción de recordar sesión (booleano)
+
+Rutas Flask referenciadas (url_for):
+    - auth.register: Enlace hacia formulario de registro
+
+Iconografía Font Awesome:
+    - fas fa-sign-in-alt: Icono de inicio de sesión
+
+Validación HTML5:
+    - type="email": Validación automática de formato email
+    - required: Campos obligatorios antes de envío
+#}
+
+{% extends "base.html" %}
 
 {% block title %}Iniciar Sesión - Gem-AvatART{% endblock %}
 
 {% block content %}
+<<!-- Contenedor principal centrado con padding vertical -->
 <div class="container py-5">
+    <!-- Row centrado para el formulario de login -->
     <div class="row justify-content-center">
+        <!-- Columna responsive para diferentes tamaños de pantalla -->
         <div class="col-md-6 col-lg-4">
+            
+            <!-- Card principal del formulario con sombra -->
             <div class="card shadow">
+                
+                <!-- Header del card con branding y título -->
                 <div class="card-header bg-primary text-white text-center">
                     <h4 class="mb-0">
                         <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
                     </h4>
                 </div>
+                
+                <!-- Cuerpo del card con formulario principal -->
                 <div class="card-body">
+                    <!-- Formulario POST para autenticación -->
                     <form method="POST">
+                        
+                        <!-- Campo de email con validación HTML5 -->
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control" id="email" name="email" required>
                         </div>
                         
+                        <!-- Campo de contraseña -->
                         <div class="mb-3">
                             <label for="password" class="form-label">Contraseña</label>
                             <input type="password" class="form-control" id="password" name="password" required>
                         </div>
                         
+                        <!-- Checkbox para recordar sesión -->
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="remember" name="remember">
                             <label class="form-check-label" for="remember">
@@ -31,19 +86,24 @@
                             </label>
                         </div>
                         
+                        <!-- Botón de envío con grid completo -->
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
                             </button>
                         </div>
+                        
                     </form>
                 </div>
+                
+                <!-- Footer del card con enlace de registro -->
                 <div class="card-footer text-center">
                     <small class="text-muted">
                         ¿No tienes cuenta? 
                         <a href="{{ url_for('auth.register') }}">Regístrate aquí</a>
                     </small>
                 </div>
+                
             </div>
         </div>
     </div>

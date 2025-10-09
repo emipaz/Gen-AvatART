@@ -1,0 +1,481 @@
+{#}
+Template para invitar nuevos miembros al equipo del productor en Gem-AvatART.
+
+Este template implementa el formulario para que los productores puedan invitar
+nuevos subproductores y usuarios finales a su equipo. Incluye validación de
+formulario, selección de roles, configuración de permisos iniciales y sistema
+de invitaciones por email.
+
+El template incluye:
+    - Formulario completo de invitación con validación
+    - Selector de rol para el nuevo miembro
+    - Configuración de permisos específicos por rol
+    - Vista previa de la invitación antes de enviar
+    - Lista de invitaciones pendientes
+    - Gestión de invitaciones enviadas (reenviar, cancelar)
+    - Plantilla de email de invitación personalizable
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, mx-auto
+    - Cards: card, card-body, card-header
+    - Forms: form-label, form-control, form-select, form-check
+    - Buttons: btn, btn-primary, btn-outline-secondary, btn-success
+    - Alerts: alert, alert-info, alert-warning
+    - Tables: table, table-responsive, table-hover
+    - Badges: badge, bg-warning, bg-success, bg-danger
+    - Typography: text-muted, text-center
+    - Spacing: mb-*, mt-*, p-*
+
+Variables Jinja utilizadas:
+    - current_user: Usuario productor que invita
+    - form: Formulario WTForms de invitación
+    - pending_invitations: Lista de invitaciones pendientes
+    - available_roles: Roles disponibles para asignar
+
+Campos del formulario:
+    - email: Email del usuario a invitar (required, email validation)
+    - first_name: Nombre del invitado (required)
+    - last_name: Apellido del invitado (required)
+    - role: Rol a asignar (subproducer/final_user)
+    - permissions: Permisos específicos según rol
+    - welcome_message: Mensaje personalizado de bienvenida
+
+Rutas Flask referenciadas (url_for):
+    - producer.team: Volver a gestión de equipo
+    - producer.dashboard: Volver al dashboard
+    - producer.send_invitation: Procesar envío de invitación
+    - producer.resend_invitation: Reenviar invitación
+    - producer.cancel_invitation: Cancelar invitación pendiente
+
+Roles disponibles para invitación:
+    - subproducer: Puede gestionar usuarios finales
+    - final_user: Usuario final que crea contenido
+
+Permisos configurables:
+    - can_create_reels: Puede crear reels
+    - can_manage_avatars: Puede gestionar avatars
+    - can_invite_users: Puede invitar otros usuarios (solo subproductores)
+    - can_view_analytics: Puede ver analíticas del equipo
+
+Estados de invitación:
+    - pending: Enviada pero no aceptada
+    - accepted: Aceptada por el usuario
+    - expired: Invitación caducada
+    - cancelled: Cancelada por el productor
+
+Iconografía Font Awesome:
+    - fas fa-user-plus: Invitar usuarios
+    - fas fa-envelope: Email e invitaciones
+    - fas fa-users: Gestión de equipo
+    - fas fa-check-circle: Invitación aceptada
+    - fas fa-clock: Invitación pendiente
+    - fas fa-times-circle: Invitación cancelada
+    - fas fa-redo: Reenviar invitación
+    - fas fa-trash: Cancelar invitación
+    - fas fa-cog: Configuración de permisos
+
+Validaciones del formulario:
+    - Email único en el sistema
+    - Formato de email válido
+    - Nombres requeridos y con longitud mínima
+    - Rol válido seleccionado
+    - Permisos coherentes con el rol
+
+Funcionalidades JavaScript:
+    - Actualización dinámica de permisos según rol
+    - Validación en tiempo real del formulario
+    - Confirmación antes de cancelar invitaciones
+    - Preview del email de invitación
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Invitar Miembro - Productor - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal centrado -->
+<div class="container">
+    <div class="row">
+        <!-- Columna centrada para el formulario -->
+        <div class="col-lg-8 mx-auto">
+            <!-- Navegación breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('producer.dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('producer.team') }}">Equipo</a>
+                    </li>
+                    <li class="breadcrumb-item active">Invitar Miembro</li>
+                </ol>
+            </nav>
+
+            <!-- Título principal de la página -->
+            <div class="text-center mb-4">
+                <h1><i class="fas fa-user-plus text-primary"></i> Invitar Nuevo Miembro</h1>
+                <p class="text-muted">Agrega nuevos subproductores y usuarios finales a tu equipo</p>
+            </div>
+
+            <!-- Card principal con formulario de invitación -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-envelope"></i> Nueva Invitación
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Formulario de invitación -->
+                    <form method="POST" id="invitationForm">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Información básica del invitado -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-user"></i> Información del Invitado
+                                </h6>
+                            </div>
+                            
+                            <!-- Campo de email -->
+                            <div class="col-md-12 mb-3">
+                                {{ form.email.label(class="form-label") }}
+                                {{ form.email(class="form-control", placeholder="usuario@email.com") }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.email.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Campos de nombre y apellido -->
+                            <div class="col-md-6 mb-3">
+                                {{ form.first_name.label(class="form-label") }}
+                                {{ form.first_name(class="form-control", placeholder="Nombre") }}
+                                {% if form.first_name.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.first_name.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.last_name.label(class="form-label") }}
+                                {{ form.last_name(class="form-control", placeholder="Apellido") }}
+                                {% if form.last_name.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.last_name.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Configuración de rol y permisos -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-cog"></i> Configuración de Rol
+                                </h6>
+                            </div>
+                            
+                            <!-- Selector de rol -->
+                            <div class="col-md-6 mb-3">
+                                {{ form.role.label(class="form-label") }}
+                                {{ form.role(class="form-select", id="roleSelect") }}
+                                {% if form.role.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.role.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                
+                                <!-- Descripción del rol seleccionado -->
+                                <div id="roleDescription" class="mt-2">
+                                    <small class="text-muted">Selecciona un rol para ver su descripción</small>
+                                </div>
+                            </div>
+                            
+                            <!-- Permisos específicos -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Permisos</label>
+                                <div id="permissionsContainer">
+                                    <!-- Los permisos se cargarán dinámicamente según el rol -->
+                                    <small class="text-muted">Los permisos aparecerán al seleccionar un rol</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mensaje personalizado de bienvenida -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-message"></i> Mensaje de Bienvenida (Opcional)
+                                </h6>
+                                
+                                {{ form.welcome_message.label(class="form-label") }}
+                                {{ form.welcome_message(class="form-control", rows="4", 
+                                    placeholder="Escribe un mensaje personalizado de bienvenida...") }}
+                                <small class="form-text text-muted">
+                                    Este mensaje se incluirá en el email de invitación
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('producer.team') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            
+                            <div>
+                                <button type="button" class="btn btn-outline-primary me-2" id="previewBtn">
+                                    <i class="fas fa-eye"></i> Vista Previa
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Enviar Invitación
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Card con invitaciones pendientes -->
+            {% if pending_invitations %}
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock"></i> Invitaciones Pendientes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Invitado</th>
+                                    <th>Rol</th>
+                                    <th>Fecha Enviada</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invitation in pending_invitations %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ invitation.first_name }} {{ invitation.last_name }}</strong>
+                                        <br><small class="text-muted">{{ invitation.email }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ invitation.role.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {{ invitation.created_at.strftime('%d/%m/%Y') }}
+                                        <br><small class="text-muted">{{ invitation.created_at.strftime('%H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'warning' if invitation.status == 'pending' else 'success' if invitation.status == 'accepted' else 'danger' }}">
+                                            {{ invitation.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if invitation.status == 'pending' %}
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        onclick="resendInvitation({{ invitation.id }})">
+                                                    <i class="fas fa-redo"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                        onclick="cancelInvitation({{ invitation.id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de vista previa de invitación -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Vista Previa de Invitación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="emailPreview">
+                    <!-- El contenido del preview se cargará aquí -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="sendInvitation()">
+                    Enviar Invitación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para funcionalidad dinámica -->
+<script>
+// Configuración de permisos por rol
+const rolePermissions = {
+    'subproducer': {
+        description: 'Puede gestionar usuarios finales y supervisar la creación de contenido',
+        permissions: [
+            { id: 'can_create_reels', label: 'Crear reels', default: true },
+            { id: 'can_manage_avatars', label: 'Gestionar avatars', default: true },
+            { id: 'can_invite_users', label: 'Invitar usuarios finales', default: true },
+            { id: 'can_view_analytics', label: 'Ver analíticas del equipo', default: true }
+        ]
+    },
+    'final_user': {
+        description: 'Usuario final que puede crear contenido usando los avatars disponibles',
+        permissions: [
+            { id: 'can_create_reels', label: 'Crear reels', default: true },
+            { id: 'can_view_own_analytics', label: 'Ver sus propias estadísticas', default: true }
+        ]
+    }
+};
+
+// Event listener para cambio de rol
+document.getElementById('roleSelect').addEventListener('change', function() {
+    const selectedRole = this.value;
+    updateRoleDescription(selectedRole);
+    updatePermissions(selectedRole);
+});
+
+// Actualizar descripción del rol
+function updateRoleDescription(role) {
+    const descriptionDiv = document.getElementById('roleDescription');
+    if (role && rolePermissions[role]) {
+        descriptionDiv.innerHTML = `<small class="text-info">${rolePermissions[role].description}</small>`;
+    } else {
+        descriptionDiv.innerHTML = '<small class="text-muted">Selecciona un rol para ver su descripción</small>';
+    }
+}
+
+// Actualizar permisos disponibles
+function updatePermissions(role) {
+    const container = document.getElementById('permissionsContainer');
+    
+    if (role && rolePermissions[role]) {
+        let permissionsHTML = '';
+        rolePermissions[role].permissions.forEach(permission => {
+            permissionsHTML += `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" 
+                           id="${permission.id}" name="permissions" value="${permission.id}"
+                           ${permission.default ? 'checked' : ''}>
+                    <label class="form-check-label" for="${permission.id}">
+                        ${permission.label}
+                    </label>
+                </div>
+            `;
+        });
+        container.innerHTML = permissionsHTML;
+    } else {
+        container.innerHTML = '<small class="text-muted">Los permisos aparecerán al seleccionar un rol</small>';
+    }
+}
+
+// Vista previa del email
+document.getElementById('previewBtn').addEventListener('click', function() {
+    const formData = new FormData(document.getElementById('invitationForm'));
+    
+    // Generar preview del email
+    const emailPreview = generateEmailPreview(formData);
+    document.getElementById('emailPreview').innerHTML = emailPreview;
+    
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+});
+
+// Generar contenido del preview
+function generateEmailPreview(formData) {
+    const firstName = formData.get('first_name') || '[Nombre]';
+    const role = formData.get('role') || '[Rol]';
+    const welcomeMessage = formData.get('welcome_message') || '';
+    
+    return `
+        <div class="email-preview border rounded p-3" style="background-color: #f8f9fa;">
+            <h4>¡Bienvenido a Gem-AvatART!</h4>
+            <p>Hola ${firstName},</p>
+            <p>{{ current_user.full_name }} te ha invitado a unirte a su equipo en Gem-AvatART como <strong>${rolePermissions[role]?.description || role}</strong>.</p>
+            ${welcomeMessage ? `<div class="alert alert-info"><strong>Mensaje personal:</strong><br>${welcomeMessage}</div>` : ''}
+            <p>Para aceptar la invitación, haz clic en el siguiente enlace:</p>
+            <div class="text-center my-3">
+                <a href="#" class="btn btn-primary">Aceptar Invitación</a>
+            </div>
+            <p><small class="text-muted">Este enlace expirará en 7 días.</small></p>
+        </div>
+    `;
+}
+
+// Enviar invitación desde el modal
+function sendInvitation() {
+    document.getElementById('invitationForm').submit();
+}
+
+// Reenviar invitación
+function resendInvitation(invitationId) {
+    if (confirm('¿Reenviar la invitación?')) {
+        fetch(`{{ url_for('producer.resend_invitation', invitation_id=0) }}`.replace('0', invitationId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Invitación reenviada correctamente');
+            } else {
+                alert('Error al reenviar la invitación');
+            }
+        });
+    }
+}
+
+// Cancelar invitación
+function cancelInvitation(invitationId) {
+    if (confirm('¿Cancelar esta invitación? Esta acción no se puede deshacer.')) {
+        fetch(`{{ url_for('producer.cancel_invitation', invitation_id=0) }}`.replace('0', invitationId), {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error al cancelar la invitación');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

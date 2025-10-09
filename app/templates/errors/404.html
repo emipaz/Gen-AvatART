@@ -1,0 +1,379 @@
+{#
+Template de error 404 (Página No Encontrada) para Gem-AvatART.
+
+Este template se muestra cuando un usuario intenta acceder a una URL
+que no existe en la aplicación. Proporciona una interfaz amigable
+que explica el error y ofrece opciones de navegación útiles.
+
+El template incluye:
+    - Mensaje de error claro y amigable
+    - Código de estado HTTP prominente (404)
+    - Sugerencias de páginas alternativas
+    - Buscador integrado para encontrar contenido
+    - Enlaces de navegación rápida
+    - Diseño responsive y moderno
+    - Animaciones CSS opcionales para mejorar UX
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, justify-content-center
+    - Typography: display-1, lead, text-center, text-primary
+    - Cards: card, card-body, card-header
+    - Buttons: btn, btn-primary, btn-outline-*, btn-lg
+    - Forms: form-control, input-group, btn
+    - Alerts: alert, alert-info
+    - Spacing: mt-*, mb-*, p-*, gap-*
+    - Grid: d-grid, d-flex, align-items-center
+
+Variables Jinja utilizadas:
+    - url_for(): Enlaces a diferentes secciones
+    - current_user: Información del usuario autenticado
+    - request.url: URL que causó el error 404
+
+Rutas Flask referenciadas (url_for):
+    - main.index: Página principal
+    - main.about: Página sobre nosotros
+    - main.contact: Página de contacto
+    - auth.login: Página de inicio de sesión
+    - user.dashboard: Dashboard de usuario
+    - producer.dashboard: Dashboard de productor
+
+Iconografía Font Awesome:
+    - fas fa-search: Búsqueda y exploración
+    - fas fa-home: Página principal
+    - fas fa-arrow-left: Volver atrás
+    - fas fa-compass: Navegación y exploración
+    - fas fa-question-circle: Ayuda
+    - fas fa-envelope: Contacto
+    - fas fa-user: Perfil de usuario
+
+Funcionalidades JavaScript:
+    - Búsqueda en tiempo real
+    - Sugerencias de navegación
+    - Analytics de errores 404
+    - Auto-sugerencias basadas en URL
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Página No Encontrada - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con espaciado -->
+<div class="container mt-5">
+    <!-- Fila centrada para el contenido del error -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <!-- Card principal del error 404 -->
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center p-5">
+                    <!-- Icono de búsqueda/exploración -->
+                    <div class="mb-4">
+                        <i class="fas fa-search text-primary" style="font-size: 5rem; opacity: 0.7;"></i>
+                    </div>
+                    
+                    <!-- Código de error prominente -->
+                    <h1 class="display-1 text-primary fw-bold mb-3">404</h1>
+                    
+                    <!-- Título amigable -->
+                    <h2 class="mb-3">¡Oops! Página No Encontrada</h2>
+                    
+                    <!-- Descripción del error -->
+                    <p class="lead text-muted mb-4">
+                        La página que estás buscando no existe o ha sido movida. 
+                        Pero no te preocupes, te ayudamos a encontrar lo que necesitas.
+                    </p>
+                    
+                    <!-- Buscador integrado -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-search me-2"></i>¿Qué estás buscando?
+                            </h6>
+                            <form class="d-flex" onsubmit="performSearch(event)">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" 
+                                           placeholder="Buscar en Gem-AvatART..." 
+                                           id="searchInput" name="q">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="fas fa-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Sugerencias de navegación -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-home text-primary fa-2x mb-3"></i>
+                                    <h6>Página Principal</h6>
+                                    <p class="small text-muted">Vuelve al inicio y explora nuestras funcionalidades</p>
+                                    <a href="{{ url_for('main.index') }}" class="btn btn-outline-primary btn-sm">
+                                        Ir al Inicio
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card h-100 border-info">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-user text-info fa-2x mb-3"></i>
+                                    <h6>Mi Cuenta</h6>
+                                    <p class="small text-muted">Accede a tu dashboard y gestiona tu perfil</p>
+                                    {% if current_user.is_authenticated %}
+                                        <a href="{{ url_for('user.dashboard') if current_user.role == 'final_user' 
+                                                 else url_for('producer.dashboard') if current_user.role in ['producer', 'subproducer'] 
+                                                 else url_for('admin.dashboard') }}" 
+                                           class="btn btn-outline-info btn-sm">
+                                            Mi Dashboard
+                                        </a>
+                                    {% else %}
+                                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-info btn-sm">
+                                            Iniciar Sesión
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-question-circle text-success fa-2x mb-3"></i>
+                                    <h6>Ayuda</h6>
+                                    <p class="small text-muted">¿Necesitas asistencia? Estamos aquí para ayudarte</p>
+                                    <a href="{{ url_for('main.contact') if url_for('main.contact') else '#' }}" 
+                                       class="btn btn-outline-success btn-sm">
+                                        Contactar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Enlaces populares -->
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">Enlaces Populares:</h6>
+                        <div class="d-flex flex-wrap justify-content-center gap-2">
+                            <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-home me-1"></i> Inicio
+                            </a>
+                            {% if url_for('main.about') %}
+                                <a href="{{ url_for('main.about') }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-info-circle me-1"></i> Nosotros
+                                </a>
+                            {% endif %}
+                            <a href="{{ url_for('auth.register') if not current_user.is_authenticated else '#' }}" 
+                               class="btn btn-sm btn-outline-secondary {{ 'disabled' if current_user.is_authenticated }}">
+                                <i class="fas fa-user-plus me-1"></i> Registro
+                            </a>
+                            {% if current_user.is_authenticated and current_user.role in ['producer', 'subproducer'] %}
+                                <a href="{{ url_for('producer.team') }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-users me-1"></i> Mi Equipo
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de acción principales -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i> Volver al Inicio
+                        </a>
+                        <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i> Página Anterior
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información adicional para usuarios autenticados -->
+            {% if current_user.is_authenticated %}
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="fas fa-compass me-2"></i>Navegación Rápida para {{ current_user.full_name or current_user.username }}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            {% if current_user.role == 'admin' %}
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-dark btn-sm w-100">
+                                        <i class="fas fa-tachometer-alt me-1"></i> Admin Panel
+                                    </a>
+                                </div>
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-dark btn-sm w-100">
+                                        <i class="fas fa-users me-1"></i> Usuarios
+                                    </a>
+                                </div>
+                            {% elif current_user.role in ['producer', 'subproducer'] %}
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('producer.dashboard') }}" class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                                    </a>
+                                </div>
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('producer.team') }}" class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="fas fa-users me-1"></i> Equipo
+                                    </a>
+                                </div>
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="fas fa-user-circle me-1"></i> Avatars
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-info btn-sm w-100">
+                                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                                    </a>
+                                </div>
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('user.profile') }}" class="btn btn-outline-info btn-sm w-100">
+                                        <i class="fas fa-user me-1"></i> Perfil
+                                    </a>
+                                </div>
+                            {% endif %}
+                            <div class="col-md-3">
+                                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-secondary btn-sm w-100">
+                                    <i class="fas fa-sign-out-alt me-1"></i> Cerrar Sesión
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Información técnica (solo en desarrollo) -->
+            {% if config.DEBUG %}
+                <div class="card mt-3">
+                    <div class="card-header bg-light">
+                        <small class="text-muted">
+                            <i class="fas fa-code me-1"></i> Debug Information
+                        </small>
+                    </div>
+                    <div class="card-body">
+                        <small class="text-muted">
+                            <strong>Requested URL:</strong> {{ request.url }}<br>
+                            <strong>Referrer:</strong> {{ request.referrer or 'Direct access' }}<br>
+                            <strong>User Agent:</strong> {{ request.user_agent.string[:100] }}...<br>
+                            <strong>Timestamp:</strong> {{ moment().format('YYYY-MM-DD HH:mm:ss') if moment else 'N/A' }}
+                        </small>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para funcionalidad de búsqueda y UX -->
+<script>
+// Función de búsqueda
+function performSearch(event) {
+    event.preventDefault();
+    const searchTerm = document.getElementById('searchInput').value.trim();
+    
+    if (searchTerm.length > 0) {
+        // Redirigir a página de búsqueda o realizar búsqueda AJAX
+        const searchUrl = `{{ url_for('main.index') }}?search=${encodeURIComponent(searchTerm)}`;
+        window.location.href = searchUrl;
+    }
+}
+
+// Analytics y sugerencias inteligentes
+document.addEventListener('DOMContentLoaded', function() {
+    // Registrar error 404 para analytics
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'exception', {
+            'description': 'Error 404 - Page Not Found',
+            'fatal': false,
+            'custom_parameter_url': window.location.href
+        });
+    }
+    
+    // Auto-sugerencias basadas en la URL
+    const currentPath = window.location.pathname;
+    const searchInput = document.getElementById('searchInput');
+    
+    // Intentar extraer términos de búsqueda de la URL
+    const pathSegments = currentPath.split('/').filter(segment => segment.length > 0);
+    if (pathSegments.length > 0) {
+        const lastSegment = pathSegments[pathSegments.length - 1];
+        // Solo si no parece ser un ID numérico
+        if (isNaN(lastSegment) && lastSegment.length > 2) {
+            searchInput.placeholder = `¿Buscabas "${lastSegment.replace(/[-_]/g, ' ')}"?`;
+        }
+    }
+    
+    // Focus automático en el campo de búsqueda después de 2 segundos
+    setTimeout(function() {
+        searchInput.focus();
+    }, 2000);
+    
+    // Búsqueda en tiempo real (opcional)
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length > 2) {
+            searchTimeout = setTimeout(function() {
+                // Aquí se podría implementar búsqueda en tiempo real
+                console.log('Searching for:', query);
+            }, 500);
+        }
+    });
+});
+
+// Animación opcional para mejorar UX
+function animateCards() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+}
+
+// Ejecutar animación cuando la página esté lista
+window.addEventListener('load', animateCards);
+</script>
+
+<!-- Estilos CSS adicionales para mejorar la presentación -->
+<style>
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-info:hover,
+.btn-outline-success:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.fa-search {
+    animation: pulse 2s infinite;
+}
+</style>
+{% endblock %}

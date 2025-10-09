@@ -1,0 +1,525 @@
+{#
+Template de error 500 (Error Interno del Servidor) para Gem-AvatART.
+
+Este template se muestra cuando ocurre un error interno del servidor,
+como errores de programación, problemas de base de datos, o fallos
+en servicios externos. Proporciona una interfaz amigable que informa
+sobre el problema sin exponer detalles técnicos sensibles.
+
+El template incluye:
+    - Mensaje de error profesional y tranquilizador
+    - Código de estado HTTP prominente (500)
+    - Información sobre el estado del sistema
+    - Opciones para reportar el problema
+    - Enlaces de navegación alternativos
+    - Información de contacto para soporte técnico
+    - Sistema de reporte automático de errores
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, justify-content-center
+    - Typography: display-1, lead, text-center, text-danger
+    - Cards: card, card-body, card-header, card-footer
+    - Buttons: btn, btn-primary, btn-outline-*, btn-lg, btn-sm
+    - Alerts: alert, alert-danger, alert-info, alert-warning
+    - Forms: form-control, textarea, btn
+    - Progress: progress, progress-bar (para estado del sistema)
+    - Spacing: mt-*, mb-*, p-*, gap-*
+    - Utilities: d-flex, align-items-center, text-center
+
+Variables Jinja utilizadas:
+    - url_for(): Enlaces a páginas principales
+    - current_user: Información del usuario para contexto
+    - request: Información de la petición que causó el error
+    - config.DEBUG: Mostrar información técnica en desarrollo
+
+Rutas Flask referenciadas (url_for):
+    - main.index: Página principal segura
+    - main.contact: Página de contacto para reporte
+    - auth.logout: Cerrar sesión si hay problemas de sesión
+    - user.dashboard: Dashboard del usuario
+
+Iconografía Font Awesome:
+    - fas fa-exclamation-triangle: Advertencia y error
+    - fas fa-tools: Trabajo de mantenimiento
+    - fas fa-home: Volver al inicio
+    - fas fa-bug: Reporte de errores
+    - fas fa-phone: Contacto de emergencia
+    - fas fa-refresh: Intentar de nuevo
+    - fas fa-clock: Tiempo de respuesta
+
+Funcionalidades JavaScript:
+    - Auto-refresh opcional del sistema
+    - Reporte automático de errores
+    - Sistema de retry inteligente
+    - Monitoreo del estado del servidor
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Error del Servidor - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con espaciado -->
+<div class="container mt-5">
+    <!-- Fila centrada para el contenido del error -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <!-- Card principal del error 500 -->
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center p-5">
+                    <!-- Icono de error/herramientas -->
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle text-danger" style="font-size: 5rem;"></i>
+                    </div>
+                    
+                    <!-- Código de error prominente -->
+                    <h1 class="display-1 text-danger fw-bold mb-3">500</h1>
+                    
+                    <!-- Título del error -->
+                    <h2 class="mb-3">¡Oops! Error del Servidor</h2>
+                    
+                    <!-- Descripción tranquilizadora -->
+                    <p class="lead text-muted mb-4">
+                        Ha ocurrido un error interno en nuestros servidores. 
+                        Nuestro equipo técnico ha sido notificado automáticamente 
+                        y está trabajando para solucionarlo.
+                    </p>
+                    
+                    <!-- Estado del sistema -->
+                    <div class="alert alert-warning" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-tools me-3 fa-2x"></i>
+                            <div class="text-start">
+                                <h6 class="alert-heading mb-1">Estado del Sistema</h6>
+                                <p class="mb-0">
+                                    Estamos trabajando para resolver este problema. 
+                                    El tiempo estimado de reparación es de <strong>5-10 minutos</strong>.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Barra de progreso simulada del sistema -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Verificando servicios...</span>
+                            <span class="text-muted small" id="systemStatus">85%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 85%">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Opciones de acción -->
+                    <div class="row g-3 mb-4">
+                        <!-- Reintentar -->
+                        <div class="col-md-4">
+                            <div class="card border-primary h-100">
+                                <div class="card-body text-center p-3">
+                                    <i class="fas fa-refresh text-primary fa-2x mb-2"></i>
+                                    <h6>Reintentar</h6>
+                                    <p class="small text-muted mb-3">Intenta acceder nuevamente a la página</p>
+                                    <button onclick="location.reload()" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-refresh me-1"></i> Recargar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Volver al inicio -->
+                        <div class="col-md-4">
+                            <div class="card border-success h-100">
+                                <div class="card-body text-center p-3">
+                                    <i class="fas fa-home text-success fa-2x mb-2"></i>
+                                    <h6>Ir al Inicio</h6>
+                                    <p class="small text-muted mb-3">Vuelve a la página principal</p>
+                                    <a href="{{ url_for('main.index') }}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-home me-1"></i> Inicio
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Reportar problema -->
+                        <div class="col-md-4">
+                            <div class="card border-info h-100">
+                                <div class="card-body text-center p-3">
+                                    <i class="fas fa-bug text-info fa-2x mb-2"></i>
+                                    <h6>Reportar</h6>
+                                    <p class="small text-muted mb-3">Envía detalles del problema</p>
+                                    <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#reportModal">
+                                        <i class="fas fa-bug me-1"></i> Reportar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Información de contacto de emergencia -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-phone me-2"></i>¿Necesitas ayuda urgente?
+                            </h6>
+                            <p class="card-text small mb-3">
+                                Si este error está afectando operaciones críticas, contáctanos directamente:
+                            </p>
+                            <div class="d-flex flex-wrap justify-content-center gap-2">
+                                <a href="mailto:soporte@gem-avatart.com" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-envelope me-1"></i> soporte@gem-avatart.com
+                                </a>
+                                <a href="tel:+1234567890" class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-phone me-1"></i> +1 (234) 567-890
+                                </a>
+                                {% if url_for('main.contact') %}
+                                    <a href="{{ url_for('main.contact') }}" class="btn btn-outline-info btn-sm">
+                                        <i class="fas fa-comments me-1"></i> Chat en Vivo
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer del card con información adicional -->
+                <div class="card-footer bg-light text-muted">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <small>
+                                <i class="fas fa-clock me-1"></i>
+                                Error registrado: {{ moment().format('HH:mm:ss') if moment else 'N/A' }}
+                            </small>
+                        </div>
+                        <div class="col-md-4">
+                            <small>
+                                <i class="fas fa-server me-1"></i>
+                                ID del Error: #{{ range(100000, 999999) | random }}
+                            </small>
+                        </div>
+                        <div class="col-md-4">
+                            <small>
+                                <i class="fas fa-user me-1"></i>
+                                Usuario: {{ current_user.username if current_user.is_authenticated else 'Anónimo' }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información sobre servicios alternativos -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Servicios Disponibles
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success rounded-circle p-2 me-3">
+                                    <i class="fas fa-check text-white"></i>
+                                </div>
+                                <div>
+                                    <strong>Autenticación</strong>
+                                    <br><small class="text-muted">Sistema de login funcionando</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-warning rounded-circle p-2 me-3">
+                                    <i class="fas fa-exclamation text-white"></i>
+                                </div>
+                                <div>
+                                    <strong>Generación de Avatars</strong>
+                                    <br><small class="text-muted">Temporalmente no disponible</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success rounded-circle p-2 me-3">
+                                    <i class="fas fa-check text-white"></i>
+                                </div>
+                                <div>
+                                    <strong>Base de Datos</strong>
+                                    <br><small class="text-muted">Respondiendo normalmente</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success rounded-circle p-2 me-3">
+                                    <i class="fas fa-check text-white"></i>
+                                </div>
+                                <div>
+                                    <strong>Panel de Usuario</strong>
+                                    <br><small class="text-muted">Acceso disponible</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información técnica (solo en desarrollo) -->
+            {% if config.DEBUG %}
+                <div class="card mt-4 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-code me-2"></i>Información Técnica (Desarrollo)
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <strong>URL:</strong> {{ request.url }}<br>
+                                    <strong>Método:</strong> {{ request.method }}<br>
+                                    <strong>Referrer:</strong> {{ request.referrer or 'N/A' }}<br>
+                                    <strong>IP:</strong> {{ request.remote_addr }}
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <strong>User Agent:</strong> {{ request.user_agent.string[:50] }}...<br>
+                                    <strong>Timestamp:</strong> {{ moment().format('YYYY-MM-DD HH:mm:ss') if moment else 'N/A' }}<br>
+                                    <strong>Environment:</strong> {{ config.ENV if config.ENV else 'development' }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para reportar el problema -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-bug me-2"></i>Reportar Problema
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="errorReportForm">
+                    <div class="mb-3">
+                        <label class="form-label">¿Qué estabas haciendo cuando ocurrió el error?</label>
+                        <textarea class="form-control" rows="3" name="description" required 
+                                  placeholder="Describe la acción que realizaste antes del error..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">¿Es la primera vez que ocurre?</label>
+                        <select class="form-select" name="frequency" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="first_time">Primera vez</option>
+                            <option value="occasional">Ocasionalmente</option>
+                            <option value="frequent">Frecuentemente</option>
+                            <option value="always">Siempre</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email de contacto (opcional)</label>
+                        <input type="email" class="form-control" name="contact_email" 
+                               value="{{ current_user.email if current_user.is_authenticated else '' }}"
+                               placeholder="tu@email.com">
+                        <small class="text-muted">Te contactaremos cuando el problema esté solucionado</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitErrorReport()">
+                    <i class="fas fa-paper-plane me-1"></i> Enviar Reporte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para funcionalidad del error 500 -->
+<script>
+// Variables globales
+let autoRefreshInterval;
+let systemCheckInterval;
+
+// Función para enviar reporte de error
+function submitErrorReport() {
+    const form = document.getElementById('errorReportForm');
+    const formData = new FormData(form);
+    
+    // Agregar información técnica
+    formData.append('url', window.location.href);
+    formData.append('user_agent', navigator.userAgent);
+    formData.append('timestamp', new Date().toISOString());
+    formData.append('error_type', '500');
+    
+    fetch('/api/error-report', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('reportModal')).hide();
+            showNotification('Reporte enviado correctamente. Gracias por tu ayuda.', 'success');
+        } else {
+            showNotification('Error al enviar el reporte. Intenta por email.', 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('Error al enviar el reporte. Intenta por email.', 'error');
+    });
+}
+
+// Función para mostrar notificaciones
+function showNotification(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+// Verificación del estado del sistema
+function checkSystemStatus() {
+    fetch('/api/health-check')
+        .then(response => {
+            if (response.ok) {
+                // Sistema recuperado
+                clearInterval(systemCheckInterval);
+                showNotification('¡Sistema recuperado! La página se recargará automáticamente.', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            }
+        })
+        .catch(error => {
+            // Aún hay problemas, continuar verificando
+            console.log('Sistema aún en mantenimiento');
+        });
+}
+
+// Auto-refresh inteligente
+function startAutoRefresh() {
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    autoRefreshInterval = setInterval(() => {
+        attempts++;
+        if (attempts > maxAttempts) {
+            clearInterval(autoRefreshInterval);
+            showNotification('Auto-refresh deshabilitado. Refresca manualmente.', 'error');
+            return;
+        }
+        
+        checkSystemStatus();
+    }, 30000); // Verificar cada 30 segundos
+}
+
+// Simulación de progreso del sistema
+function updateSystemProgress() {
+    const progressBar = document.querySelector('.progress-bar');
+    const statusText = document.getElementById('systemStatus');
+    let progress = 85;
+    
+    setInterval(() => {
+        // Simular progreso variable
+        progress += Math.random() * 5 - 2; // +/- 2%
+        progress = Math.max(80, Math.min(95, progress)); // Entre 80% y 95%
+        
+        progressBar.style.width = progress + '%';
+        statusText.textContent = Math.round(progress) + '%';
+        
+        // Cambiar color según progreso
+        if (progress > 90) {
+            progressBar.className = progressBar.className.replace('bg-warning', 'bg-success');
+        }
+    }, 2000);
+}
+
+// Inicialización cuando la página esté lista
+document.addEventListener('DOMContentLoaded', function() {
+    // Registrar error para analytics
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'exception', {
+            'description': 'Error 500 - Internal Server Error',
+            'fatal': true
+        });
+    }
+    
+    // Iniciar verificaciones del sistema
+    updateSystemProgress();
+    
+    // Iniciar auto-refresh después de 1 minuto
+    setTimeout(() => {
+        startAutoRefresh();
+        systemCheckInterval = setInterval(checkSystemStatus, 30000);
+    }, 60000);
+    
+    // Pre-llenar email si el usuario está autenticado
+    const contactEmail = document.querySelector('input[name="contact_email"]');
+    if (contactEmail && contactEmail.value) {
+        contactEmail.readOnly = true;
+    }
+});
+
+// Limpiar intervalos al salir de la página
+window.addEventListener('beforeunload', function() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    if (systemCheckInterval) clearInterval(systemCheckInterval);
+});
+</script>
+
+<!-- Estilos CSS adicionales -->
+<style>
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    0% { background-position: 1rem 0; }
+    100% { background-position: 0 0; }
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.fa-exclamation-triangle {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+</style>
+{% endblock %}

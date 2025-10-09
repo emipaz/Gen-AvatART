@@ -1,0 +1,203 @@
+{#}
+Template de página de contacto para Gem-AvatART.
+
+Este template implementa la página de contacto donde los usuarios pueden
+enviar mensajes y consultas al equipo de soporte. Incluye un formulario
+completo de contacto con validación, información de contacto de la empresa
+y diferentes categorías de consulta para mejor organización.
+
+El template incluye:
+    - Formulario de contacto con campos obligatorios
+    - Validación de campos del lado cliente
+    - Selector de tipo de consulta categorizado
+    - Información de contacto de la empresa
+    - Diseño responsive de dos columnas
+    - Iconos descriptivos para mejor UX
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-lg-*, col-md-*, mx-auto
+    - Typography: display-4, text-center, card-title
+    - Cards: card, card-body
+    - Forms: form-label, form-control, form-select, btn
+    - Spacing: mt-5, mb-5, mb-3
+    - Utilities: required para validación HTML5
+
+Variables Jinja utilizadas:
+    - Hereda de base.html para estructura común
+    - Utiliza bloques title y content
+
+Campos del formulario:
+    - name: Nombre del contacto (text, required)
+    - email: Correo electrónico (email, required)
+    - subject: Tipo de consulta (select, required)
+    - message: Mensaje detallado (textarea, required)
+
+Tipos de consulta disponibles:
+    - sales: Consulta de ventas
+    - support: Soporte técnico
+    - partnership: Partnership empresarial
+    - other: Otros temas
+
+Información de contacto:
+    - Email: support@gem-avatart.com
+    - Teléfono: +1 (555) 123-4567
+    - Horario: Lunes a Viernes 9:00-18:00
+
+Iconografía Font Awesome:
+    - fas fa-envelope: Email de contacto
+    - fas fa-phone: Número telefónico
+    - fas fa-clock: Horario de atención
+
+Validación del formulario:
+    - Campos required con validación HTML5
+    - Tipos de input apropiados (email, text, textarea)
+    - Select con opción por defecto vacía
+
+Funcionalidades JavaScript:
+    - ID contactForm para manejo de eventos
+    - Validación automática del navegador
+    - Preparado para envío AJAX (sin implementar)
+
+Elementos de UX:
+    - Layout de dos columnas para formulario e información
+    - Campos agrupados lógicamente
+    - Iconos para identificación rápida
+    - Botón de envío destacado con color primario
+    - Textarea de múltiples líneas para mensajes largos
+
+Responsividad:
+    - col-md-8 para formulario (contenido principal)
+    - col-md-4 para información de contacto (sidebar)
+    - col-lg-8 mx-auto para centrar en pantallas grandes
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Contacto - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con margen superior para separación -->
+<!-- container proporciona márgenes automáticos y ancho responsivo -->
+<!-- mt-5 aplica margen superior de 3rem -->
+<div class="container mt-5">
+    <!-- Fila principal para organizar el contenido -->
+    <div class="row">
+        <!-- Columna centrada que ocupa 8/12 del ancho en pantallas grandes -->
+        <!-- mx-auto centra la columna horizontalmente -->
+        <div class="col-lg-8 mx-auto">
+            <!-- Título principal de la página con tipografía destacada -->
+            <!-- display-4 aplica tipografía grande y prominente -->
+            <!-- text-center centra el texto horizontalmente -->
+            <!-- mb-5 aplica margen inferior de 3rem -->
+            <h1 class="display-4 text-center mb-5">Contáctanos</h1>
+            
+            <!-- Fila para organizar formulario e información de contacto -->
+            <div class="row">
+                <!-- Columna principal para el formulario de contacto -->
+                <!-- col-md-8 ocupa 8/12 del ancho en pantallas medianas -->
+                <div class="col-md-8">
+                    <!-- Card que contiene el formulario de contacto -->
+                    <div class="card">
+                        <!-- Cuerpo del card con padding automático -->
+                        <div class="card-body">
+                            <!-- Título del formulario -->
+                            <h5 class="card-title">Envíanos un mensaje</h5>
+                            
+                            <!-- Formulario de contacto con ID para JavaScript -->
+                            <!-- ID permite manejo de eventos y validación personalizada -->
+                            <form id="contactForm">
+                                <!-- Campo de nombre del usuario -->
+                                <!-- mb-3 aplica margen inferior de 1rem -->
+                                <div class="mb-3">
+                                    <!-- Label asociado al campo de nombre -->
+                                    <!-- form-label aplica estilos consistentes para etiquetas -->
+                                    <label for="name" class="form-label">Nombre</label>
+                                    
+                                    <!-- Input de texto para el nombre -->
+                                    <!-- form-control aplica estilos Bootstrap para inputs -->
+                                    <!-- required hace el campo obligatorio -->
+                                    <input type="text" class="form-control" id="name" required>
+                                </div>
+                                
+                                <!-- Campo de email con validación automática -->
+                                <div class="mb-3">
+                                    <!-- Label para el campo de email -->
+                                    <label for="email" class="form-label">Email</label>
+                                    
+                                    <!-- Input de email con validación HTML5 -->
+                                    <!-- type="email" proporciona validación automática de formato -->
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                                
+                                <!-- Campo de selección de asunto/categoría -->
+                                <div class="mb-3">
+                                    <!-- Label para el selector de asunto -->
+                                    <label for="subject" class="form-label">Asunto</label>
+                                    
+                                    <!-- Select para categorizar el tipo de consulta -->
+                                    <!-- form-select aplica estilos Bootstrap para selects -->
+                                    <select class="form-select" id="subject" required>
+                                        <!-- Opción por defecto vacía que obliga a seleccionar -->
+                                        <option value="">Seleccionar asunto</option>
+                                        
+                                        <!-- Opción para consultas comerciales -->
+                                        <option value="sales">Consulta de ventas</option>
+                                        
+                                        <!-- Opción para problemas técnicos -->
+                                        <option value="support">Soporte técnico</option>
+                                        
+                                        <!-- Opción para alianzas empresariales -->
+                                        <option value="partnership">Partnership</option>
+                                        
+                                        <!-- Opción para otros temas no categorizados -->
+                                        <option value="other">Otro</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Campo de mensaje detallado -->
+                                <div class="mb-3">
+                                    <!-- Label para el área de texto del mensaje -->
+                                    <label for="message" class="form-label">Mensaje</label>
+                                    
+                                    <!-- Textarea para mensajes largos -->
+                                    <!-- rows="5" define altura inicial del campo -->
+                                    <textarea class="form-control" id="message" rows="5" required></textarea>
+                                </div>
+                                
+                                <!-- Botón de envío del formulario -->
+                                <!-- btn-primary aplica el color principal del tema -->
+                                <button type="submit" class="btn btn-primary">Enviar Mensaje</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Columna lateral para información de contacto -->
+                <!-- col-md-4 ocupa 4/12 del ancho en pantallas medianas -->
+                <div class="col-md-4">
+                    <!-- Card con información de contacto de la empresa -->
+                    <div class="card">
+                        <!-- Cuerpo del card con información organizacional -->
+                        <div class="card-body">
+                            <!-- Título de la sección de información -->
+                            <h5 class="card-title">Información de Contacto</h5>
+                            
+                            <!-- Email de soporte con icono descriptivo -->
+                            <!-- fas fa-envelope representa correo electrónico -->
+                            <p><i class="fas fa-envelope"></i> support@gem-avatart.com</p>
+                            
+                            <!-- Número telefónico con icono de teléfono -->
+                            <!-- fas fa-phone representa comunicación telefónica -->
+                            <p><i class="fas fa-phone"></i> +1 (555) 123-4567</p>
+                            
+                            <!-- Horario de atención con icono de reloj -->
+                            <!-- fas fa-clock representa tiempo y horarios -->
+                            <p><i class="fas fa-clock"></i> Lun-Vie 9:00-18:00</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,420 @@
+{#}
+Template de dashboard para productores en Gem-AvatART.
+
+Este template implementa el panel de control principal para usuarios con rol de
+productor, donde pueden gestionar su equipo de subproductores, monitorear
+estadísticas de rendimiento, ver comisiones generadas y administrar avatars
+y reels de su organización.
+
+El template incluye:
+    - Panel de estadísticas principales del productor
+    - Vista de equipo de subproductores y usuarios finales
+    - Resumen de comisiones generadas y pendientes
+    - Lista de avatars disponibles para el equipo
+    - Actividad reciente de reels creados
+    - Enlaces rápidos a funciones principales
+    - Notificaciones y alertas importantes
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between
+    - Cards: card, card-body, card-header, card-title
+    - Tables: table, table-responsive, table-hover, table-striped
+    - Badges: badge, bg-success, bg-warning, bg-primary, bg-info
+    - Buttons: btn, btn-primary, btn-outline-primary, btn-success
+    - Typography: text-muted, text-center, display-6, lead
+    - Spacing: mb-*, mt-*, p-*, g-3
+    - Utilities: border-start, shadow-sm
+
+Variables Jinja utilizadas:
+    - current_user: Usuario productor autenticado
+    - team_stats: Estadísticas del equipo del productor
+    - recent_reels: Reels recientes del equipo
+    - team_commissions: Comisiones del equipo
+    - available_avatars: Avatars disponibles
+    - subproducers: Lista de subproductores del equipo
+    - pending_invitations: Invitaciones pendientes
+
+Rutas Flask referenciadas (url_for):
+    - producer.team: Gestión de equipo
+    - producer.commissions: Ver todas las comisiones
+    - producer.avatars: Gestión de avatars
+    - producer.reels: Ver todos los reels
+    - producer.invite_user: Invitar nuevo miembro
+    - producer.settings: Configuración del productor
+
+Estadísticas mostradas:
+    - Total de subproductores en el equipo
+    - Usuarios finales activos
+    - Reels creados este mes
+    - Comisiones generadas
+    - Avatars disponibles
+    - Invitaciones pendientes
+
+Iconografía Font Awesome:
+    - fas fa-industry: Productor y gestión
+    - fas fa-users: Equipo y colaboradores
+    - fas fa-video: Reels y contenido
+    - fas fa-dollar-sign: Comisiones y ganancias
+    - fas fa-user-circle: Avatars digitales
+    - fas fa-chart-line: Estadísticas y crecimiento
+    - fas fa-plus: Agregar nuevos elementos
+    - fas fa-eye: Ver detalles
+    - fas fa-bell: Notificaciones
+    - fas fa-clock: Actividad reciente
+
+Secciones del dashboard:
+    - Hero section: Bienvenida y estadísticas principales
+    - Quick stats: Métricas clave en cards
+    - Team overview: Vista del equipo actual
+    - Recent activity: Actividad reciente de reels
+    - Commission summary: Resumen de comisiones
+    - Quick actions: Enlaces a funciones principales
+
+Elementos interactivos:
+    - Enlaces a gestión detallada de cada sección
+    - Botones para acciones rápidas
+    - Tablas con hover effects
+    - Badges informativos con colores temáticos
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard Productor - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal del dashboard con layout fluido -->
+<!-- container-fluid utiliza todo el ancho disponible de la pantalla -->
+<div class="container-fluid">
+    <!-- Header del dashboard con bienvenida y estadísticas principales -->
+    <!-- d-flex con justify-content-between distribuye elementos en extremos -->
+    <!-- align-items-center centra verticalmente el contenido -->
+    <!-- mb-4 aplica margen inferior de 1.5rem -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <!-- Sección de bienvenida con información del productor -->
+        <div>
+            <!-- Título principal con icono representativo -->
+            <!-- fas fa-industry representa producción y gestión empresarial -->
+            <h1 class="mb-1"><i class="fas fa-industry text-primary"></i> Dashboard Productor</h1>
+            
+            <!-- Saludo personalizado con nombre del usuario -->
+            <!-- text-muted aplica color gris para información secundaria -->
+            <p class="text-muted mb-0">Bienvenido, {{ current_user.full_name }}</p>
+        </div>
+        
+        <!-- Botón de acción rápida para invitar miembros -->
+        <!-- btn-primary aplica el color principal del tema -->
+        <a href="{{ url_for('producer.invite_user') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Invitar Miembro
+        </a>
+    </div>
+
+    <!-- Fila de estadísticas principales en cards -->
+    <!-- row con g-3 aplica gap de 1rem entre elementos -->
+    <div class="row g-3 mb-4">
+        <!-- Card de estadística: Total de subproductores -->
+        <!-- col-md-4 ocupa 4/12 del ancho en pantallas medianas -->
+        <div class="col-md-4">
+            <!-- Card con sombra ligera para destacar -->
+            <!-- shadow-sm aplica sombra sutil -->
+            <div class="card shadow-sm">
+                <!-- Cuerpo del card con padding automático -->
+                <div class="card-body">
+                    <!-- Layout flex para organizar icono y contenido -->
+                    <!-- align-items-center centra verticalmente -->
+                    <div class="d-flex align-items-center">
+                        <!-- Contenedor del icono con color de fondo -->
+                        <!-- bg-primary aplica fondo azul -->
+                        <!-- rounded aplica border-radius -->
+                        <!-- p-3 aplica padding de 1rem -->
+                        <!-- me-3 aplica margen derecho -->
+                        <div class="bg-primary text-white rounded p-3 me-3">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                        
+                        <!-- Contenido de la estadística -->
+                        <div>
+                            <!-- Número principal de la métrica -->
+                            <!-- display-6 aplica tipografía grande -->
+                            <h3 class="display-6 mb-0">{{ team_stats.subproducers_count if team_stats else 0 }}</h3>
+                            
+                            <!-- Descripción de la métrica -->
+                            <p class="text-muted mb-0">Subproductores</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de estadística: Usuarios finales activos -->
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <!-- Icono con color de éxito (verde) -->
+                        <div class="bg-success text-white rounded p-3 me-3">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                        <div>
+                            <!-- Contador de usuarios finales activos -->
+                            <h3 class="display-6 mb-0">{{ team_stats.end_users_count if team_stats else 0 }}</h3>
+                            <p class="text-muted mb-0">Usuarios Finales</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de estadística: Reels creados este mes -->
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <!-- Icono con color informativo (azul claro) -->
+                        <div class="bg-info text-white rounded p-3 me-3">
+                            <i class="fas fa-video fa-2x"></i>
+                        </div>
+                        <div>
+                            <!-- Contador de reels del mes actual -->
+                            <h3 class="display-6 mb-0">{{ team_stats.monthly_reels if team_stats else 0 }}</h3>
+                            <p class="text-muted mb-0">Reels Este Mes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fila principal con contenido en dos columnas -->
+    <div class="row">
+        <!-- Columna principal izquierda con información del equipo -->
+        <!-- col-lg-8 ocupa 8/12 del ancho en pantallas grandes -->
+        <div class="col-lg-8">
+            <!-- Card con información del equipo actual -->
+            <div class="card mb-4">
+                <!-- Header del card con título y enlace a gestión completa -->
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <!-- Título de la sección -->
+                    <h5 class="mb-0">Mi Equipo</h5>
+                    
+                    <!-- Enlace para ver gestión completa del equipo -->
+                    <a href="{{ url_for('producer.team') }}" class="btn btn-outline-primary btn-sm">
+                        Ver Todo
+                    </a>
+                </div>
+                
+                <!-- Cuerpo del card con tabla de miembros del equipo -->
+                <div class="card-body">
+                    <!-- Condicional para mostrar equipo o mensaje vacío -->
+                    {% if subproducers %}
+                        <!-- Tabla responsive para dispositivos móviles -->
+                        <div class="table-responsive">
+                            <!-- Tabla con hover effect y rayas alternadas -->
+                            <table class="table table-hover table-striped">
+                                <thead>
+                                    <tr>
+                                        <!-- Columna para nombre del miembro -->
+                                        <th>Miembro</th>
+                                        
+                                        <!-- Columna para rol en el equipo -->
+                                        <th>Rol</th>
+                                        
+                                        <!-- Columna para estado de actividad -->
+                                        <th>Estado</th>
+                                        
+                                        <!-- Columna para fecha de último acceso -->
+                                        <th>Último Acceso</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Iteración sobre subproductores del equipo -->
+                                    {% for member in subproducers[:5] %}
+                                    <tr>
+                                        <!-- Celda con información del miembro -->
+                                        <td>
+                                            <!-- Nombre completo del miembro -->
+                                            <strong>{{ member.full_name }}</strong>
+                                            
+                                            <!-- Username en segunda línea -->
+                                            <br><small class="text-muted">@{{ member.username }}</small>
+                                        </td>
+                                        
+                                        <!-- Celda con rol del miembro -->
+                                        <td>
+                                            <!-- Badge con rol capitalizado -->
+                                            <span class="badge bg-light text-dark">
+                                                {{ member.role.value.title() }}
+                                            </span>
+                                        </td>
+                                        
+                                        <!-- Celda con estado de actividad -->
+                                        <td>
+                                            <!-- Badge con color dinámico según estado -->
+                                            <span class="badge bg-{{ 'success' if member.status.value == 'active' else 'warning' }}">
+                                                {{ member.status.value.title() }}
+                                            </span>
+                                        </td>
+                                        
+                                        <!-- Celda con fecha de último acceso -->
+                                        <td>
+                                            <!-- Fecha formateada o indicador de nunca -->
+                                            {% if member.last_login %}
+                                                {{ member.last_login.strftime('%d/%m/%Y') }}
+                                            {% else %}
+                                                <span class="text-muted">Nunca</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <!-- Mensaje cuando no hay miembros en el equipo -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No hay miembros en tu equipo</h6>
+                            <p class="text-muted">Invita subproductores para comenzar a colaborar.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card con actividad reciente de reels -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Actividad Reciente</h5>
+                    <a href="{{ url_for('producer.reels') }}" class="btn btn-outline-primary btn-sm">
+                        Ver Todos
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_reels %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Reel</th>
+                                        <th>Creador</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for reel in recent_reels[:5] %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ reel.title }}</strong>
+                                            {% if reel.description %}
+                                                <br><small class="text-muted">{{ reel.description[:30] }}...</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ reel.creator.full_name }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if reel.status.value == 'completed' else 'warning' if reel.status.value == 'pending' else 'info' }}">
+                                                {{ reel.status.value.title() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ reel.created_at.strftime('%d/%m/%Y') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No hay actividad reciente</h6>
+                            <p class="text-muted">Los reels creados por tu equipo aparecerán aquí.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna lateral derecha con información adicional -->
+        <!-- col-lg-4 ocupa 4/12 del ancho en pantallas grandes -->
+        <div class="col-lg-4">
+            <!-- Card con resumen de comisiones -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Comisiones</h5>
+                    <a href="{{ url_for('producer.commissions') }}" class="btn btn-outline-primary btn-sm">
+                        Ver Todas
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Estadísticas de comisiones -->
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-success">
+                                ${{ "%.2f"|format(team_stats.total_commissions if team_stats else 0) }}
+                            </h4>
+                            <small class="text-muted">Total Generado</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">
+                                {{ team_stats.pending_commissions if team_stats else 0 }}
+                            </h4>
+                            <small class="text-muted">Pendientes</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card con avatars disponibles -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Avatars Disponibles</h5>
+                    <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary btn-sm">
+                        Gestionar
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if available_avatars %}
+                        {% for avatar in available_avatars[:3] %}
+                            <div class="d-flex align-items-center mb-2">
+                                {% if avatar.avatar_url %}
+                                    <img src="{{ avatar.avatar_url }}" class="rounded-circle me-2" style="width: 40px; height: 40px;" alt="Avatar">
+                                {% else %}
+                                    <div class="bg-light rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <i class="fas fa-user-circle text-muted"></i>
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <strong>{{ avatar.name }}</strong>
+                                    <br><small class="text-muted">{{ avatar.language }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-user-circle fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No hay avatars disponibles</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card con acciones rápidas -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('producer.invite_user') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Invitar Miembro
+                        </a>
+                        <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-user-circle"></i> Gestionar Avatars
+                        </a>
+                        <a href="{{ url_for('producer.settings') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-cog"></i> Configuración
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

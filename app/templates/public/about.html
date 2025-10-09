@@ -1,0 +1,236 @@
+{#
+Template de página "Acerca de" para Gem-AvatART.
+
+Este template implementa la página informativa sobre la plataforma donde se
+explica qué es Gem-AvatART, sus funcionalidades principales, beneficios y
+la propuesta de valor para diferentes tipos de usuarios. Incluye secciones
+sobre tecnología, equipo, misión y visión de la empresa.
+
+El template incluye:
+    - Título principal con diseño destacado
+    - Sección de descripción de la plataforma
+    - Información sobre sistema de roles y equipos
+    - Beneficios y características principales
+    - Información sobre tecnología utilizada
+    - Sección de misión y visión empresarial
+    - Call-to-action para registro
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-lg-*, col-md-*, mx-auto
+    - Typography: display-4, text-center, lead, text-primary, text-success
+    - Spacing: mt-5, mb-5, mb-4, mb-3
+    - Cards: card, card-body, card-header
+    - Buttons: btn, btn-primary, btn-outline-primary
+    - Images: img-fluid, rounded
+    - Borders: border-0
+    - Shadows: shadow-sm
+
+Variables Jinja utilizadas:
+    - Hereda de base.html para estructura común
+    - Utiliza bloques title y content
+
+Rutas Flask referenciadas (url_for):
+    - auth.register: Enlace a registro de usuarios
+    - main.contact: Enlace a página de contacto
+
+Iconografía Font Awesome:
+    - fas fa-magic: Tecnología e innovación
+    - fas fa-users: Equipos y colaboración
+    - fas fa-robot: Inteligencia artificial
+    - fas fa-video: Creación de videos
+    - fas fa-chart-line: Crecimiento y resultados
+    - fas fa-shield-alt: Seguridad y confianza
+    - fas fa-clock: Eficiencia y velocidad
+    - fas fa-globe: Alcance global
+    - fas fa-lightbulb: Innovación y creatividad
+    - fas fa-handshake: Colaboración y partnership
+
+Secciones de contenido:
+    - Hero section: Título principal y descripción
+    - Características: Funcionalidades clave de la plataforma
+    - Tecnología: Información sobre IA y herramientas
+    - Beneficios: Ventajas para usuarios y empresas
+    - Misión y visión: Propósito y objetivos de la empresa
+    - Call-to-action: Invitación a unirse a la plataforma
+
+Elementos de diseño:
+    - Layout responsive de 2 columnas
+    - Cards con iconos descriptivos
+    - Texto destacado con clase lead
+    - Colores temáticos (primary, success, info)
+    - Espaciado consistente entre secciones
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Acerca de - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con margen superior para separación del header -->
+<!-- container proporciona márgenes automáticos y ancho responsivo -->
+<!-- mt-5 aplica margen superior de 3rem -->
+<div class="container mt-5">
+    <!-- Fila principal que centra el contenido -->
+    <div class="row">
+        <!-- Columna centrada que ocupa 8/12 del ancho en pantallas grandes -->
+        <!-- mx-auto centra la columna horizontalmente -->
+        <div class="col-lg-8 mx-auto">
+            <!-- Título principal de la página con estilo destacado -->
+            <!-- display-4 aplica tipografía grande y prominente -->
+            <!-- text-center centra el texto horizontalmente -->
+            <!-- mb-5 aplica margen inferior de 3rem -->
+            <h1 class="display-4 text-center mb-5">Acerca de Gem-AvatART</h1>
+            
+            <!-- Sección principal de características en dos columnas -->
+            <!-- mb-5 aplica margen inferior para separar secciones -->
+            <div class="row mb-5">
+                <!-- Primera columna con descripción de la plataforma -->
+                <!-- col-md-6 ocupa la mitad del ancho en pantallas medianas -->
+                <div class="col-md-6">
+                    <!-- Título de sección con icono y color primario -->
+                    <!-- fas fa-magic representa la innovación tecnológica -->
+                    <!-- text-primary aplica el color azul del tema -->
+                    <h3><i class="fas fa-magic text-primary"></i> ¿Qué es Gem-AvatART?</h3>
+                    
+                    <!-- Descripción principal con texto destacado -->
+                    <!-- lead aplica tipografía más grande y prominente -->
+                    <p class="lead">Una plataforma revolucionaria que permite crear videos profesionales usando avatares digitales alimentados por IA.</p>
+                </div>
+                
+                <!-- Segunda columna con información sobre equipos -->
+                <div class="col-md-6">
+                    <!-- Título con icono de usuarios y color de éxito -->
+                    <!-- fas fa-users representa colaboración y equipos -->
+                    <!-- text-success aplica color verde para indicar beneficio -->
+                    <h3><i class="fas fa-users text-success"></i> Para Equipos</h3>
+                    
+                    <!-- Descripción del sistema de roles -->
+                    <p class="lead">Sistema de roles que permite a productores gestionar equipos de subproductores y usuarios finales.</p>
+                </div>
+            </div>
+            
+            <!-- Sección de características principales -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <!-- Título de sección centrado -->
+                    <h2 class="text-center mb-4">Características Principales</h2>
+                </div>
+                
+                <!-- Card de tecnología IA -->
+                <div class="col-md-4 mb-4">
+                    <!-- Card con sombra ligera -->
+                    <!-- shadow-sm aplica sombra sutil -->
+                    <!-- border-0 elimina bordes por defecto -->
+                    <div class="card shadow-sm border-0">
+                        <!-- Cuerpo del card con contenido centrado -->
+                        <div class="card-body text-center">
+                            <!-- Icono grande representativo -->
+                            <!-- fas fa-robot representa inteligencia artificial -->
+                            <!-- text-primary mantiene consistencia de color -->
+                            <!-- mb-3 aplica margen inferior -->
+                            <i class="fas fa-robot fa-3x text-primary mb-3"></i>
+                            
+                            <!-- Título de la característica -->
+                            <h5>Inteligencia Artificial</h5>
+                            
+                            <!-- Descripción de la característica -->
+                            <p>Avatares digitales realistas powered by HeyGen AI para crear contenido de alta calidad.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card de creación de videos -->
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center">
+                            <!-- Icono de video para representar creación de contenido -->
+                            <i class="fas fa-video fa-3x text-success mb-3"></i>
+                            <h5>Creación Sencilla</h5>
+                            <p>Interface intuitiva que permite crear videos profesionales sin conocimientos técnicos.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card de gestión de equipos -->
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center">
+                            <!-- Icono de gráfico para representar crecimiento -->
+                            <i class="fas fa-chart-line fa-3x text-info mb-3"></i>
+                            <h5>Gestión de Equipos</h5>
+                            <p>Sistema de roles jerárquico con productores, subproductores y usuarios finales.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sección de beneficios -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <h2 class="text-center mb-4">¿Por qué elegir Gem-AvatART?</h2>
+                </div>
+                
+                <!-- Lista de beneficios en dos columnas -->
+                <div class="col-md-6">
+                    <!-- Lista de beneficios del lado izquierdo -->
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <!-- Icono y descripción de beneficio -->
+                            <i class="fas fa-clock text-primary me-2"></i>
+                            <strong>Ahorro de Tiempo:</strong> Crea videos en minutos, no en horas.
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-shield-alt text-success me-2"></i>
+                            <strong>Confiable:</strong> Tecnología probada con resultados consistentes.
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-globe text-info me-2"></i>
+                            <strong>Alcance Global:</strong> Avatares multiidioma para audiencias internacionales.
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="col-md-6">
+                    <!-- Lista de beneficios del lado derecho -->
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <i class="fas fa-lightbulb text-warning me-2"></i>
+                            <strong>Innovación:</strong> Tecnología de vanguardia en generación de contenido.
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-handshake text-primary me-2"></i>
+                            <strong>Colaboración:</strong> Facilita el trabajo en equipo y la gestión de proyectos.
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-chart-line text-success me-2"></i>
+                            <strong>Escalable:</strong> Crece con tu negocio y necesidades.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Sección de call-to-action -->
+            <div class="row">
+                <div class="col-12 text-center">
+                    <!-- Título de llamada a la acción -->
+                    <h3 class="mb-4">¿Listo para comenzar?</h3>
+                    
+                    <!-- Descripción motivacional -->
+                    <p class="lead mb-4">Únete a Gem-AvatART y descubre el futuro de la creación de contenido digital.</p>
+                    
+                    <!-- Botones de acción -->
+                    <!-- Botón principal para registro -->
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg me-3">
+                        Comenzar Ahora
+                    </a>
+                    
+                    <!-- Botón secundario para contacto -->
+                    <a href="{{ url_for('main.contact') }}" class="btn btn-outline-primary btn-lg">
+                        Contactar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
