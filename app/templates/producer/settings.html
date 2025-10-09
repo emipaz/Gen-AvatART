@@ -1,0 +1,833 @@
+{#}
+Template de configuración para productores en Gem-AvatART.
+
+Este template permite a los productores gestionar todas las configuraciones
+de su cuenta y equipo. Incluye configuración de perfil, tarifas de comisiones,
+permisos de equipo, notificaciones, integración con APIs y configuraciones
+avanzadas de productividad.
+
+El template incluye:
+    - Configuración de perfil personal
+    - Gestión de tarifas y comisiones
+    - Configuración de permisos por roles
+    - Configuración de notificaciones
+    - Integración con servicios externos
+    - Configuración de límites y restricciones
+    - Configuración de respaldos y seguridad
+    - Preferencias de interfaz
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, nav, nav-pills
+    - Cards: card, card-body, card-header, card-title
+    - Forms: form-control, form-select, form-check, input-group
+    - Buttons: btn, btn-primary, btn-outline-*, btn-success
+    - Tables: table, table-striped, table-hover
+    - Badges: badge, bg-success, bg-warning, bg-info
+    - Alerts: alert, alert-info, alert-warning
+    - Typography: text-muted, fw-bold, small
+    - Spacing: mb-*, mt-*, p-*, g-3
+
+Variables Jinja utilizadas:
+    - current_user: Usuario productor autenticado
+    - team_settings: Configuraciones del equipo
+    - rate_settings: Configuración de tarifas
+    - notification_settings: Configuración de notificaciones
+    - api_integrations: Integraciones configuradas
+    - security_settings: Configuraciones de seguridad
+
+Rutas Flask referenciadas (url_for):
+    - producer.dashboard: Volver al dashboard
+    - producer.update_profile: Actualizar perfil
+    - producer.update_rates: Actualizar tarifas
+    - producer.update_permissions: Actualizar permisos
+    - producer.update_notifications: Actualizar notificaciones
+    - producer.test_integration: Probar integración
+
+Secciones de configuración:
+    - profile: Información personal del productor
+    - rates: Tarifas y comisiones
+    - permissions: Permisos y roles del equipo
+    - notifications: Configuración de notificaciones
+    - integrations: APIs y servicios externos
+    - security: Seguridad y respaldos
+
+Iconografía Font Awesome:
+    - fas fa-user: Perfil personal
+    - fas fa-dollar-sign: Tarifas y comisiones
+    - fas fa-shield-alt: Permisos y seguridad
+    - fas fa-bell: Notificaciones
+    - fas fa-plug: Integraciones
+    - fas fa-cog: Configuración general
+    - fas fa-save: Guardar cambios
+    - fas fa-test: Probar configuración
+    - fas fa-eye: Previsualizar
+    - fas fa-download: Exportar configuración
+
+Validaciones incluidas:
+    - Validación de formatos de entrada
+    - Verificación de permisos
+    - Validación de APIs
+    - Confirmación de cambios críticos
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Configuración - Productor - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con layout fluido -->
+<div class="container-fluid">
+    <!-- Header de la página -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <!-- Título principal con icono -->
+            <h1 class="mb-1"><i class="fas fa-cog text-primary"></i> Configuración</h1>
+            <!-- Breadcrumb de navegación -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('producer.dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active">Configuración</li>
+                </ol>
+            </nav>
+        </div>
+        
+        <!-- Botón de exportar configuración -->
+        <button type="button" class="btn btn-outline-primary" onclick="exportSettings()">
+            <i class="fas fa-download"></i> Exportar Configuración
+        </button>
+    </div>
+
+    <!-- Layout con navegación lateral -->
+    <div class="row">
+        <!-- Navegación lateral -->
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-body p-0">
+                    <!-- Pills de navegación vertical -->
+                    <div class="nav flex-column nav-pills" role="tablist">
+                        <button class="nav-link active text-start" data-bs-toggle="pill" data-bs-target="#profile" type="button">
+                            <i class="fas fa-user me-2"></i> Perfil Personal
+                        </button>
+                        <button class="nav-link text-start" data-bs-toggle="pill" data-bs-target="#rates" type="button">
+                            <i class="fas fa-dollar-sign me-2"></i> Tarifas y Comisiones
+                        </button>
+                        <button class="nav-link text-start" data-bs-toggle="pill" data-bs-target="#permissions" type="button">
+                            <i class="fas fa-shield-alt me-2"></i> Permisos del Equipo
+                        </button>
+                        <button class="nav-link text-start" data-bs-toggle="pill" data-bs-target="#notifications" type="button">
+                            <i class="fas fa-bell me-2"></i> Notificaciones
+                        </button>
+                        <button class="nav-link text-start" data-bs-toggle="pill" data-bs-target="#integrations" type="button">
+                            <i class="fas fa-plug me-2"></i> Integraciones
+                        </button>
+                        <button class="nav-link text-start" data-bs-toggle="pill" data-bs-target="#security" type="button">
+                            <i class="fas fa-lock me-2"></i> Seguridad
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenido principal -->
+        <div class="col-md-9">
+            <div class="tab-content">
+                <!-- Configuración de Perfil Personal -->
+                <div class="tab-pane fade show active" id="profile">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-user text-primary"></i> Información Personal</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="profileForm" onsubmit="updateProfile(event)">
+                                <div class="row g-3">
+                                    <!-- Foto de perfil -->
+                                    <div class="col-12 text-center mb-4">
+                                        <div class="mb-3">
+                                            {% if current_user.profile_picture %}
+                                                <img src="{{ current_user.profile_picture }}" 
+                                                     class="rounded-circle" width="120" height="120" 
+                                                     alt="Profile Picture" id="profilePreview">
+                                            {% else %}
+                                                <div class="bg-secondary rounded-circle mx-auto d-flex align-items-center justify-content-center" 
+                                                     style="width: 120px; height: 120px;" id="profilePreview">
+                                                    <i class="fas fa-user fa-3x text-white"></i>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <input type="file" class="form-control" accept="image/*" 
+                                               onchange="previewProfilePicture(this)" name="profile_picture">
+                                        <small class="text-muted">Tamaño máximo: 2MB. Formatos: JPG, PNG</small>
+                                    </div>
+
+                                    <!-- Información básica -->
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nombre Completo</label>
+                                        <input type="text" class="form-control" name="full_name" 
+                                               value="{{ current_user.full_name or '' }}" required>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" class="form-control" name="email" 
+                                               value="{{ current_user.email }}" required>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Teléfono</label>
+                                        <input type="tel" class="form-control" name="phone" 
+                                               value="{{ current_user.phone or '' }}">
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Empresa/Organización</label>
+                                        <input type="text" class="form-control" name="company" 
+                                               value="{{ current_user.company or '' }}">
+                                    </div>
+
+                                    <!-- Información profesional -->
+                                    <div class="col-12">
+                                        <label class="form-label">Biografía Profesional</label>
+                                        <textarea class="form-control" name="bio" rows="4" 
+                                                  placeholder="Describe tu experiencia y especialización...">{{ current_user.bio or '' }}</textarea>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Especialización</label>
+                                        <select class="form-select" name="specialization">
+                                            <option value="">Seleccionar especialización</option>
+                                            <option value="marketing" {{ 'selected' if current_user.specialization == 'marketing' }}>
+                                                Marketing Digital
+                                            </option>
+                                            <option value="education" {{ 'selected' if current_user.specialization == 'education' }}>
+                                                Educación y Capacitación
+                                            </option>
+                                            <option value="entertainment" {{ 'selected' if current_user.specialization == 'entertainment' }}>
+                                                Entretenimiento
+                                            </option>
+                                            <option value="corporate" {{ 'selected' if current_user.specialization == 'corporate' }}>
+                                                Comunicación Corporativa
+                                            </option>
+                                            <option value="social_media" {{ 'selected' if current_user.specialization == 'social_media' }}>
+                                                Redes Sociales
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Zona Horaria</label>
+                                        <select class="form-select" name="timezone">
+                                            <option value="UTC-3" {{ 'selected' if current_user.timezone == 'UTC-3' }}>
+                                                Argentina (UTC-3)
+                                            </option>
+                                            <option value="UTC-5" {{ 'selected' if current_user.timezone == 'UTC-5' }}>
+                                                Colombia/México (UTC-5)
+                                            </option>
+                                            <option value="UTC-6" {{ 'selected' if current_user.timezone == 'UTC-6' }}>
+                                                México Central (UTC-6)
+                                            </option>
+                                            <option value="UTC+1" {{ 'selected' if current_user.timezone == 'UTC+1' }}>
+                                                España (UTC+1)
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Botón de guardar -->
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save"></i> Guardar Cambios
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Tarifas -->
+                <div class="tab-pane fade" id="rates">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-dollar-sign text-success"></i> Tarifas y Comisiones</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                Define las tarifas que se pagarán a los miembros de tu equipo por cada tipo de reel creado.
+                            </div>
+
+                            <form id="ratesForm" onsubmit="updateRates(event)">
+                                <div class="row g-3">
+                                    <!-- Tarifa base -->
+                                    <div class="col-md-6">
+                                        <label class="form-label">Tarifa Base por Reel</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" name="base_rate" 
+                                                   value="{{ rate_settings.base_rate if rate_settings else '10.00' }}" 
+                                                   step="0.01" min="0" required>
+                                        </div>
+                                        <small class="text-muted">Tarifa estándar para reels básicos</small>
+                                    </div>
+
+                                    <!-- Tarifa premium -->
+                                    <div class="col-md-6">
+                                        <label class="form-label">Tarifa Premium</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" name="premium_rate" 
+                                                   value="{{ rate_settings.premium_rate if rate_settings else '25.00' }}" 
+                                                   step="0.01" min="0">
+                                        </div>
+                                        <small class="text-muted">Para reels con características avanzadas</small>
+                                    </div>
+
+                                    <!-- Bonificación por performance -->
+                                    <div class="col-md-6">
+                                        <label class="form-label">Bonificación por Performance</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">%</span>
+                                            <input type="number" class="form-control" name="performance_bonus" 
+                                                   value="{{ rate_settings.performance_bonus if rate_settings else '10' }}" 
+                                                   min="0" max="100">
+                                        </div>
+                                        <small class="text-muted">Bonus adicional por alta calidad</small>
+                                    </div>
+
+                                    <!-- Descuento por volumen -->
+                                    <div class="col-md-6">
+                                        <label class="form-label">Umbral para Descuento por Volumen</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" name="volume_threshold" 
+                                                   value="{{ rate_settings.volume_threshold if rate_settings else '50' }}" min="1">
+                                            <span class="input-group-text">reels/mes</span>
+                                        </div>
+                                        <small class="text-muted">Cantidad mínima para aplicar descuento</small>
+                                    </div>
+
+                                    <!-- Configuración de métodos de pago -->
+                                    <div class="col-12">
+                                        <h6>Métodos de Pago Disponibles</h6>
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="payment_methods" 
+                                                           value="bank_transfer" id="bank_transfer" checked>
+                                                    <label class="form-check-label" for="bank_transfer">
+                                                        Transferencia Bancaria
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="payment_methods" 
+                                                           value="paypal" id="paypal">
+                                                    <label class="form-check-label" for="paypal">
+                                                        PayPal
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="payment_methods" 
+                                                           value="crypto" id="crypto">
+                                                    <label class="form-check-label" for="crypto">
+                                                        Criptomonedas
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="payment_methods" 
+                                                           value="check" id="check">
+                                                    <label class="form-check-label" for="check">
+                                                        Cheque
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Botón de guardar -->
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-save"></i> Actualizar Tarifas
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Permisos -->
+                <div class="tab-pane fade" id="permissions">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-shield-alt text-warning"></i> Permisos del Equipo</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Tabla de permisos por rol -->
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Permiso</th>
+                                            <th class="text-center">Subproductor</th>
+                                            <th class="text-center">Usuario Final</th>
+                                            <th>Descripción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Crear Reels</strong></td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input" checked>
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input" checked>
+                                            </td>
+                                            <td class="text-muted">Permite crear y editar reels</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Gestionar Avatars</strong></td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input" checked>
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input">
+                                            </td>
+                                            <td class="text-muted">Configurar y asignar avatars</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Ver Comisiones</strong></td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input" checked>
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input" checked>
+                                            </td>
+                                            <td class="text-muted">Acceso al estado de comisiones</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Invitar Usuarios</strong></td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input" checked>
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input">
+                                            </td>
+                                            <td class="text-muted">Invitar nuevos miembros al equipo</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Exportar Datos</strong></td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input">
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input">
+                                            </td>
+                                            <td class="text-muted">Descargar reportes y datos</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Configuración de límites -->
+                            <h6 class="mt-4">Límites por Usuario</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Reels por día (Usuario Final)</label>
+                                    <input type="number" class="form-control" value="10" min="1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Reels por día (Subproductor)</label>
+                                    <input type="number" class="form-control" value="50" min="1">
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-warning" onclick="updatePermissions()">
+                                    <i class="fas fa-save"></i> Actualizar Permisos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Notificaciones -->
+                <div class="tab-pane fade" id="notifications">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-bell text-info"></i> Configuración de Notificaciones</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="notificationsForm" onsubmit="updateNotifications(event)">
+                                <!-- Notificaciones por email -->
+                                <h6>Notificaciones por Email</h6>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="email_new_reel" checked>
+                                            <label class="form-check-label" for="email_new_reel">
+                                                Nuevo reel creado
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="email_commission" checked>
+                                            <label class="form-check-label" for="email_commission">
+                                                Comisión generada
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="email_new_member">
+                                            <label class="form-check-label" for="email_new_member">
+                                                Nuevo miembro del equipo
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="email_payment">
+                                            <label class="form-check-label" for="email_payment">
+                                                Pago procesado
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Notificaciones push -->
+                                <h6>Notificaciones Push</h6>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="push_reel_complete" checked>
+                                            <label class="form-check-label" for="push_reel_complete">
+                                                Reel completado
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="push_team_activity">
+                                            <label class="form-check-label" for="push_team_activity">
+                                                Actividad del equipo
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Frecuencia de reportes -->
+                                <h6>Reportes Automáticos</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Reporte Semanal</label>
+                                        <select class="form-select">
+                                            <option value="monday">Lunes</option>
+                                            <option value="friday" selected>Viernes</option>
+                                            <option value="never">Nunca</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Reporte Mensual</label>
+                                        <select class="form-select">
+                                            <option value="1">Día 1</option>
+                                            <option value="15">Día 15</option>
+                                            <option value="last" selected>Último día</option>
+                                            <option value="never">Nunca</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-info text-white">
+                                        <i class="fas fa-save"></i> Guardar Notificaciones
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Integraciones -->
+                <div class="tab-pane fade" id="integrations">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-plug text-purple"></i> Integraciones de APIs</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Integración con HeyGen -->
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">HeyGen API</h6>
+                                            <p class="text-muted mb-0">Servicio principal de generación de avatars</p>
+                                        </div>
+                                        <span class="badge bg-success">Conectado</span>
+                                    </div>
+                                    <div class="mt-3">
+                                        <label class="form-label">API Key</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" value="••••••••••••••••" readonly>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="testHeyGenAPI()">
+                                                <i class="fas fa-test-tube"></i> Probar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Integración con servicio de email -->
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">Servicio de Email</h6>
+                                            <p class="text-muted mb-0">Para notificaciones y reportes</p>
+                                        </div>
+                                        <span class="badge bg-warning">Configurar</span>
+                                    </div>
+                                    <div class="mt-3">
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <label class="form-label">SMTP Server</label>
+                                                <input type="text" class="form-control" placeholder="smtp.gmail.com">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Puerto</label>
+                                                <input type="number" class="form-control" placeholder="587">
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm mt-2">
+                                            <i class="fas fa-save"></i> Configurar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Webhook para integraciones externas -->
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="mb-3">Webhooks</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">URL de Webhook</label>
+                                        <div class="input-group">
+                                            <input type="url" class="form-control" placeholder="https://tu-servidor.com/webhook">
+                                            <button class="btn btn-outline-primary" type="button">
+                                                <i class="fas fa-plus"></i> Agregar
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">Recibe notificaciones en tiempo real de eventos importantes</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Seguridad -->
+                <div class="tab-pane fade" id="security">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-lock text-danger"></i> Seguridad y Respaldos</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Cambio de contraseña -->
+                            <h6>Cambiar Contraseña</h6>
+                            <form class="row g-3 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label">Contraseña Actual</label>
+                                    <input type="password" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Nueva Contraseña</label>
+                                    <input type="password" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Confirmar Contraseña</label>
+                                    <input type="password" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-key"></i> Cambiar Contraseña
+                                    </button>
+                                </div>
+                            </form>
+
+                            <!-- Autenticación de dos factores -->
+                            <h6>Autenticación de Dos Factores</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div>
+                                    <p class="mb-1">Protege tu cuenta con autenticación de dos factores</p>
+                                    <small class="text-muted">Estado: <span class="text-danger">Deshabilitada</span></small>
+                                </div>
+                                <button class="btn btn-outline-success">
+                                    <i class="fas fa-shield-alt"></i> Habilitar 2FA
+                                </button>
+                            </div>
+
+                            <!-- Respaldos -->
+                            <h6>Respaldos de Datos</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card border">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-download fa-3x text-primary mb-3"></i>
+                                            <h6>Respaldar Datos</h6>
+                                            <p class="text-muted small">Descarga una copia de tus datos</p>
+                                            <button class="btn btn-primary btn-sm">
+                                                <i class="fas fa-download"></i> Descargar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card border">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-clock fa-3x text-info mb-3"></i>
+                                            <h6>Respaldo Automático</h6>
+                                            <p class="text-muted small">Último respaldo: Hace 2 días</p>
+                                            <button class="btn btn-info btn-sm text-white">
+                                                <i class="fas fa-cog"></i> Configurar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para funcionalidad dinámica -->
+<script>
+// Previsualizar imagen de perfil
+function previewProfilePicture(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('profilePreview');
+            preview.innerHTML = `<img src="${e.target.result}" class="rounded-circle" width="120" height="120" alt="Preview">`;
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Actualizar perfil
+function updateProfile(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    fetch('{{ url_for("producer.update_profile") }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Perfil actualizado correctamente', 'success');
+        } else {
+            showAlert('Error al actualizar el perfil', 'danger');
+        }
+    });
+}
+
+// Actualizar tarifas
+function updateRates(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    fetch('{{ url_for("producer.update_rates") }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Tarifas actualizadas correctamente', 'success');
+        } else {
+            showAlert('Error al actualizar las tarifas', 'danger');
+        }
+    });
+}
+
+// Actualizar notificaciones
+function updateNotifications(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    fetch('{{ url_for("producer.update_notifications") }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Notificaciones actualizadas', 'success');
+        } else {
+            showAlert('Error al actualizar notificaciones', 'danger');
+        }
+    });
+}
+
+// Probar API de HeyGen
+function testHeyGenAPI() {
+    fetch('{{ url_for("producer.test_heygen") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('API de HeyGen funcionando correctamente', 'success');
+        } else {
+            showAlert('Error en la conexión con HeyGen API', 'danger');
+        }
+    });
+}
+
+// Exportar configuración
+function exportSettings() {
+    window.open('{{ url_for("producer.export_settings") }}', '_blank');
+}
+
+// Mostrar alertas
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insertar al inicio del contenido
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-hide después de 5 segundos
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,440 @@
+{#
+Template de página de precios y planes para Gem-AvatART.
+
+Este template implementa la página de pricing donde se muestran los diferentes
+planes disponibles, características incluidas y precios para cada tipo de
+usuario. Incluye una tabla comparativa de características y call-to-action
+para cada plan con opciones de registro.
+
+El template incluye:
+    - Título principal con diseño destacado
+    - Tabla comparativa de planes y características
+    - Cards individuales para cada plan con precios
+    - Lista detallada de características por plan
+    - Botones de call-to-action diferenciados
+    - Sección de preguntas frecuentes sobre precios
+    - Información sobre facturación y términos
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-lg-*, col-md-*, mx-auto
+    - Typography: display-4, text-center, h1, h2, h3, h4, h5, lead
+    - Cards: card, card-body, card-header, card-footer
+    - Tables: table, table-responsive, table-striped
+    - Buttons: btn, btn-primary, btn-outline-primary, btn-success
+    - Spacing: mt-5, mb-5, mb-4, mb-3, p-4
+    - Colors: text-primary, text-success, text-muted
+    - Badges: badge, bg-primary, bg-success, bg-warning
+    - Borders: border-0
+    - Shadows: shadow-sm
+
+Variables Jinja utilizadas:
+    - Hereda de base.html para estructura común
+    - Utiliza bloques title y content
+
+Rutas Flask referenciadas (url_for):
+    - auth.register: Enlace a registro de usuarios
+    - main.contact: Enlace a página de contacto
+
+Planes disponibles:
+    - Starter: Plan básico para usuarios finales
+    - Professional: Plan para subproductores
+    - Enterprise: Plan para productores principales
+    - Custom: Plan personalizado para empresas
+
+Características comparadas:
+    - Número de reels por mes
+    - Acceso a avatares premium
+    - Gestión de equipos
+    - API de HeyGen incluida
+    - Soporte técnico nivel
+    - Comisiones y facturación
+
+Iconografía Font Awesome:
+    - fas fa-check: Características incluidas
+    - fas fa-times: Características no incluidas
+    - fas fa-star: Plan recomendado
+    - fas fa-crown: Plan premium
+    - fas fa-users: Gestión de equipos
+    - fas fa-robot: Avatares IA
+    - fas fa-video: Creación de videos
+    - fas fa-headset: Soporte técnico
+    - fas fa-chart-line: Analytics y reportes
+    - fas fa-shield-alt: Seguridad empresarial
+
+Elementos de UX:
+    - Cards destacadas para cada plan
+    - Tabla responsive para comparación
+    - Badges para indicar características especiales
+    - Colores diferenciados por nivel de plan
+    - Botones de acción prominentes
+    - Precios destacados con formato especial
+
+Responsividad:
+    - col-md-3 para cards de planes (4 columnas)
+    - table-responsive para tabla comparativa
+    - col-lg-8 mx-auto para centrar contenido principal
+    - Stacking automático en dispositivos móviles
+
+Precios mostrados:
+    - Starter: Gratuito con límites
+    - Professional: $29/mes por subproductor
+    - Enterprise: $99/mes por productor
+    - Custom: Contactar para cotización
+
+FAQ sobre precios:
+    - Facturación mensual vs anual
+    - Límites de uso por plan
+    - Opciones de escalamiento
+    - Política de cancelación
+    - Descuentos por volumen
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Precios - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con margen superior para separación del header -->
+<!-- container proporciona márgenes automáticos y ancho responsivo -->
+<!-- mt-5 aplica margen superior de 3rem -->
+<div class="container mt-5">
+    <!-- Fila principal que centra el contenido -->
+    <div class="row">
+        <!-- Columna centrada que ocupa todo el ancho disponible -->
+        <div class="col-12">
+            <!-- Título principal de la página con tipografía destacada -->
+            <!-- display-4 aplica tipografía grande y prominente -->
+            <!-- text-center centra el texto horizontalmente -->
+            <!-- mb-5 aplica margen inferior de 3rem -->
+            <h1 class="display-4 text-center mb-5">Planes y Precios</h1>
+            
+            <!-- Subtítulo descriptivo con texto destacado -->
+            <!-- lead aplica tipografía más grande y prominente -->
+            <!-- text-center centra el texto -->
+            <!-- mb-5 aplica margen inferior -->
+            <p class="lead text-center mb-5">Elige el plan perfecto para tu equipo y comienza a crear contenido increíble con IA</p>
+        </div>
+    </div>
+    
+    <!-- Sección de cards de planes -->
+    <!-- mb-5 aplica margen inferior para separar de la siguiente sección -->
+    <div class="row mb-5">
+        <!-- Plan Starter - Para usuarios finales -->
+        <!-- col-md-3 ocupa 3/12 del ancho en pantallas medianas (4 columnas) -->
+        <!-- mb-4 aplica margen inferior en dispositivos móviles -->
+        <div class="col-md-3 mb-4">
+            <!-- Card del plan con sombra ligera -->
+            <!-- shadow-sm aplica sombra sutil -->
+            <!-- border-0 elimina bordes por defecto -->
+            <!-- h-100 hace que todas las cards tengan la misma altura -->
+            <div class="card shadow-sm border-0 h-100">
+                <!-- Header del card con color de fondo -->
+                <!-- bg-light proporciona fondo gris claro -->
+                <!-- text-center centra el contenido -->
+                <div class="card-header bg-light text-center">
+                    <!-- Nombre del plan -->
+                    <h4>Starter</h4>
+                    
+                    <!-- Descripción breve del plan -->
+                    <!-- text-muted aplica color gris para texto secundario -->
+                    <p class="text-muted">Para usuarios finales</p>
+                </div>
+                
+                <!-- Cuerpo del card con características y precio -->
+                <div class="card-body text-center">
+                    <!-- Precio destacado del plan -->
+                    <!-- h2 aplica tipografía grande -->
+                    <!-- text-primary aplica color azul del tema -->
+                    <h2 class="text-primary">Gratuito</h2>
+                    
+                    <!-- Lista de características incluidas -->
+                    <!-- list-unstyled elimina bullets de la lista -->
+                    <!-- text-start alinea texto a la izquierda -->
+                    <ul class="list-unstyled text-start">
+                        <!-- Característica incluida con icono de check -->
+                        <li><i class="fas fa-check text-success me-2"></i>5 reels por mes</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Avatares públicos</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Resolución HD</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Soporte básico</li>
+                        
+                        <!-- Característica no incluida con icono de X -->
+                        <li><i class="fas fa-times text-danger me-2"></i>Avatares premium</li>
+                        <li><i class="fas fa-times text-danger me-2"></i>Gestión de equipos</li>
+                    </ul>
+                </div>
+                
+                <!-- Footer del card con botón de acción -->
+                <div class="card-footer text-center bg-transparent border-0">
+                    <!-- Botón para registrarse en el plan -->
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary">
+                        Comenzar Gratis
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Plan Professional - Para subproductores -->
+        <div class="col-md-3 mb-4">
+            <!-- Card destacada como plan recomendado -->
+            <!-- border-primary aplica borde azul -->
+            <div class="card shadow-sm border-primary h-100">
+                <!-- Header con badge de recomendado -->
+                <div class="card-header bg-primary text-white text-center">
+                    <h4>Professional</h4>
+                    
+                    <!-- Badge que indica plan recomendado -->
+                    <!-- badge bg-warning aplica fondo amarillo -->
+                    <span class="badge bg-warning text-dark">
+                        <i class="fas fa-star"></i> Recomendado
+                    </span>
+                    
+                    <p class="text-light">Para subproductores</p>
+                </div>
+                
+                <div class="card-body text-center">
+                    <!-- Precio con información adicional -->
+                    <h2 class="text-primary">$29</h2>
+                    <!-- Información de facturación -->
+                    <small class="text-muted">por usuario/mes</small>
+                    
+                    <ul class="list-unstyled text-start mt-3">
+                        <li><i class="fas fa-check text-success me-2"></i>50 reels por mes</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Todos los avatares</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Resolución 4K</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Crear avatares</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Soporte prioritario</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Analytics básicos</li>
+                    </ul>
+                </div>
+                
+                <div class="card-footer text-center bg-transparent border-0">
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
+                        Empezar Prueba
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Plan Enterprise - Para productores -->
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm border-success h-100">
+                <div class="card-header bg-success text-white text-center">
+                    <h4>Enterprise</h4>
+                    
+                    <!-- Badge para plan premium -->
+                    <span class="badge bg-warning text-dark">
+                        <i class="fas fa-crown"></i> Premium
+                    </span>
+                    
+                    <p class="text-light">Para productores</p>
+                </div>
+                
+                <div class="card-body text-center">
+                    <h2 class="text-success">$99</h2>
+                    <small class="text-muted">por productor/mes</small>
+                    
+                    <ul class="list-unstyled text-start mt-3">
+                        <li><i class="fas fa-check text-success me-2"></i>Reels ilimitados</li>
+                        <li><i class="fas fa-check text-success me-2"></i>API HeyGen incluida</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Gestión de equipos</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Avatares personalizados</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Soporte 24/7</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Analytics avanzados</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Stripe Connect</li>
+                    </ul>
+                </div>
+                
+                <div class="card-footer text-center bg-transparent border-0">
+                    <a href="{{ url_for('main.contact') }}" class="btn btn-success">
+                        Contactar Ventas
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Plan Custom - Para empresas -->
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-dark text-white text-center">
+                    <h4>Custom</h4>
+                    <p class="text-light">Para empresas</p>
+                </div>
+                
+                <div class="card-body text-center">
+                    <h2 class="text-dark">Personalizado</h2>
+                    <small class="text-muted">según necesidades</small>
+                    
+                    <ul class="list-unstyled text-start mt-3">
+                        <li><i class="fas fa-check text-success me-2"></i>Todo de Enterprise</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Integración custom</li>
+                        <li><i class="fas fa-check text-success me-2"></i>SLA personalizado</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Onboarding dedicado</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Account manager</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Facturación anual</li>
+                    </ul>
+                </div>
+                
+                <div class="card-footer text-center bg-transparent border-0">
+                    <a href="{{ url_for('main.contact') }}" class="btn btn-dark">
+                        Solicitar Demo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabla comparativa detallada -->
+    <!-- row justify-content-center centra la fila -->
+    <div class="row justify-content-center mb-5">
+        <!-- Columna que ocupa 10/12 del ancho para dar margen lateral -->
+        <div class="col-lg-10">
+            <!-- Título de la sección de comparación -->
+            <h2 class="text-center mb-4">Comparación Detallada</h2>
+            
+            <!-- Contenedor responsive para la tabla -->
+            <!-- table-responsive permite scroll horizontal en pantallas pequeñas -->
+            <div class="table-responsive">
+                <!-- Tabla con rayas alternadas -->
+                <!-- table-striped aplica fondos alternados en las filas -->
+                <table class="table table-striped">
+                    <!-- Encabezado de la tabla -->
+                    <thead class="table-dark">
+                        <tr>
+                            <!-- Columna de características -->
+                            <th scope="col">Características</th>
+                            <th scope="col" class="text-center">Starter</th>
+                            <th scope="col" class="text-center">Professional</th>
+                            <th scope="col" class="text-center">Enterprise</th>
+                            <th scope="col" class="text-center">Custom</th>
+                        </tr>
+                    </thead>
+                    
+                    <!-- Cuerpo de la tabla con comparación -->
+                    <tbody>
+                        <!-- Fila de reels por mes -->
+                        <tr>
+                            <td><strong>Reels por mes</strong></td>
+                            <td class="text-center">5</td>
+                            <td class="text-center">50</td>
+                            <td class="text-center">Ilimitados</td>
+                            <td class="text-center">Ilimitados</td>
+                        </tr>
+                        
+                        <!-- Fila de acceso a avatares -->
+                        <tr>
+                            <td><strong>Avatares disponibles</strong></td>
+                            <td class="text-center">Públicos</td>
+                            <td class="text-center">Todos</td>
+                            <td class="text-center">Todos + Custom</td>
+                            <td class="text-center">Todos + Custom</td>
+                        </tr>
+                        
+                        <!-- Fila de gestión de equipos -->
+                        <tr>
+                            <td><strong>Gestión de equipos</strong></td>
+                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                            <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        </tr>
+                        
+                        <!-- Fila de API HeyGen -->
+                        <tr>
+                            <td><strong>API HeyGen</strong></td>
+                            <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+                            <td class="text-center">Compartida</td>
+                            <td class="text-center">Propia</td>
+                            <td class="text-center">Propia</td>
+                        </tr>
+                        
+                        <!-- Fila de soporte técnico -->
+                        <tr>
+                            <td><strong>Soporte</strong></td>
+                            <td class="text-center">Email</td>
+                            <td class="text-center">Email + Chat</td>
+                            <td class="text-center">24/7 Prioritario</td>
+                            <td class="text-center">Dedicado</td>
+                        </tr>
+                        
+                        <!-- Fila de analytics -->
+                        <tr>
+                            <td><strong>Analytics</strong></td>
+                            <td class="text-center">Básicos</td>
+                            <td class="text-center">Básicos</td>
+                            <td class="text-center">Avanzados</td>
+                            <td class="text-center">Custom</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sección de preguntas frecuentes -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h2 class="text-center mb-4">Preguntas Frecuentes</h2>
+            
+            <!-- Accordion para FAQs -->
+            <div class="accordion" id="pricingFAQ">
+                <!-- FAQ 1 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                            ¿Puedo cambiar de plan en cualquier momento?
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            Sí, puedes actualizar o degradar tu plan en cualquier momento. Los cambios se aplican inmediatamente 
+                            y se prorratea la facturación según corresponda.
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- FAQ 2 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingTwo">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                            ¿Hay descuentos por facturación anual?
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            Sí, ofrecemos 20% de descuento en todos los planes pagos con facturación anual. 
+                            Contacta a nuestro equipo de ventas para más detalles.
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- FAQ 3 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingThree">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                            ¿Qué incluye el soporte técnico?
+                        </button>
+                    </h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            El soporte incluye ayuda con la plataforma, integración de APIs, resolución de problemas técnicos 
+                            y entrenamiento. El nivel de soporte varía según el plan contratado.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Call-to-action final -->
+    <div class="row mt-5">
+        <div class="col-12 text-center">
+            <h3 class="mb-4">¿Necesitas ayuda para elegir?</h3>
+            <p class="lead mb-4">Nuestro equipo puede ayudarte a encontrar el plan perfecto para tus necesidades</p>
+            
+            <a href="{{ url_for('main.contact') }}" class="btn btn-primary btn-lg">
+                Hablar con Ventas
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

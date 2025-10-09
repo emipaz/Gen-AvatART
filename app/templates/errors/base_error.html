@@ -1,0 +1,388 @@
+{#}
+Template base para errores genéricos en Gem-AvatART.
+
+Este template sirve como base para manejar códigos de error HTTP
+que no tienen templates específicos. Permite mostrar cualquier
+código de error con un mensaje personalizable y mantiene la
+consistencia visual con el resto de la aplicación.
+
+El template incluye:
+    - Estructura flexible para cualquier código de error
+    - Mensaje de error personalizable por parámetro
+    - Navegación consistente con otros templates de error
+    - Información contextual del usuario
+    - Enlaces de ayuda y soporte
+    - Diseño responsive y accesible
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, justify-content-center
+    - Typography: display-1, lead, text-center, text-warning
+    - Cards: card, card-body, card-header
+    - Buttons: btn, btn-primary, btn-outline-*, btn-lg
+    - Alerts: alert, alert-info
+    - Spacing: mt-*, mb-*, p-*
+    - Utilities: d-flex, text-center
+
+Variables Jinja esperadas:
+    - error_code: Código de error HTTP (ej: 400, 401, 418)
+    - error_title: Título del error (ej: "Bad Request")
+    - error_description: Descripción detallada del error
+    - error_icon: Icono Font Awesome a mostrar
+    - show_contact: Boolean para mostrar información de contacto
+
+Rutas Flask referenciadas (url_for):
+    - main.index: Página principal
+    - main.contact: Página de contacto
+    - auth.login: Página de login
+    - Dashboards según rol del usuario
+
+Iconografía Font Awesome:
+    - Icono dinámico según error_icon variable
+    - fas fa-home: Página principal
+    - fas fa-arrow-left: Volver atrás
+    - fas fa-question-circle: Ayuda
+    - fas fa-envelope: Contacto
+
+Uso ejemplo en las rutas:
+    return render_template('errors/base_error.html',
+                         error_code=418,
+                         error_title="I'm a teapot",
+                         error_description="El servidor se rehúsa a preparar café...",
+                         error_icon="fas fa-coffee",
+                         show_contact=True)
+#}
+
+{% extends "base.html" %}
+
+{% block title %}
+    Error {{ error_code if error_code else 'Desconocido' }} - {{ error_title if error_title else 'Error del Sistema' }} - Gem-AvatART
+{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con espaciado -->
+<div class="container mt-5">
+    <!-- Fila centrada para el contenido del error -->
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <!-- Card principal del error genérico -->
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center p-5">
+                    <!-- Icono del error (personalizable) -->
+                    <div class="mb-4">
+                        <i class="{{ error_icon if error_icon else 'fas fa-exclamation-circle' }} text-warning" 
+                           style="font-size: 5rem;"></i>
+                    </div>
+                    
+                    <!-- Código de error prominente -->
+                    <h1 class="display-1 text-warning fw-bold mb-3">
+                        {{ error_code if error_code else '???' }}
+                    </h1>
+                    
+                    <!-- Título del error -->
+                    <h2 class="mb-3">
+                        {{ error_title if error_title else 'Error del Sistema' }}
+                    </h2>
+                    
+                    <!-- Descripción del error -->
+                    <p class="lead text-muted mb-4">
+                        {% if error_description %}
+                            {{ error_description }}
+                        {% else %}
+                            Ha ocurrido un error inesperado. Por favor, intenta nuevamente 
+                            o contacta con nuestro equipo de soporte si el problema persiste.
+                        {% endif %}
+                    </p>
+                    
+                    <!-- Información adicional contextual -->
+                    {% if current_user.is_authenticated %}
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>{{ current_user.full_name or current_user.username }},</strong> 
+                            tu sesión está activa. Puedes intentar acceder a otras secciones 
+                            o volver a tu dashboard personal.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Si tienes una cuenta, <a href="{{ url_for('auth.login') }}" class="alert-link">inicia sesión</a> 
+                            para acceder a funcionalidades adicionales.
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Acciones principales -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center mb-4">
+                        <!-- Botón principal para ir al inicio -->
+                        <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i> Ir al Inicio
+                        </a>
+                        
+                        <!-- Botón para volver atrás -->
+                        <button onclick="goBack()" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i> Volver Atrás
+                        </button>
+                    </div>
+                    
+                    <!-- Navegación rápida según el usuario -->
+                    {% if current_user.is_authenticated %}
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Navegación Rápida:</h6>
+                            <div class="d-flex flex-wrap justify-content-center gap-2">
+                                <!-- Dashboard según el rol -->
+                                {% if current_user.role == 'admin' %}
+                                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-dark">
+                                        <i class="fas fa-tachometer-alt me-1"></i> Panel Admin
+                                    </a>
+                                {% elif current_user.role in ['producer', 'subproducer'] %}
+                                    <a href="{{ url_for('producer.dashboard') }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                                    </a>
+                                    <a href="{{ url_for('producer.team') }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-users me-1"></i> Equipo
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('user.dashboard') }}" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-tachometer-alt me-1"></i> Mi Dashboard
+                                    </a>
+                                    <a href="{{ url_for('user.profile') }}" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-user me-1"></i> Mi Perfil
+                                    </a>
+                                {% endif %}
+                                
+                                <!-- Cerrar sesión -->
+                                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-sign-out-alt me-1"></i> Cerrar Sesión
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Información de contacto (opcional) -->
+                    {% if show_contact %}
+                        <div class="border-top pt-4">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-question-circle me-2"></i>¿Necesitas ayuda?
+                            </h6>
+                            <div class="d-flex flex-wrap justify-content-center gap-2">
+                                {% if url_for('main.contact') %}
+                                    <a href="{{ url_for('main.contact') }}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-envelope me-1"></i> Contactar Soporte
+                                    </a>
+                                {% endif %}
+                                <a href="mailto:soporte@gem-avatart.com" class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-envelope me-1"></i> Email Directo
+                                </a>
+                                <a href="#" onclick="showHelpModal()" class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-question-circle me-1"></i> FAQ
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Footer con información técnica básica -->
+                <div class="card-footer bg-light text-muted text-center">
+                    <small>
+                        <i class="fas fa-clock me-1"></i>
+                        Timestamp: {{ moment().format('DD/MM/YYYY HH:mm:ss') if moment else 'N/A' }}
+                        |
+                        <i class="fas fa-hashtag me-1"></i>
+                        Ref: #{{ range(100000, 999999) | random }}
+                    </small>
+                </div>
+            </div>
+            
+            <!-- Información de depuración (solo en desarrollo) -->
+            {% if config.DEBUG %}
+                <div class="card mt-3 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0">
+                            <i class="fas fa-bug me-2"></i>Debug Information
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small>
+                                    <strong>Error Code:</strong> {{ error_code or 'N/A' }}<br>
+                                    <strong>Error Title:</strong> {{ error_title or 'N/A' }}<br>
+                                    <strong>URL:</strong> {{ request.url }}<br>
+                                    <strong>Method:</strong> {{ request.method }}
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <small>
+                                    <strong>User:</strong> {{ current_user.username if current_user.is_authenticated else 'Anonymous' }}<br>
+                                    <strong>Role:</strong> {{ current_user.role if current_user.is_authenticated else 'N/A' }}<br>
+                                    <strong>IP:</strong> {{ request.remote_addr }}<br>
+                                    <strong>Referrer:</strong> {{ request.referrer or 'Direct' }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de ayuda -->
+<div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-question-circle me-2"></i>Preguntas Frecuentes
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="accordion" id="faqAccordion">
+                    <!-- FAQ 1 -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                ¿Por qué aparece este error?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Los errores pueden ocurrir por diversas razones: problemas de conectividad,
+                                mantenimiento del servidor, permisos insuficientes, o URLs incorrectas.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- FAQ 2 -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                ¿Qué puedo hacer para solucionarlo?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Intenta recargar la página, verifica tu conexión a internet,
+                                asegúrate de tener los permisos necesarios, o contacta con soporte.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- FAQ 3 -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                ¿Cuándo se solucionará?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Los errores temporales suelen resolverse en pocos minutos.
+                                Para problemas persistentes, nuestro equipo trabaja 24/7 para solucionarlos.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <a href="mailto:soporte@gem-avatart.com" class="btn btn-primary">
+                    <i class="fas fa-envelope me-1"></i> Contactar Soporte
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para funcionalidad del error genérico -->
+<script>
+// Función para volver atrás de manera inteligente
+function goBack() {
+    // Si hay historial, volver atrás
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        // Si no hay historial, ir al inicio
+        window.location.href = "{{ url_for('main.index') }}";
+    }
+}
+
+// Mostrar modal de ayuda
+function showHelpModal() {
+    const modal = new bootstrap.Modal(document.getElementById('helpModal'));
+    modal.show();
+}
+
+// Registrar error para analytics
+document.addEventListener('DOMContentLoaded', function() {
+    // Analytics tracking
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'exception', {
+            'description': 'Error {{ error_code or "Unknown" }} - {{ error_title or "Generic Error" }}',
+            'fatal': {{ 'true' if error_code and error_code >= 500 else 'false' }}
+        });
+    }
+    
+    // Auto-focus en el botón principal después de 2 segundos
+    setTimeout(function() {
+        const primaryButton = document.querySelector('.btn-primary');
+        if (primaryButton) {
+            primaryButton.focus();
+        }
+    }, 2000);
+    
+    // Detectar si el usuario viene de un enlace roto y sugerir alternativas
+    const referrer = document.referrer;
+    if (referrer && referrer.includes(window.location.hostname)) {
+        console.log('Error originado desde página interna:', referrer);
+        // Aquí se podría implementar lógica para sugerir páginas alternativas
+    }
+});
+
+// Función para intentar recargar la página de manera inteligente
+function smartReload() {
+    // Agregar un parámetro para evitar cache
+    const url = new URL(window.location.href);
+    url.searchParams.set('retry', Date.now());
+    window.location.href = url.toString();
+}
+
+// Detectar problemas de conectividad
+window.addEventListener('online', function() {
+    console.log('Conexión restaurada');
+    // Opcional: Mostrar notificación de que la conexión se restauró
+});
+
+window.addEventListener('offline', function() {
+    console.log('Conexión perdida');
+    // Opcional: Mostrar notificación de problemas de conectividad
+});
+</script>
+
+<!-- Estilos CSS adicionales -->
+<style>
+.card {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Animación sutil para el icono */
+.fa-exclamation-circle,
+.fa-coffee,
+.fa-shield-alt {
+    animation: gentle-pulse 3s ease-in-out infinite;
+}
+
+@keyframes gentle-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.02); opacity: 1; }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,521 @@
+{#}
+Template de gestión de avatars para productores en Gem-AvatART.
+
+Este template implementa la interfaz completa para que los productores gestionen
+los avatars disponibles para su equipo. Incluye funcionalidades para ver avatars
+existentes, solicitar nuevos avatars, configurar permisos de uso y monitorear
+el uso de avatars por parte del equipo.
+
+El template incluye:
+    - Galería de avatars disponibles con vista de tarjetas
+    - Información detallada de cada avatar (idiomas, características)
+    - Filtros por idioma, género y estado
+    - Solicitud de nuevos avatars personalizados
+    - Estadísticas de uso por avatar
+    - Configuración de permisos de acceso por miembro
+    - Historial de uso de avatars en reels
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between
+    - Cards: card, card-body, card-header, card-img-top
+    - Images: img-fluid, rounded-circle, object-fit-cover
+    - Badges: badge, bg-success, bg-warning, bg-primary, bg-info
+    - Buttons: btn, btn-primary, btn-outline-*, btn-sm
+    - Forms: form-control, form-select, btn
+    - Modals: modal, modal-dialog, modal-content
+    - Typography: text-muted, text-center, card-title
+    - Spacing: mb-*, mt-*, p-*, g-3
+
+Variables Jinja utilizadas:
+    - current_user: Usuario productor autenticado
+    - available_avatars: Lista de avatars disponibles
+    - avatar_stats: Estadísticas de uso de avatars
+    - team_usage: Uso de avatars por miembros del equipo
+    - supported_languages: Idiomas disponibles
+
+Rutas Flask referenciadas (url_for):
+    - producer.dashboard: Volver al dashboard
+    - producer.team: Gestión de equipo
+    - producer.request_avatar: Solicitar nuevo avatar
+    - producer.avatar_detail: Ver detalle de avatar
+    - producer.toggle_avatar_access: Configurar acceso
+
+Información de avatar mostrada:
+    - Imagen/preview del avatar
+    - Nombre y descripción
+    - Idiomas soportados
+    - Género y características físicas
+    - Estado de disponibilidad
+    - Estadísticas de uso
+    - Miembros con acceso
+
+Filtros disponibles:
+    - language: Filtrar por idioma
+    - gender: Filtrar por género
+    - status: Filtrar por estado (active, inactive)
+    - usage: Filtrar por nivel de uso
+
+Iconografía Font Awesome:
+    - fas fa-user-circle: Avatars
+    - fas fa-plus: Agregar nuevo avatar
+    - fas fa-filter: Filtros de búsqueda
+    - fas fa-eye: Ver detalles
+    - fas fa-chart-bar: Estadísticas de uso
+    - fas fa-users: Acceso de equipo
+    - fas fa-globe: Idiomas
+    - fas fa-cog: Configuración
+    - fas fa-play: Reels creados
+    - fas fa-star: Avatar destacado
+
+Acciones disponibles:
+    - Ver detalles del avatar
+    - Configurar acceso para miembros
+    - Ver estadísticas de uso
+    - Solicitar avatar personalizado
+    - Marcar como favorito
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Gestión de Avatars - Productor - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con layout fluido -->
+<div class="container-fluid">
+    <!-- Header de la página con navegación -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <!-- Título principal con icono representativo -->
+            <h1 class="mb-1"><i class="fas fa-user-circle text-primary"></i> Gestión de Avatars</h1>
+            <!-- Breadcrumb de navegación -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('producer.dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active">Avatars</li>
+                </ol>
+            </nav>
+        </div>
+        
+        <!-- Botón para solicitar nuevo avatar -->
+        <a href="{{ url_for('producer.request_avatar') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Solicitar Avatar
+        </a>
+    </div>
+
+    <!-- Fila de estadísticas de avatars -->
+    <div class="row g-3 mb-4">
+        <!-- Estadística: Total de avatars disponibles -->
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-circle fa-3x me-3"></i>
+                        <div>
+                            <h3 class="mb-0">{{ available_avatars|length if available_avatars else 0 }}</h3>
+                            <p class="mb-0">Avatars Disponibles</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadística: Avatars más usados -->
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-star fa-3x me-3"></i>
+                        <div>
+                            <h3 class="mb-0">{{ avatar_stats.most_used_count if avatar_stats else 0 }}</h3>
+                            <p class="mb-0">Más Populares</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadística: Idiomas disponibles -->
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-globe fa-3x me-3"></i>
+                        <div>
+                            <h3 class="mb-0">{{ supported_languages|length if supported_languages else 0 }}</h3>
+                            <p class="mb-0">Idiomas</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadística: Reels creados este mes -->
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-play fa-3x me-3"></i>
+                        <div>
+                            <h3 class="mb-0">{{ avatar_stats.monthly_reels if avatar_stats else 0 }}</h3>
+                            <p class="mb-0">Reels Este Mes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de filtros y búsqueda -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <!-- Filtro por idioma -->
+                <div class="col-md-3">
+                    <label class="form-label">Idioma</label>
+                    <select name="language" class="form-select">
+                        <option value="">Todos los idiomas</option>
+                        {% if supported_languages %}
+                            {% for language in supported_languages %}
+                                <option value="{{ language.code }}" 
+                                        {{ 'selected' if request.args.get('language') == language.code }}>
+                                    {{ language.name }}
+                                </option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+
+                <!-- Filtro por género -->
+                <div class="col-md-3">
+                    <label class="form-label">Género</label>
+                    <select name="gender" class="form-select">
+                        <option value="">Todos los géneros</option>
+                        <option value="male" {{ 'selected' if request.args.get('gender') == 'male' }}>
+                            Masculino
+                        </option>
+                        <option value="female" {{ 'selected' if request.args.get('gender') == 'female' }}>
+                            Femenino
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Filtro por estado -->
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos los estados</option>
+                        <option value="active" {{ 'selected' if request.args.get('status') == 'active' }}>
+                            Activo
+                        </option>
+                        <option value="inactive" {{ 'selected' if request.args.get('status') == 'inactive' }}>
+                            Inactivo
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Botón de filtro -->
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Galería de avatars -->
+    {% if available_avatars %}
+        <!-- Grid de avatars en tarjetas -->
+        <div class="row g-4">
+            {% for avatar in available_avatars %}
+            <div class="col-lg-4 col-md-6">
+                <!-- Card del avatar con información completa -->
+                <div class="card h-100 shadow-sm">
+                    <!-- Imagen del avatar -->
+                    <div class="position-relative">
+                        {% if avatar.avatar_url %}
+                            <img src="{{ avatar.avatar_url }}" class="card-img-top" 
+                                 style="height: 250px; object-fit: cover;" alt="{{ avatar.name }}">
+                        {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                 style="height: 250px;">
+                                <i class="fas fa-user-circle fa-5x text-muted"></i>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Badge de estado en la esquina -->
+                        <span class="position-absolute top-0 end-0 m-2 badge bg-{{ 'success' if avatar.status == 'active' else 'danger' }}">
+                            {{ avatar.status.title() }}
+                        </span>
+                        
+                        <!-- Badge de popularidad si es muy usado -->
+                        {% if avatar.usage_count and avatar.usage_count > 10 %}
+                            <span class="position-absolute top-0 start-0 m-2 badge bg-warning">
+                                <i class="fas fa-star"></i> Popular
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Información del avatar -->
+                    <div class="card-body d-flex flex-column">
+                        <!-- Nombre y descripción -->
+                        <h5 class="card-title">{{ avatar.name }}</h5>
+                        {% if avatar.description %}
+                            <p class="card-text text-muted">{{ avatar.description[:100] }}{% if avatar.description|length > 100 %}...{% endif %}</p>
+                        {% endif %}
+
+                        <!-- Características del avatar -->
+                        <div class="mb-3">
+                            <!-- Idioma -->
+                            <span class="badge bg-primary me-1">
+                                <i class="fas fa-globe"></i> {{ avatar.language }}
+                            </span>
+                            
+                            <!-- Género -->
+                            <span class="badge bg-info me-1">
+                                <i class="fas fa-{{ 'mars' if avatar.gender == 'male' else 'venus' }}"></i> 
+                                {{ avatar.gender.title() }}
+                            </span>
+                            
+                            <!-- Edad aparente si está disponible -->
+                            {% if avatar.age_range %}
+                                <span class="badge bg-secondary">
+                                    {{ avatar.age_range }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Estadísticas de uso -->
+                        <div class="row text-center mb-3">
+                            <div class="col-6">
+                                <strong class="text-primary">{{ avatar.reels_count or 0 }}</strong>
+                                <br><small class="text-muted">Reels</small>
+                            </div>
+                            <div class="col-6">
+                                <strong class="text-success">{{ avatar.team_members_with_access or 0 }}</strong>
+                                <br><small class="text-muted">Miembros</small>
+                            </div>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="mt-auto">
+                            <div class="d-grid gap-2">
+                                <!-- Ver detalles del avatar -->
+                                <a href="{{ url_for('producer.avatar_detail', avatar_id=avatar.id) }}" 
+                                   class="btn btn-primary">
+                                    <i class="fas fa-eye"></i> Ver Detalles
+                                </a>
+                                
+                                <!-- Botones secundarios -->
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                            onclick="showUsageStats({{ avatar.id }})">
+                                        <i class="fas fa-chart-bar"></i> Estadísticas
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                            onclick="manageAccess({{ avatar.id }})">
+                                        <i class="fas fa-users"></i> Acceso
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Estado vacío cuando no hay avatars -->
+        <div class="text-center py-5">
+            <i class="fas fa-user-circle fa-5x text-muted mb-4"></i>
+            <h3 class="text-muted">No hay avatars disponibles</h3>
+            <p class="text-muted mb-4">Solicita tu primer avatar para comenzar a crear contenido.</p>
+            <a href="{{ url_for('producer.request_avatar') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Solicitar Primer Avatar
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal de estadísticas de uso -->
+<div class="modal fade" id="usageStatsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Estadísticas de Uso del Avatar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="statsContent">
+                    <!-- El contenido se cargará dinámicamente -->
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de gestión de acceso -->
+<div class="modal fade" id="accessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Gestionar Acceso al Avatar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="accessContent">
+                    <!-- El contenido se cargará dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="saveAccessChanges()">
+                    Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para funcionalidad dinámica -->
+<script>
+let currentAvatarId = null;
+
+// Mostrar estadísticas de uso de avatar
+function showUsageStats(avatarId) {
+    currentAvatarId = avatarId;
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('usageStatsModal'));
+    modal.show();
+    
+    // Cargar estadísticas via AJAX
+    fetch(`/producer/avatar/${avatarId}/stats`)
+        .then(response => response.json())
+        .then(data => {
+            const content = `
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h3>${data.total_reels}</h3>
+                                <p class="mb-0">Total Reels</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h3>${data.this_month}</h3>
+                                <p class="mb-0">Este Mes</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <h6>Uso por Miembro:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Miembro</th>
+                                        <th>Reels</th>
+                                        <th>Último Uso</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.usage_by_member.map(member => `
+                                        <tr>
+                                            <td>${member.name}</td>
+                                            <td><span class="badge bg-info">${member.reels_count}</span></td>
+                                            <td>${member.last_used || 'Nunca'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('statsContent').innerHTML = content;
+        })
+        .catch(error => {
+            document.getElementById('statsContent').innerHTML = 
+                '<div class="alert alert-danger">Error al cargar las estadísticas</div>';
+        });
+}
+
+// Gestionar acceso de miembros al avatar
+function manageAccess(avatarId) {
+    currentAvatarId = avatarId;
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('accessModal'));
+    modal.show();
+    
+    // Cargar lista de miembros y sus permisos
+    fetch(`/producer/avatar/${avatarId}/access`)
+        .then(response => response.json())
+        .then(data => {
+            let content = '<div class="list-group">';
+            data.team_members.forEach(member => {
+                content += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${member.full_name}</strong>
+                            <br><small class="text-muted">@${member.username}</small>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" 
+                                   id="access_${member.id}" value="${member.id}"
+                                   ${member.has_access ? 'checked' : ''}>
+                        </div>
+                    </div>
+                `;
+            });
+            content += '</div>';
+            document.getElementById('accessContent').innerHTML = content;
+        });
+}
+
+// Guardar cambios de acceso
+function saveAccessChanges() {
+    const checkboxes = document.querySelectorAll('#accessContent input[type="checkbox"]');
+    const accessList = [];
+    
+    checkboxes.forEach(checkbox => {
+        accessList.push({
+            member_id: checkbox.value,
+            has_access: checkbox.checked
+        });
+    });
+    
+    fetch(`/producer/avatar/${currentAvatarId}/access`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ access_list: accessList })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('accessModal')).hide();
+            // Opcional: mostrar notificación de éxito
+        } else {
+            alert('Error al guardar los cambios');
+        }
+    });
+}
+</script>
+{% endblock %}

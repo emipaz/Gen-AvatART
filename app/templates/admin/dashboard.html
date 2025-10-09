@@ -1,41 +1,124 @@
+{#
+Template del dashboard administrativo para Gem-AvatART.
+
+Este template implementa el panel principal de administración con sidebar
+de navegación, tarjetas de estadísticas y actividad reciente. Diseñado
+para proporcionar una vista general completa del estado de la plataforma.
+
+El template incluye:
+    - Sidebar de navegación con enlaces a todas las secciones admin
+    - Tarjetas de estadísticas principales con iconografía colorida
+    - Sección de actividad reciente con usuarios nuevos
+    - Panel de elementos pendientes de aprobación
+    - Layout fluid para aprovechamiento completo del ancho
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between, align-items-center
+    - Sidebar: nav, nav-link, flex-column, bg-light, px-0
+    - Cards: card, card-body, card-header, card-text
+    - Lists: list-group, list-group-flush, list-group-item
+    - Colors: text-white, bg-primary, bg-success, bg-info, bg-warning, text-muted
+    - Typography: align-self-center
+    - Spacing: p-*, mb-*, fa-2x
+
+Variables Jinja utilizadas:
+    - current_user.full_name: Nombre del administrador autenticado
+    - stats.total_users: Total de usuarios registrados
+    - stats.total_producers: Total de productores activos
+    - stats.total_avatars: Total de avatares en el sistema
+    - stats.total_reels: Total de reels creados
+    - recent_users: Lista de usuarios recién registrados
+    - pending_avatars: Lista de avatares pendientes de aprobación
+    - pending_reels: Lista de reels pendientes de aprobación
+
+Rutas Flask referenciadas (url_for):
+    - admin.dashboard: Dashboard principal (enlace activo)
+    - admin.users: Gestión de usuarios
+    - admin.producers: Gestión de productores
+    - admin.avatars: Gestión de avatares
+    - admin.reels: Gestión de reels
+    - admin.commissions: Gestión de comisiones
+
+Iconografía Font Awesome:
+    - fas fa-tachometer-alt: Dashboard e icono principal
+    - fas fa-home: Enlace dashboard en sidebar
+    - fas fa-users: Usuarios y estadística
+    - fas fa-industry: Productores
+    - fas fa-user-circle: Avatares
+    - fas fa-video: Reels
+    - fas fa-dollar-sign: Comisiones
+    - fas fa-clock: Actividad reciente
+    - fas fa-exclamation-triangle: Elementos pendientes
+    - fas fa-user: Usuario actual
+
+Estilos inline utilizados:
+    - min-height: calc(100vh - 120px): Altura completa del sidebar
+
+Métodos Jinja utilizados:
+    - user.role.value.title(): Capitalización del rol de usuario
+    - user.created_at.strftime('%d/%m/%Y'): Formato de fecha DD/MM/AAAA
+    - pending_avatars|length: Filtro length para contar elementos
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Panel de Administración - Gem-AvatART{% endblock %}
 
 {% block content %}
+<<!-- Contenedor fluid para aprovechamiento completo del ancho -->
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
+        
+        <!-- ===== SIDEBAR DE NAVEGACIÓN ADMINISTRATIVA ===== -->
         <div class="col-md-3 col-lg-2 px-0">
+            <!-- Sidebar con altura calculada para ocupar viewport completo -->
             <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+                
+                <!-- Header del sidebar con título del panel -->
                 <div class="p-3">
                     <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
                 </div>
+                
+                <!-- Navegación vertical con enlaces a todas las secciones -->
                 <nav class="nav flex-column">
+                    <!-- Dashboard (enlace activo) -->
                     <a class="nav-link active" href="{{ url_for('admin.dashboard') }}">
                         <i class="fas fa-home"></i> Dashboard
                     </a>
+                    
+                    <!-- Gestión de usuarios -->
                     <a class="nav-link" href="{{ url_for('admin.users') }}">
                         <i class="fas fa-users"></i> Usuarios
                     </a>
+                    
+                    <!-- Gestión de productores -->
                     <a class="nav-link" href="{{ url_for('admin.producers') }}">
                         <i class="fas fa-industry"></i> Productores
                     </a>
+                    
+                    <!-- Gestión de avatares -->
                     <a class="nav-link" href="{{ url_for('admin.avatars') }}">
                         <i class="fas fa-user-circle"></i> Avatars
                     </a>
+                    
+                    <!-- Gestión de reels -->
                     <a class="nav-link" href="{{ url_for('admin.reels') }}">
                         <i class="fas fa-video"></i> Reels
                     </a>
+                    
+                    <!-- Gestión de comisiones -->
                     <a class="nav-link" href="{{ url_for('admin.commissions') }}">
                         <i class="fas fa-dollar-sign"></i> Comisiones
                     </a>
                 </nav>
+                
             </div>
         </div>
 
-        <!-- Main Content -->
+        <!-- ===== CONTENIDO PRINCIPAL DEL DASHBOARD ===== -->
         <div class="col-md-9 col-lg-10">
+            
+            <!-- Header principal con título y usuario actual -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1><i class="fas fa-tachometer-alt"></i> Dashboard Administrativo</h1>
                 <div class="text-muted">
@@ -43,8 +126,10 @@
                 </div>
             </div>
 
-            <!-- Stats Cards -->
+            <!-- ===== TARJETAS DE ESTADÍSTICAS PRINCIPALES ===== -->
             <div class="row mb-4">
+                
+                <!-- Estadística: Total de usuarios -->
                 <div class="col-md-3">
                     <div class="card text-white bg-primary">
                         <div class="card-body">
@@ -61,6 +146,7 @@
                     </div>
                 </div>
 
+                <!-- Estadística: Total de productores -->
                 <div class="col-md-3">
                     <div class="card text-white bg-success">
                         <div class="card-body">
@@ -77,6 +163,7 @@
                     </div>
                 </div>
 
+                <!-- Estadística: Total de avatares -->
                 <div class="col-md-3">
                     <div class="card text-white bg-info">
                         <div class="card-body">
@@ -93,6 +180,7 @@
                     </div>
                 </div>
 
+                <!-- Estadística: Total de reels -->
                 <div class="col-md-3">
                     <div class="card text-white bg-warning">
                         <div class="card-body">
@@ -108,16 +196,20 @@
                         </div>
                     </div>
                 </div>
+                
             </div>
 
-            <!-- Recent Activity -->
+            <!-- ===== SECCIÓN DE ACTIVIDAD RECIENTE Y PENDIENTES ===== -->
             <div class="row">
+                
+                <!-- Panel de actividad reciente -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
                             <h5><i class="fas fa-clock"></i> Actividad Reciente</h5>
                         </div>
                         <div class="card-body">
+                            <!-- Lista condicional de usuarios recientes -->
                             {% if recent_users %}
                                 <h6>Usuarios Recientes</h6>
                                 <ul class="list-group list-group-flush">
@@ -140,12 +232,14 @@
                     </div>
                 </div>
 
+                <!-- Panel de elementos pendientes de aprobación -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
                             <h5><i class="fas fa-exclamation-triangle"></i> Elementos Pendientes</h5>
                         </div>
                         <div class="card-body">
+                            <!-- Contadores condicionales de elementos pendientes -->
                             {% if pending_avatars or pending_reels %}
                                 {% if pending_avatars %}
                                     <h6>Avatars Pendientes: {{ pending_avatars|length }}</h6>
@@ -159,6 +253,7 @@
                         </div>
                     </div>
                 </div>
+                
             </div>
         </div>
     </div>

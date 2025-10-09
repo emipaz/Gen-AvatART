@@ -1,3 +1,84 @@
+{#
+Template de gestión de usuarios para administración de Gem-AvatART.
+
+Este template implementa la interfaz completa de administración de usuarios con
+filtrado avanzado, paginación y acciones de gestión. Permite a los administradores
+visualizar, filtrar, aprobar y gestionar todos los usuarios de la plataforma.
+
+El template incluye:
+    - Sidebar de navegación administrativa consistente
+    - Sistema de filtros por rol, estado y búsqueda de texto
+    - Tabla responsive con información completa de usuarios
+    - Badges de estado con colores semánticos
+    - Acciones contextuales (aprobar, suspender, ver detalles)
+    - Paginación completa con navegación de páginas
+    - Estados vacíos informativos
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between, align-items-center
+    - Sidebar: nav, nav-link, flex-column, bg-light, px-0
+    - Cards: card, card-body, card-header
+    - Forms: form-label, form-select, form-control, btn-group
+    - Table: table, table-responsive, table-hover, thead, tbody
+    - Badges: badge, bg-success, bg-warning, bg-danger, bg-primary, bg-info, bg-secondary
+    - Pagination: pagination, page-item, page-link, justify-content-center
+    - Images: rounded-circle, me-2
+    - Typography: text-muted, text-center
+    - Spacing: mb-*, py-*, g-3, fa-2x, fa-3x
+
+Variables Jinja utilizadas:
+    - users: Objeto de paginación con lista de usuarios
+    - users.total: Total de usuarios encontrados
+    - users.items: Lista de usuarios de la página actual
+    - users.pages: Número total de páginas
+    - users.has_prev/has_next: Navegación de paginación
+    - request.args: Parámetros de filtrado actuales
+
+Campos del formulario de filtros (name attributes):
+    - role: Filtro por rol de usuario (admin, producer, subproducer, affiliate)
+    - status: Filtro por estado (pending, active, suspended, rejected)
+    - search: Búsqueda de texto en nombre, email, username
+    - page: Número de página actual para paginación
+
+Rutas Flask referenciadas (url_for):
+    - admin.dashboard: Dashboard principal
+    - admin.users: Gestión de usuarios (enlace activo)
+    - admin.producers, admin.avatars, admin.reels, admin.commissions: Otras secciones
+    - admin.create_producer: Crear nuevo productor
+    - admin.user_detail: Ver detalles de usuario específico
+    - admin.approve_user: Aprobar usuario pendiente
+    - admin.suspend_user: Suspender usuario activo
+
+Iconografía Font Awesome:
+    - fas fa-tachometer-alt: Admin panel
+    - fas fa-users: Gestión de usuarios e icono principal
+    - fas fa-home, fas fa-industry, fas fa-user-circle, fas fa-video, fas fa-dollar-sign: Navegación
+    - fas fa-plus: Crear nuevo
+    - fas fa-search: Buscar
+    - fas fa-eye: Ver detalles
+    - fas fa-check: Aprobar usuario
+    - fas fa-ban: Suspender usuario
+    - fas fa-user-circle: Avatar placeholder
+
+Métodos Jinja utilizados:
+    - user.role.value.title(): Capitalización del rol
+    - user.status.value.title(): Capitalización del estado
+    - user.created_at.strftime(): Formateo de fechas
+    - request.args.get(): Obtener parámetros de filtro actuales
+    - users.iter_pages(): Iteración para paginación
+
+Estados de usuario manejados:
+    - Roles: admin (danger), producer (primary), subproducer (success), affiliate (info)
+    - Estados: active (success), pending (warning), suspended (danger), rejected (secondary)
+
+Estilos inline utilizados:
+    - width: 40px; height: 40px; object-fit: cover: Avatares de usuario
+    - min-height: calc(100vh - 120px): Altura del sidebar
+
+Funcionalidades JavaScript:
+    - onclick="return confirm()": Confirmación para acciones destructivas
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Usuarios - Admin - Gem-AvatART{% endblock %}

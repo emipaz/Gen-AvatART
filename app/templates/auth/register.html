@@ -1,19 +1,93 @@
-{% extends "base/layout.html" %}
+{#
+Template de registro de usuarios para Gem-AvatART.
+
+Este template implementa el formulario completo de registro con validación
+en tiempo real y diseño responsive. Incluye campos para información personal,
+credenciales y validaciones JavaScript para mejorar la experiencia de usuario.
+
+El template incluye:
+    - Formulario completo con datos personales y credenciales
+    - Validación JavaScript en tiempo real para username y email únicos
+    - Validación de coincidencia de contraseñas
+    - Grid responsive para organización de campos
+    - Información sobre proceso de aprobación para usuarios
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, justify-content-center, d-grid
+    - Components: card, card-header, card-body, card-footer, form-control, btn, alert
+    - Form: form-label, form-text
+    - Utilities: py-*, mb-*, shadow, text-center, text-muted, bg-primary, text-white
+    - Validation: is-invalid, is-valid (agregadas por JavaScript)
+
+IDs de elementos:
+    - first_name: Campo de nombre
+    - last_name: Campo de apellido
+    - email: Campo de correo electrónico
+    - username: Campo de nombre de usuario (único)
+    - phone: Campo de teléfono (opcional)
+    - password: Campo de contraseña
+    - confirm_password: Campo de confirmación de contraseña
+
+Campos del formulario (name attributes):
+    - first_name: Nombre del usuario (requerido)
+    - last_name: Apellido del usuario (requerido)
+    - email: Dirección de correo (requerido, único)
+    - username: Nombre de usuario (requerido, único)
+    - phone: Número de teléfono (opcional)
+    - password: Contraseña (requerido, mín. 6 caracteres)
+    - confirm_password: Confirmación de contraseña (requerido)
+
+Rutas Flask referenciadas (url_for):
+    - auth.login: Enlace hacia formulario de inicio de sesión
+
+APIs JavaScript utilizadas:
+    - /auth/api/validate-username: Validación de username único
+    - /auth/api/validate-email: Validación de email único
+
+Iconografía Font Awesome:
+    - fas fa-user-plus: Icono de registro de usuario
+    - fas fa-info-circle: Icono informativo
+
+Validación HTML5:
+    - type="email": Validación automática de formato email
+    - type="tel": Formato de teléfono
+    - required: Campos obligatorios
+
+Funcionalidades JavaScript:
+    - Validación en tiempo real de username único via fetch API
+    - Validación en tiempo real de email único via fetch API
+    - Validación de coincidencia de contraseñas en tiempo real
+    - Clases Bootstrap de validación (is-valid/is-invalid)
+#}
+
+{% extends "base.html" %}
 
 {% block title %}Registro - Gem-AvatART{% endblock %}
 
 {% block content %}
+<<!-- Contenedor principal centrado con padding vertical -->
 <div class="container py-5">
+    <!-- Row centrado para el formulario de registro -->
     <div class="row justify-content-center">
+        <!-- Columna más ancha para acomodar más campos -->
         <div class="col-md-8 col-lg-6">
+            
+            <!-- Card principal del formulario con sombra -->
             <div class="card shadow">
+                
+                <!-- Header del card con branding y título -->
                 <div class="card-header bg-primary text-white text-center">
                     <h4 class="mb-0">
                         <i class="fas fa-user-plus"></i> Crear Cuenta
                     </h4>
                 </div>
+                
+                <!-- Cuerpo del card con formulario completo -->
                 <div class="card-body">
+                    <!-- Formulario POST para registro -->
                     <form method="POST">
+                        
+                        <!-- Grid de 2 columnas para nombre y apellido -->
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="first_name" class="form-label">Nombre *</label>
@@ -25,22 +99,26 @@
                             </div>
                         </div>
                         
+                        <!-- Campo de email con validación única -->
                         <div class="mb-3">
                             <label for="email" class="form-label">Email *</label>
                             <input type="email" class="form-control" id="email" name="email" required>
                         </div>
                         
+                        <!-- Campo de username con validación única y ayuda -->
                         <div class="mb-3">
                             <label for="username" class="form-label">Nombre de Usuario *</label>
                             <input type="text" class="form-control" id="username" name="username" required>
                             <div class="form-text">Será visible para otros usuarios</div>
                         </div>
                         
+                        <!-- Campo de teléfono opcional -->
                         <div class="mb-3">
                             <label for="phone" class="form-label">Teléfono</label>
                             <input type="tel" class="form-control" id="phone" name="phone">
                         </div>
                         
+                        <!-- Grid de 2 columnas para contraseñas -->
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="password" class="form-label">Contraseña *</label>
@@ -53,6 +131,7 @@
                             </div>
                         </div>
                         
+                        <!-- Alerta informativa sobre el proceso de aprobación -->
                         <div class="mb-3">
                             <div class="alert alert-info">
                                 <small>
@@ -62,19 +141,24 @@
                             </div>
                         </div>
                         
+                        <!-- Botón de envío con grid completo -->
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-user-plus"></i> Crear Cuenta
                             </button>
                         </div>
+                        
                     </form>
                 </div>
+                
+                <!-- Footer del card con enlace de login -->
                 <div class="card-footer text-center">
                     <small class="text-muted">
                         ¿Ya tienes cuenta? 
                         <a href="{{ url_for('auth.login') }}">Inicia sesión aquí</a>
                     </small>
                 </div>
+                
             </div>
         </div>
     </div>

@@ -1,32 +1,162 @@
+{#}
+Template de gestión de reels para administradores en Gem-AvatART.
+
+Este template implementa la interfaz completa de administración de reels donde
+los administradores pueden visualizar, filtrar y gestionar todos los reels
+creados en el sistema. Incluye funcionalidades de filtrado por estado,
+visualización de thumbnails, información del creador y avatar utilizado.
+
+El template incluye:
+    - Panel de navegación lateral de administrador
+    - Sistema de filtrado por estado de procesamiento
+    - Tabla responsive con thumbnails y información detallada
+    - Enlaces a detalles de usuarios y avatars relacionados
+    - Acciones para ver y reproducir videos generados
+    - Sistema de paginación para grandes volúmenes de contenido
+    - Estados de procesamiento con badges codificados por color
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-md-*, col-lg-*, px-0, d-flex, justify-content-between
+    - Navigation: nav, nav-link, flex-column, active
+    - Cards: card, card-header, card-body
+    - Tables: table, table-responsive, table-hover, thead, tbody
+    - Forms: form-label, form-select, btn, btn-group
+    - Images: rounded, me-2 (margin-end)
+    - Badges: badge, bg-success, bg-primary, bg-warning, bg-info, bg-danger, bg-secondary
+    - Pagination: pagination, page-item, page-link, justify-content-center
+    - Typography: text-muted, text-center
+    - Spacing: mb-*, py-*, g-3
+    - Flexbox: align-items-center, justify-content-center
+
+Variables Jinja utilizadas:
+    - reels: Objeto de paginación con reels
+    - reels.items: Lista de reels de la página actual
+    - reels.total: Número total de reels
+    - reels.pages: Número total de páginas
+    - reel: Objeto individual de reel
+    - request.args: Parámetros de filtrado de la URL
+
+Propiedades de reel utilizadas:
+    - reel.title: Título del reel
+    - reel.description: Descripción del reel
+    - reel.thumbnail_url: URL del thumbnail/preview
+    - reel.video_url: URL del video generado
+    - reel.creator: Usuario que creó el reel
+    - reel.avatar: Avatar utilizado en el reel
+    - reel.status: Estado actual del procesamiento
+    - reel.duration: Duración del video en segundos
+    - reel.created_at: Fecha de creación
+
+Rutas Flask referenciadas (url_for):
+    - admin.dashboard: Panel principal de administrador
+    - admin.users: Gestión de usuarios
+    - admin.producers: Gestión de productores
+    - admin.avatars: Gestión de avatars
+    - admin.reels: Gestión de reels (actual)
+    - admin.commissions: Gestión de comisiones
+    - admin.user_detail: Detalle de usuario específico
+    - admin.avatar_detail: Detalle de avatar específico
+
+Estados de reel manejados:
+    - draft: Borrador (badge secondary)
+    - pending: Pendiente de procesamiento (badge warning)
+    - processing: Procesando video (badge info)
+    - completed: Procesamiento completado (badge primary)
+    - published: Publicado y disponible (badge success)
+    - failed: Error en procesamiento (badge danger)
+
+Funcionalidades de visualización:
+    - Thumbnails con fallback a icono
+    - Truncado de descripciones largas
+    - Formateo de duración de video
+    - Enlaces externos para reproducir videos
+
+Iconografía Font Awesome:
+    - fas fa-tachometer-alt: Panel de administrador
+    - fas fa-video: Reels y videos
+    - fas fa-filter: Filtrar resultados
+    - fas fa-times: Limpiar filtros
+    - fas fa-eye: Ver detalles
+    - fas fa-play: Reproducir video
+    - fas fa-home: Dashboard
+    - fas fa-users: Usuarios
+    - fas fa-industry: Productores
+    - fas fa-user-circle: Avatars
+    - fas fa-dollar-sign: Comisiones
+
+Estilos inline utilizados:
+    - width: 60px; height: 40px: Tamaño fijo para thumbnails
+    - object-fit: cover: Recorte proporcional de imágenes
+    - min-height: calc(): Altura mínima de sidebar
+
+Filtros de búsqueda:
+    - status: Filtro por estado de procesamiento
+    - Parámetros GET preservados en paginación
+
+Funcionalidades de paginación:
+    - reels.has_prev: Tiene página anterior
+    - reels.has_next: Tiene página siguiente
+    - reels.prev_num: Número de página anterior
+    - reels.next_num: Número de página siguiente
+    - reels.iter_pages(): Iterador de números de página
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Reels - Admin - Gem-AvatART{% endblock %}
 
 {% block content %}
+<!-- Contenedor principal con layout fluido para máximo aprovechamiento del ancho -->
+<!-- container-fluid utiliza toda la anchura disponible de la pantalla -->
 <div class="container-fluid">
+    <!-- Fila principal que organiza sidebar y contenido en columnas -->
     <div class="row">
-        <!-- Sidebar -->
+        <!-- Sidebar de navegación administrativa -->
+        <!-- col-md-3 ocupa 3/12 del ancho en pantallas medianas -->
+        <!-- col-lg-2 ocupa 2/12 del ancho en pantallas grandes para optimización -->
+        <!-- px-0 elimina padding horizontal para diseño edge-to-edge -->
         <div class="col-md-3 col-lg-2 px-0">
+            <!-- Contenedor de la sidebar con styling y altura dinámica -->
+            <!-- bg-light aplica fondo gris claro para diferenciación -->
+            <!-- min-height calc() asegura altura completa menos header/footer -->
             <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+                <!-- Header de la sidebar con título identificativo -->
+                <!-- p-3 aplica padding de 1rem en todas las direcciones -->
                 <div class="p-3">
+                    <!-- Título con icono dashboard para contexto administrativo -->
                     <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
                 </div>
+                
+                <!-- Navegación vertical con enlaces a todas las secciones -->
+                <!-- nav con flex-column organiza los enlaces en disposición vertical -->
                 <nav class="nav flex-column">
+                    <!-- Enlace al dashboard principal del administrador -->
                     <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
                         <i class="fas fa-home"></i> Dashboard
                     </a>
+                    
+                    <!-- Enlace a gestión completa de usuarios -->
                     <a class="nav-link" href="{{ url_for('admin.users') }}">
                         <i class="fas fa-users"></i> Usuarios
                     </a>
+                    
+                    <!-- Enlace a gestión de productores y subproductores -->
                     <a class="nav-link" href="{{ url_for('admin.producers') }}">
                         <i class="fas fa-industry"></i> Productores
                     </a>
+                    
+                    <!-- Enlace a gestión de avatars del sistema -->
                     <a class="nav-link" href="{{ url_for('admin.avatars') }}">
                         <i class="fas fa-user-circle"></i> Avatars
                     </a>
+                    
+                    <!-- Enlace actual a gestión de reels -->
+                    <!-- active indica la sección actual con estilo destacado -->
                     <a class="nav-link active" href="{{ url_for('admin.reels') }}">
                         <i class="fas fa-video"></i> Reels
                     </a>
+                    
+                    <!-- Enlace a gestión de comisiones y pagos -->
                     <a class="nav-link" href="{{ url_for('admin.commissions') }}">
                         <i class="fas fa-dollar-sign"></i> Comisiones
                     </a>
@@ -34,34 +164,77 @@
             </div>
         </div>
 
-        <!-- Main Content -->
+        <!-- Área de contenido principal para gestión de reels -->
+        <!-- col-md-9 ocupa 9/12 del ancho en pantallas medianas -->
+        <!-- col-lg-10 ocupa 10/12 del ancho en pantallas grandes -->
         <div class="col-md-9 col-lg-10">
+            <!-- Header de la página con título descriptivo -->
+            <!-- d-flex con justify-content-between distribuye elementos en extremos -->
+            <!-- align-items-center centra verticalmente el contenido -->
+            <!-- mb-4 aplica margen inferior de 1.5rem para separación -->
             <div class="d-flex justify-content-between align-items-center mb-4">
+                <!-- Título principal con icono representativo de video -->
                 <h1><i class="fas fa-video"></i> Gestión de Reels</h1>
             </div>
 
-            <!-- Filtros -->
+            <!-- Sección de filtros de búsqueda y organización -->
+            <!-- Card para contener y organizar los controles de filtrado -->
+            <!-- mb-4 aplica margen inferior para separar de la tabla principal -->
             <div class="card mb-4">
+                <!-- Cuerpo del card con formulario de filtros -->
                 <div class="card-body">
+                    <!-- Formulario de filtros con método GET para parámetros URL -->
+                    <!-- row con g-3 aplica gap de 1rem entre elementos -->
                     <form method="GET" class="row g-3">
+                        <!-- Columna para selector de estado -->
+                        <!-- col-md-3 ocupa 3/12 del ancho en pantallas medianas -->
                         <div class="col-md-3">
+                            <!-- Label descriptivo para el filtro de estado -->
                             <label class="form-label">Estado</label>
+                            
+                            <!-- Select para filtrar reels por estado de procesamiento -->
+                            <!-- form-select aplica estilos Bootstrap para selects -->
                             <select name="status" class="form-select">
+                                <!-- Opción por defecto para mostrar todos los reels -->
                                 <option value="">Todos los estados</option>
+                                
+                                <!-- Opción para reels en borrador -->
+                                <!-- selected condicional basado en parámetro GET actual -->
                                 <option value="draft" {{ 'selected' if request.args.get('status') == 'draft' }}>Borrador</option>
+                                
+                                <!-- Opción para reels pendientes de procesamiento -->
                                 <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>Pendiente</option>
+                                
+                                <!-- Opción para reels en proceso de generación -->
                                 <option value="processing" {{ 'selected' if request.args.get('status') == 'processing' }}>Procesando</option>
+                                
+                                <!-- Opción para reels completados -->
                                 <option value="completed" {{ 'selected' if request.args.get('status') == 'completed' }}>Completado</option>
+                                
+                                <!-- Opción para reels publicados -->
                                 <option value="published" {{ 'selected' if request.args.get('status') == 'published' }}>Publicado</option>
+                                
+                                <!-- Opción para reels con errores de procesamiento -->
                                 <option value="failed" {{ 'selected' if request.args.get('status') == 'failed' }}>Error</option>
                             </select>
                         </div>
+                        
+                        <!-- Columna para botones de acción del filtro -->
                         <div class="col-md-3">
+                            <!-- Label vacío para mantener alineación con otros campos -->
                             <label class="form-label">&nbsp;</label>
+                            
+                            <!-- Contenedor para botones de filtro y limpieza -->
                             <div>
+                                <!-- Botón para aplicar filtros seleccionados -->
+                                <!-- btn-primary usa el color principal del tema -->
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-filter"></i> Filtrar
                                 </button>
+                                
+                                <!-- Enlace para limpiar todos los filtros -->
+                                <!-- btn-outline-secondary usa borde sin fondo sólido -->
+                                <!-- Redirige a la misma página sin parámetros de filtro -->
                                 <a href="{{ url_for('admin.reels') }}" class="btn btn-outline-secondary">
                                     <i class="fas fa-times"></i> Limpiar
                                 </a>
@@ -71,79 +244,161 @@
                 </div>
             </div>
 
-            <!-- Lista de Reels -->
+            <!-- Sección principal de lista de reels del sistema -->
+            <!-- Card que contiene la tabla completa y controles de navegación -->
             <div class="card">
+                <!-- Header del card con información de conteo -->
                 <div class="card-header">
+                    <!-- Título con número total de reels incluyendo todas las páginas -->
+                    <!-- reels.total muestra el conteo completo sin filtros de paginación -->
                     <h5>Reels ({{ reels.total }} total)</h5>
                 </div>
+                
+                <!-- Cuerpo del card con tabla de datos o mensaje de estado vacío -->
                 <div class="card-body">
+                    <!-- Condicional para mostrar contenido solo si existen reels -->
                     {% if reels.items %}
+                        <!-- Contenedor responsive para tabla en dispositivos móviles -->
+                        <!-- table-responsive permite scroll horizontal cuando sea necesario -->
                         <div class="table-responsive">
+                            <!-- Tabla principal con efecto hover en filas -->
+                            <!-- table-hover resalta filas al pasar el cursor -->
                             <table class="table table-hover">
+                                <!-- Header de la tabla con columnas descriptivas -->
                                 <thead>
                                     <tr>
+                                        <!-- Columna para información del reel (título, thumbnail) -->
                                         <th>Reel</th>
+                                        
+                                        <!-- Columna para información del creador -->
                                         <th>Creador</th>
+                                        
+                                        <!-- Columna para avatar utilizado en el reel -->
                                         <th>Avatar</th>
+                                        
+                                        <!-- Columna para estado actual de procesamiento -->
                                         <th>Estado</th>
+                                        
+                                        <!-- Columna para duración del video generado -->
                                         <th>Duración</th>
+                                        
+                                        <!-- Columna para fecha de creación -->
                                         <th>Fecha</th>
+                                        
+                                        <!-- Columna para acciones disponibles (ver, reproducir) -->
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
+                                
+                                <!-- Cuerpo de la tabla con datos de reels -->
                                 <tbody>
+                                    <!-- Iteración sobre todos los reels de la página actual -->
                                     {% for reel in reels.items %}
                                     <tr>
+                                        <!-- Celda con información visual y textual del reel -->
                                         <td>
+                                            <!-- Contenedor flex para organizar thumbnail y texto -->
+                                            <!-- d-flex align-items-center alinea elementos horizontalmente -->
                                             <div class="d-flex align-items-center">
+                                                <!-- Condicional para mostrar thumbnail o placeholder -->
                                                 {% if reel.thumbnail_url %}
+                                                    <!-- Imagen thumbnail del reel -->
+                                                    <!-- rounded aplica border-radius para esquinas suaves -->
+                                                    <!-- me-2 aplica margen derecho de 0.5rem -->
+                                                    <!-- object-fit: cover mantiene proporciones recortando -->
                                                     <img src="{{ reel.thumbnail_url }}" class="rounded me-2" style="width: 60px; height: 40px; object-fit: cover;" alt="Thumbnail">
                                                 {% else %}
+                                                    <!-- Placeholder cuando no hay thumbnail disponible -->
+                                                    <!-- bg-light aplica fondo gris claro -->
+                                                    <!-- d-flex justify-content-center centra el contenido -->
                                                     <div class="bg-light rounded me-2 d-flex align-items-center justify-content-center" style="width: 60px; height: 40px;">
+                                                        <!-- Icono de video como placeholder -->
                                                         <i class="fas fa-video text-muted"></i>
                                                     </div>
                                                 {% endif %}
+                                                
+                                                <!-- Información textual del reel -->
                                                 <div>
+                                                    <!-- Título del reel en negrita -->
                                                     <strong>{{ reel.title }}</strong>
+                                                    
+                                                    <!-- Descripción truncada si existe -->
                                                     {% if reel.description %}
+                                                        <!-- Descripción limitada a 50 caracteres con puntos suspensivos -->
                                                         <br><small class="text-muted">{{ reel.description[:50] }}{% if reel.description|length > 50 %}...{% endif %}</small>
                                                     {% endif %}
                                                 </div>
                                             </div>
                                         </td>
+                                        
+                                        <!-- Celda con información del creador -->
                                         <td>
+                                            <!-- Enlace al detalle completo del usuario creador -->
                                             <a href="{{ url_for('admin.user_detail', user_id=reel.creator.id) }}">
                                                 {{ reel.creator.full_name }}
                                             </a>
+                                            
+                                            <!-- Username en segunda línea con estilo secundario -->
                                             <br><small class="text-muted">@{{ reel.creator.username }}</small>
                                         </td>
+                                        
+                                        <!-- Celda con información del avatar utilizado -->
                                         <td>
+                                            <!-- Enlace al detalle del avatar específico -->
                                             <a href="{{ url_for('admin.avatar_detail', avatar_id=reel.avatar.id) }}">
                                                 {{ reel.avatar.name }}
                                             </a>
                                         </td>
+                                        
+                                        <!-- Celda con estado actual del reel -->
                                         <td>
+                                            <!-- Badge con color dinámico según estado de procesamiento -->
+                                            <!-- bg-success para published, bg-primary para completed -->
+                                            <!-- bg-warning para pending, bg-info para processing -->
+                                            <!-- bg-danger para failed, bg-secondary para draft -->
                                             <span class="badge bg-{{ 'success' if reel.status.value == 'published' else 'primary' if reel.status.value == 'completed' else 'warning' if reel.status.value == 'pending' else 'info' if reel.status.value == 'processing' else 'danger' if reel.status.value == 'failed' else 'secondary' }}">
                                                 {{ reel.status.value.title() }}
                                             </span>
                                         </td>
+                                        
+                                        <!-- Celda con duración del video -->
                                         <td>
+                                            <!-- Duración formateada o indicador N/A si no está disponible -->
                                             {% if reel.duration %}
+                                                <!-- Duración formateada a 1 decimal con sufijo 's' -->
                                                 {{ "%.1f"|format(reel.duration) }}s
                                             {% else %}
+                                                <!-- Indicador de no disponible con estilo secundario -->
                                                 <span class="text-muted">N/A</span>
                                             {% endif %}
                                         </td>
+                                        
+                                        <!-- Celda con fecha de creación -->
                                         <td>
+                                            <!-- Fecha formateada en formato español -->
                                             {{ reel.created_at.strftime('%d/%m/%Y') }}
+                                            
+                                            <!-- Hora en segunda línea con estilo secundario -->
                                             <br><small class="text-muted">{{ reel.created_at.strftime('%H:%M') }}</small>
                                         </td>
+                                        
+                                        <!-- Celda con acciones disponibles para el reel -->
                                         <td>
+                                            <!-- Grupo de botones para organizar acciones relacionadas -->
+                                            <!-- btn-group agrupa visualmente los botones de acción -->
                                             <div class="btn-group" role="group">
+                                                <!-- Botón para ver detalles del reel -->
+                                                <!-- btn-outline-primary usa borde azul sin fondo -->
+                                                <!-- btn-sm reduce el tamaño para mejor ajuste en tabla -->
                                                 <a href="#" class="btn btn-sm btn-outline-primary">
                                                     <i class="fas fa-eye"></i> Ver
                                                 </a>
+                                                
+                                                <!-- Botón condicional para reproducir video si está disponible -->
                                                 {% if reel.video_url %}
+                                                    <!-- Enlace externo al video generado -->
+                                                    <!-- target="_blank" abre en nueva pestaña -->
+                                                    <!-- btn-outline-success usa borde verde para acción positiva -->
                                                     <a href="{{ reel.video_url }}" target="_blank" class="btn btn-sm btn-outline-success">
                                                         <i class="fas fa-play"></i> Video
                                                     </a>
@@ -156,36 +411,52 @@
                             </table>
                         </div>
 
-                        <!-- Paginación -->
+                        <!-- Sistema de paginación para navegación entre páginas -->
+                        <!-- Solo se muestra cuando hay más de una página de resultados -->
                         {% if reels.pages > 1 %}
+                            <!-- Navegación semántica para paginación con aria-label -->
                             <nav aria-label="Paginación">
+                                <!-- Lista de paginación centrada horizontalmente -->
+                                <!-- justify-content-center centra los elementos de paginación -->
                                 <ul class="pagination justify-content-center">
+                                    <!-- Enlace a página anterior si existe -->
                                     {% if reels.has_prev %}
                                         <li class="page-item">
+                                            <!-- Enlace que preserva filtros actuales -->
+                                            <!-- **request.args mantiene parámetros de búsqueda -->
                                             <a class="page-link" href="{{ url_for('admin.reels', page=reels.prev_num, **request.args) }}">Anterior</a>
                                         </li>
                                     {% endif %}
                                     
+                                    <!-- Iteración sobre números de página disponibles -->
                                     {% for page_num in reels.iter_pages() %}
                                         {% if page_num %}
+                                            <!-- Enlace para páginas que no son la actual -->
                                             {% if page_num != reels.page %}
                                                 <li class="page-item">
+                                                    <!-- Enlace a página específica preservando filtros -->
                                                     <a class="page-link" href="{{ url_for('admin.reels', page=page_num, **request.args) }}">{{ page_num }}</a>
                                                 </li>
                                             {% else %}
+                                                <!-- Página actual sin enlace pero destacada -->
+                                                <!-- active aplica estilo de página seleccionada -->
                                                 <li class="page-item active">
                                                     <span class="page-link">{{ page_num }}</span>
                                                 </li>
                                             {% endif %}
                                         {% else %}
+                                            <!-- Separador de páginas con puntos suspensivos -->
+                                            <!-- disabled indica que no es interactivo -->
                                             <li class="page-item disabled">
                                                 <span class="page-link">...</span>
                                             </li>
                                         {% endif %}
                                     {% endfor %}
                                     
+                                    <!-- Enlace a página siguiente si existe -->
                                     {% if reels.has_next %}
                                         <li class="page-item">
+                                            <!-- Enlace que preserva filtros y va a la siguiente página -->
                                             <a class="page-link" href="{{ url_for('admin.reels', page=reels.next_num, **request.args) }}">Siguiente</a>
                                         </li>
                                     {% endif %}
@@ -193,9 +464,20 @@
                             </nav>
                         {% endif %}
                     {% else %}
+                        <!-- Estado vacío cuando no hay reels disponibles -->
+                        <!-- text-center centra todo el contenido del mensaje -->
+                        <!-- py-4 aplica padding vertical de 1.5rem -->
                         <div class="text-center py-4">
+                            <!-- Icono grande para representar estado vacío -->
+                            <!-- fa-3x aumenta el tamaño del icono 3 veces -->
+                            <!-- text-muted aplica color gris para estado inactivo -->
+                            <!-- mb-3 aplica margen inferior -->
                             <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                            
+                            <!-- Título del estado vacío -->
                             <h5 class="text-muted">No hay reels</h5>
+                            
+                            <!-- Descripción explicativa del estado vacío -->
                             <p class="text-muted">No se encontraron reels con los filtros seleccionados.</p>
                         </div>
                     {% endif %}

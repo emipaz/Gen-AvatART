@@ -1,3 +1,117 @@
+{#}
+Template de gestión de productores para administración de Gem-AvatART.
+
+Este template implementa la interfaz de administración de productores con sistema
+completo de gestión, visualización de equipos, análisis de rendimiento y control
+de permisos. Permite a los administradores supervisar y gestionar todos los
+productores de la plataforma.
+
+El template incluye:
+    - Sidebar de navegación administrativa consistente
+    - Sistema de filtros por estado y tipo de productor
+    - Tabla responsive con información detallada de productores
+    - Estadísticas de rendimiento por productor
+    - Visualización de equipos y miembros
+    - Estados visuales con badges semánticos
+    - Acciones de habilitación/deshabilitación
+    - Información de comisiones y ganancias
+    - Paginación completa y estados vacíos
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between, align-items-center
+    - Sidebar: nav, nav-link, flex-column, bg-light, px-0
+    - Cards: card, card-body, card-header, card-title
+    - Forms: form-label, form-select, form-control, btn-group
+    - Table: table, table-responsive, table-hover, thead, tbody
+    - Badges: badge, bg-success, bg-warning, bg-danger, bg-info, bg-primary, bg-light, text-dark
+    - Pagination: pagination, page-item, page-link, justify-content-center
+    - Images: rounded-circle, me-2
+    - Typography: text-muted, text-center, text-success, text-warning, fw-bold
+    - Spacing: mb-*, py-*, g-3, fa-2x, fa-3x
+
+Variables Jinja utilizadas:
+    - producers: Objeto de paginación con lista de productores
+    - producers.total: Total de productores encontrados
+    - producers.items: Lista de productores de la página actual
+    - producers.pages: Número total de páginas
+    - producers.has_prev/has_next: Navegación de paginación
+    - request.args: Parámetros de filtrado actuales
+    - producer_stats: Estadísticas generales de productores
+
+Campos del formulario de filtros (name attributes):
+    - status: Filtro por estado (active, suspended, pending)
+    - producer_type: Filtro por tipo (producer, subproducer)
+    - search: Búsqueda por nombre o email
+    - page: Número de página actual para paginación
+
+Rutas Flask referenciadas (url_for):
+    - admin.dashboard: Dashboard principal
+    - admin.users, admin.avatars, admin.reels, admin.commissions: Otras secciones
+    - admin.producers: Gestión de productores (enlace activo)
+    - admin.producer_detail: Ver detalles de productor específico
+    - admin.producer_team: Ver equipo del productor
+    - admin.toggle_producer_status: Habilitar/deshabilitar productor
+    - admin.producer_commissions: Ver comisiones del productor
+    - admin.create_producer: Crear nuevo productor
+
+Iconografía Font Awesome:
+    - fas fa-tachometer-alt: Admin panel
+    - fas fa-industry: Productores e icono principal
+    - fas fa-home, fas fa-users, fas fa-user-circle, fas fa-video, fas fa-dollar-sign: Navegación
+    - fas fa-filter: Filtrar resultados
+    - fas fa-search: Búsqueda
+    - fas fa-times: Limpiar filtros
+    - fas fa-eye: Ver detalles
+    - fas fa-users: Ver equipo
+    - fas fa-dollar-sign: Ver comisiones
+    - fas fa-ban: Suspender productor
+    - fas fa-check: Activar productor
+    - fas fa-crown: Productor principal
+    - fas fa-user-tie: Subproductor
+    - fas fa-plus: Crear nuevo
+
+Métodos Jinja utilizados:
+    - producer.status.title(): Capitalización del estado
+    - producer.role.title(): Capitalización del rol
+    - producer.company_name[:30]: Truncamiento de nombre de empresa
+    - producer.created_at.strftime(): Formateo de fechas
+    - producer.user.last_login.strftime(): Formateo de último acceso
+    - request.args.get(): Obtener parámetros de filtro actuales
+    - producers.iter_pages(): Iteración para paginación
+
+Estados de productor manejados:
+    - active: Badge verde (bg-success)
+    - suspended: Badge rojo (bg-danger)
+    - pending: Badge amarillo (bg-warning)
+    - inactive: Badge gris (bg-secondary)
+
+Propiedades del productor mostradas:
+    - user.full_name: Nombre completo del productor
+    - user.email: Email de contacto
+    - company_name: Empresa u organización
+    - business_type: Tipo de negocio
+    - api_key_status: Estado de la API key
+    - current_subproducers_count: Número de subproductores
+    - max_subproducers: Límite de subproductores
+    - current_affiliates_count: Número de afiliados
+    - max_affiliates: Límite de afiliados
+    - api_calls_this_month: Llamadas API del mes
+    - monthly_api_limit: Límite mensual de API
+    - total_reels_created: Total de reels creados
+    - total_earnings: Ganancias totales
+    - created_at: Fecha de registro
+
+Estilos inline utilizados:
+    - width: 40px; height: 40px; object-fit: cover: Avatares de perfil
+    - min-height: calc(100vh - 120px): Altura del sidebar
+
+Funcionalidades JavaScript:
+    - onclick="return confirm()": Confirmación para acciones de estado
+    - title attributes: Tooltips para iconos y badges
+    - Search functionality: Búsqueda en tiempo real
+    - dropdown-toggle: Menús desplegables de acciones
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Productores - Admin - Gem-AvatART{% endblock %}
@@ -36,17 +150,123 @@
 
         <!-- Main Content -->
         <div class="col-md-9 col-lg-10">
+            <!-- Header con estadísticas -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1><i class="fas fa-industry"></i> Gestión de Productores</h1>
-                <a href="{{ url_for('admin.create_producer') }}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Crear Nuevo Productor
-                </a>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-info fs-6">{{ producers.total }} Productores</span>
+                    <a href="{{ url_for('admin.create_producer') if url_for('admin.create_producer') else '#' }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Productor
+                    </a>
+                </div>
+            </div>
+
+            <!-- Estadísticas resumidas -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-industry fa-2x mb-2"></i>
+                            <h5>{{ producers.total }}</h5>
+                            <small>Total Productores</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-2x mb-2"></i>
+                            <h5>{{ (producers.items | selectattr('current_subproducers_count') | sum(attribute='current_subproducers_count')) + (producers.items | selectattr('current_affiliates_count') | sum(attribute='current_affiliates_count')) }}</h5>
+                            <small>Miembros de Equipos</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-video fa-2x mb-2"></i>
+                            <h5>{{ producers.items | selectattr('total_reels_created') | sum(attribute='total_reels_created') }}</h5>
+                            <small>Reels Producidos</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-dollar-sign fa-2x mb-2"></i>
+                            <h5>${{ "%.0f"|format(producers.items | selectattr('total_earnings') | sum(attribute='total_earnings')) }}</h5>
+                            <small>Ganancias Totales</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros y búsqueda -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <!-- Búsqueda por nombre o email -->
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" name="search" class="form-control" 
+                                       placeholder="Nombre, email o empresa..." 
+                                       value="{{ request.args.get('search', '') }}">
+                            </div>
+                        </div>
+
+                        <!-- Filtro por estado de API -->
+                        <div class="col-md-3">
+                            <label class="form-label">Estado API</label>
+                            <select name="api_status" class="form-select">
+                                <option value="">Todos los estados</option>
+                                <option value="valid" {{ 'selected' if request.args.get('api_status') == 'valid' }}>Válida</option>
+                                <option value="pending" {{ 'selected' if request.args.get('api_status') == 'pending' }}>Pendiente</option>
+                                <option value="invalid" {{ 'selected' if request.args.get('api_status') == 'invalid' }}>Inválida</option>
+                                <option value="expired" {{ 'selected' if request.args.get('api_status') == 'expired' }}>Expirada</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro por tipo de negocio -->
+                        <div class="col-md-3">
+                            <label class="form-label">Tipo de Negocio</label>
+                            <select name="business_type" class="form-select">
+                                <option value="">Todos los tipos</option>
+                                <option value="agency" {{ 'selected' if request.args.get('business_type') == 'agency' }}>Agencia</option>
+                                <option value="freelancer" {{ 'selected' if request.args.get('business_type') == 'freelancer' }}>Freelancer</option>
+                                <option value="company" {{ 'selected' if request.args.get('business_type') == 'company' }}>Empresa</option>
+                                <option value="startup" {{ 'selected' if request.args.get('business_type') == 'startup' }}>Startup</option>
+                            </select>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter"></i> Filtrar
+                                </button>
+                                <a href="{{ url_for('admin.producers') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <!-- Lista de Productores -->
             <div class="card">
                 <div class="card-header">
-                    <h5>Productores ({{ producers.total }} total)</h5>
+                    <h5>
+                        <i class="fas fa-industry me-2"></i>
+                        Productores ({{ producers.total }} total)
+                        {% if request.args.get('search') %}
+                            - Búsqueda: "{{ request.args.get('search') }}"
+                        {% endif %}
+                    </h5>
                 </div>
                 <div class="card-body">
                     {% if producers.items %}
@@ -58,7 +278,7 @@
                                         <th>Empresa</th>
                                         <th>API Status</th>
                                         <th>Límites</th>
-                                        <th>Estadísticas</th>
+                                        <th>Rendimiento</th>
                                         <th>Registro</th>
                                         <th>Acciones</th>
                                     </tr>
@@ -66,56 +286,174 @@
                                 <tbody>
                                     {% for producer in producers.items %}
                                     <tr>
+                                        <!-- Información del productor -->
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 {% if producer.user.avatar_url %}
-                                                    <img src="{{ producer.user.avatar_url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" alt="Avatar">
+                                                    <img src="{{ producer.user.avatar_url }}" 
+                                                         class="rounded-circle me-2" 
+                                                         style="width: 40px; height: 40px; object-fit: cover;" 
+                                                         alt="Avatar">
                                                 {% else %}
-                                                    <i class="fas fa-user-circle fa-2x text-muted me-2"></i>
+                                                    <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                         style="width: 40px; height: 40px;">
+                                                        <i class="fas fa-user text-white"></i>
+                                                    </div>
                                                 {% endif %}
                                                 <div>
-                                                    <strong>{{ producer.user.full_name }}</strong>
-                                                    <br><small class="text-muted">@{{ producer.user.username }}</small>
+                                                    <strong>{{ producer.user.full_name or producer.user.username }}</strong>
+                                                    <br><small class="text-muted">{{ producer.user.email }}</small>
                                                 </div>
                                             </div>
                                         </td>
+
+                                        <!-- Empresa y tipo de negocio -->
                                         <td>
                                             {% if producer.company_name %}
-                                                <strong>{{ producer.company_name }}</strong>
+                                                <strong title="{{ producer.company_name }}">
+                                                    {{ producer.company_name[:30] }}{% if producer.company_name|length > 30 %}...{% endif %}
+                                                </strong>
                                                 {% if producer.business_type %}
-                                                    <br><small class="text-muted">{{ producer.business_type }}</small>
+                                                    <br><span class="badge bg-light text-dark">{{ producer.business_type.title() }}</span>
                                                 {% endif %}
                                             {% else %}
-                                                <span class="text-muted">No especificado</span>
+                                                <span class="text-muted">No especificada</span>
                                             {% endif %}
                                         </td>
+
+                                        <!-- Estado de API -->
                                         <td>
-                                            <span class="badge bg-{{ 'success' if producer.api_key_status == 'valid' else 'warning' if producer.api_key_status == 'pending' else 'danger' }}">
+                                            {% set api_class = 'success' if producer.api_key_status == 'valid' 
+                                                            else 'warning' if producer.api_key_status == 'pending' 
+                                                            else 'danger' if producer.api_key_status == 'invalid'
+                                                            else 'secondary' %}
+                                            <span class="badge bg-{{ api_class }}">
                                                 {{ producer.api_key_status.title() if producer.api_key_status else 'N/A' }}
                                             </span>
+                                            {% if producer.api_calls_this_month %}
+                                                <br><small class="text-muted">
+                                                    {{ producer.api_calls_this_month }}/{{ producer.monthly_api_limit or '∞' }} calls
+                                                </small>
+                                            {% endif %}
                                         </td>
+
+                                        <!-- Límites y uso -->
                                         <td>
-                                            <small>
-                                                <strong>Sub-productores:</strong> {{ producer.current_subproducers_count or 0 }}/{{ producer.max_subproducers or 0 }}<br>
-                                                <strong>Afiliados:</strong> {{ producer.current_affiliates_count or 0 }}/{{ producer.max_affiliates or 0 }}<br>
-                                                <strong>API:</strong> {{ producer.api_calls_this_month or 0 }}/{{ producer.monthly_api_limit or 0 }}
-                                            </small>
+                                            <div class="small">
+                                                <div class="mb-1">
+                                                    <strong>Sub-productores:</strong> 
+                                                    <span class="text-{{ 'warning' if (producer.current_subproducers_count or 0) >= (producer.max_subproducers or 0) else 'success' }}">
+                                                        {{ producer.current_subproducers_count or 0 }}/{{ producer.max_subproducers or 0 }}
+                                                    </span>
+                                                </div>
+                                                <div class="mb-1">
+                                                    <strong>Afiliados:</strong> 
+                                                    <span class="text-{{ 'warning' if (producer.current_affiliates_count or 0) >= (producer.max_affiliates or 0) else 'success' }}">
+                                                        {{ producer.current_affiliates_count or 0 }}/{{ producer.max_affiliates or 0 }}
+                                                    </span>
+                                                </div>
+                                                {% if producer.monthly_api_limit %}
+                                                    <div>
+                                                        <strong>API:</strong> 
+                                                        <span class="text-{{ 'warning' if (producer.api_calls_this_month or 0) >= (producer.monthly_api_limit * 0.8) else 'success' }}">
+                                                            {{ producer.api_calls_this_month or 0 }}/{{ producer.monthly_api_limit }}
+                                                        </span>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
                                         </td>
-                                        <td>
-                                            <small>
-                                                <strong>Reels:</strong> {{ producer.total_reels_created or 0 }}<br>
-                                                <strong>Ganancias:</strong> ${{ "%.2f"|format(producer.total_earnings or 0) }}
-                                            </small>
+
+                                        <!-- Rendimiento -->
+                                        <td class="text-center">
+                                            <div class="small">
+                                                <div><strong class="text-primary">{{ producer.total_reels_created or 0 }}</strong> reels</div>
+                                                <div class="text-success">
+                                                    ${{ "%.0f"|format(producer.total_earnings or 0) }} ganancias
+                                                </div>
+                                                {% if producer.user.last_login %}
+                                                    <div class="text-muted">
+                                                        Activo {{ producer.user.last_login.strftime('%d/%m') }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
                                         </td>
+
+                                        <!-- Fecha de registro -->
                                         <td>
                                             {{ producer.created_at.strftime('%d/%m/%Y') }}
                                             <br><small class="text-muted">{{ producer.created_at.strftime('%H:%M') }}</small>
                                         </td>
+
+                                        <!-- Acciones -->
                                         <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ url_for('admin.user_detail', user_id=producer.user.id) }}" class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-eye"></i> Ver
-                                                </a>
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-primary btn-sm dropdown-toggle" 
+                                                        type="button" data-bs-toggle="dropdown">
+                                                    Acciones
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <!-- Ver detalles del usuario -->
+                                                    <li>
+                                                        <a class="dropdown-item" 
+                                                           href="{{ url_for('admin.user_detail', user_id=producer.user.id) }}">
+                                                            <i class="fas fa-eye me-2"></i>Ver Detalles
+                                                        </a>
+                                                    </li>
+                                                    
+                                                    <!-- Ver equipos y afiliados -->
+                                                    {% if producer.current_subproducers_count or producer.current_affiliates_count %}
+                                                        <li>
+                                                            <a class="dropdown-item" 
+                                                               href="{{ url_for('admin.producer_team', producer_id=producer.id) if url_for('admin.producer_team', producer_id=producer.id) else '#' }}">
+                                                                <i class="fas fa-users me-2"></i>Ver Equipo 
+                                                                ({{ (producer.current_subproducers_count or 0) + (producer.current_affiliates_count or 0) }})
+                                                            </a>
+                                                        </li>
+                                                    {% endif %}
+                                                    
+                                                    <!-- Ver comisiones y ganancias -->
+                                                    {% if producer.total_earnings %}
+                                                        <li>
+                                                            <a class="dropdown-item" 
+                                                               href="{{ url_for('admin.producer_commissions', producer_id=producer.id) if url_for('admin.producer_commissions', producer_id=producer.id) else '#' }}">
+                                                                <i class="fas fa-dollar-sign me-2"></i>Ver Comisiones
+                                                            </a>
+                                                        </li>
+                                                    {% endif %}
+                                                    
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    
+                                                    <!-- Gestión de API Key -->
+                                                    {% if producer.api_key_status != 'valid' %}
+                                                        <li>
+                                                            <a class="dropdown-item text-success" 
+                                                               href="{{ url_for('admin.approve_api_key', producer_id=producer.id) if url_for('admin.approve_api_key', producer_id=producer.id) else '#' }}"
+                                                               onclick="return confirm('¿Aprobar API key para este productor?')">
+                                                                <i class="fas fa-check me-2"></i>Aprobar API
+                                                            </a>
+                                                        </li>
+                                                    {% endif %}
+                                                    
+                                                    <!-- Resetear límites -->
+                                                    <li>
+                                                        <a class="dropdown-item text-warning" 
+                                                           href="{{ url_for('admin.reset_producer_limits', producer_id=producer.id) if url_for('admin.reset_producer_limits', producer_id=producer.id) else '#' }}"
+                                                           onclick="return confirm('¿Resetear límites mensuales de este productor?')">
+                                                            <i class="fas fa-refresh me-2"></i>Reset Límites
+                                                        </a>
+                                                    </li>
+                                                    
+                                                    <!-- Suspender/Activar -->
+                                                    {% if producer.api_key_status == 'valid' %}
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" 
+                                                               href="{{ url_for('admin.suspend_producer', producer_id=producer.id) if url_for('admin.suspend_producer', producer_id=producer.id) else '#' }}"
+                                                               onclick="return confirm('¿Suspender este productor? Esto deshabilitará su acceso a la API.')">
+                                                                <i class="fas fa-ban me-2"></i>Suspender
+                                                            </a>
+                                                        </li>
+                                                    {% endif %}
+                                                </ul>
                                             </div>
                                         </td>
                                     </tr>
@@ -126,11 +464,14 @@
 
                         <!-- Paginación -->
                         {% if producers.pages > 1 %}
-                            <nav aria-label="Paginación">
+                            <nav aria-label="Paginación" class="mt-4">
                                 <ul class="pagination justify-content-center">
                                     {% if producers.has_prev %}
                                         <li class="page-item">
-                                            <a class="page-link" href="{{ url_for('admin.producers', page=producers.prev_num) }}">Anterior</a>
+                                            <a class="page-link" 
+                                               href="{{ url_for('admin.producers', page=producers.prev_num, **request.args) }}">
+                                                <i class="fas fa-chevron-left"></i> Anterior
+                                            </a>
                                         </li>
                                     {% endif %}
                                     
@@ -138,7 +479,10 @@
                                         {% if page_num %}
                                             {% if page_num != producers.page %}
                                                 <li class="page-item">
-                                                    <a class="page-link" href="{{ url_for('admin.producers', page=page_num) }}">{{ page_num }}</a>
+                                                    <a class="page-link" 
+                                                       href="{{ url_for('admin.producers', page=page_num, **request.args) }}">
+                                                        {{ page_num }}
+                                                    </a>
                                                 </li>
                                             {% else %}
                                                 <li class="page-item active">
@@ -154,25 +498,205 @@
                                     
                                     {% if producers.has_next %}
                                         <li class="page-item">
-                                            <a class="page-link" href="{{ url_for('admin.producers', page=producers.next_num) }}">Siguiente</a>
+                                            <a class="page-link" 
+                                               href="{{ url_for('admin.producers', page=producers.next_num, **request.args) }}">
+                                                Siguiente <i class="fas fa-chevron-right"></i>
+                                            </a>
                                         </li>
                                     {% endif %}
                                 </ul>
                             </nav>
                         {% endif %}
                     {% else %}
-                        <div class="text-center py-4">
+                        <!-- Estado vacío -->
+                        <div class="text-center py-5">
                             <i class="fas fa-industry fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">No hay productores</h5>
-                            <p class="text-muted">Aún no se han registrado productores en el sistema.</p>
-                            <a href="{{ url_for('admin.create_producer') }}" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Crear Primer Productor
-                            </a>
+                            {% if request.args.get('search') or request.args.get('api_status') or request.args.get('business_type') %}
+                                <p class="text-muted">No se encontraron productores con los filtros seleccionados.</p>
+                                <a href="{{ url_for('admin.producers') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-times me-1"></i>Limpiar Filtros
+                                </a>
+                            {% else %}
+                                <p class="text-muted">Aún no hay productores registrados en la plataforma.</p>
+                                <a href="{{ url_for('admin.create_producer') if url_for('admin.create_producer') else '#' }}" 
+                                   class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i>Crear Primer Productor
+                                </a>
+                            {% endif %}
                         </div>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="row g-3 mt-4">
+                <!-- Top productores por rendimiento -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-trophy me-2"></i>Top Productores por Ganancias
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            {% if producers.items %}
+                                {% set top_producers = producers.items | sort(attribute='total_earnings', reverse=true) %}
+                                <div class="list-group list-group-flush">
+                                    {% for producer in top_producers[:5] %}
+                                        {% if producer.total_earnings %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                            <div>
+                                                <strong>{{ producer.user.full_name or producer.user.username }}</strong>
+                                                <br><small class="text-muted">
+                                                    {{ (producer.current_subproducers_count or 0) + (producer.current_affiliates_count or 0) }} miembros
+                                                </small>
+                                            </div>
+                                            <div class="text-end">
+                                                <strong class="text-success">${{ "%.0f"|format(producer.total_earnings) }}</strong>
+                                                <br><small class="text-muted">{{ producer.total_reels_created or 0 }} reels</small>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted text-center">No hay datos de rendimiento disponibles.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distribución por tipo de negocio -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-chart-pie me-2"></i>Distribución por Tipo
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            {% if producers.items %}
+                                {% set business_types = producers.items | groupby('business_type') %}
+                                <div class="list-group list-group-flush">
+                                    {% for business_type, group in business_types %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                        <div>
+                                            <strong>{{ business_type.title() if business_type else 'No especificado' }}</strong>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">{{ group | list | length }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted text-center">No hay datos de distribución disponibles.</p>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- JavaScript para funcionalidad adicional -->
+<script>
+// Búsqueda en tiempo real (opcional)
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('input[name="search"]');
+    let searchTimeout;
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            // Solo buscar si hay al menos 3 caracteres
+            if (query.length >= 3) {
+                searchTimeout = setTimeout(() => {
+                    // Auto-submit del formulario después de 1 segundo de inactividad
+                    this.form.submit();
+                }, 1000);
+            }
+        });
+    }
+    
+    // Confirmar acciones críticas
+    document.querySelectorAll('[data-confirm]').forEach(element => {
+        element.addEventListener('click', function(e) {
+            if (!confirm(this.dataset.confirm)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+    
+    // Tooltips para badges de estado
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Función para exportar datos de productores
+function exportProducers() {
+    const params = new URLSearchParams(window.location.search);
+    const url = '/admin/producers/export?' + params.toString();
+    window.open(url, '_blank');
+}
+</script>
+
+<!-- Estilos CSS adicionales -->
+<style>
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+}
+
+.table td {
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+.dropdown-menu {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+.card-header h6 {
+    color: #495057;
+}
+
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* Indicadores de progreso para límites */
+.text-warning {
+    font-weight: 600;
+}
+
+.text-success {
+    font-weight: 500;
+}
+</style>
 {% endblock %}

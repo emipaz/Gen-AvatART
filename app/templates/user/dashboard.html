@@ -1,11 +1,77 @@
+{#
+Template del dashboard de usuario final para Gem-AvatART.
+
+Este template implementa el panel principal para usuarios finales (final_user role),
+proporcionando una vista personalizada de sus reels, avatares y comisiones.
+Incluye acciones rápidas y actividad reciente adaptada a su nivel de permisos.
+
+El template incluye:
+    - Tarjetas de estadísticas personales (reels, avatares si aplica, comisiones)
+    - Panel de acciones rápidas según permisos del usuario
+    - Tabla de actividad reciente con reels propios
+    - Estados visuales con badges de Bootstrap
+    - Mensajes de estado vacío con CTAs motivacionales
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, d-flex, justify-content-between, align-items-center
+    - Cards: card, card-body, card-header, card-text
+    - Buttons: btn, btn-outline-*, btn-lg, btn-sm, w-100
+    - Table: table, table-responsive, table-hover, thead, tbody
+    - Badges: badge, bg-success, bg-warning, bg-info
+    - Colors: text-white, bg-primary, bg-success, bg-info, text-muted
+    - Typography: align-self-center, text-center
+    - Spacing: mb-*, py-*, fa-2x, fa-3x
+
+Variables Jinja utilizadas:
+    - current_user.first_name: Nombre del usuario para saludo
+    - stats.reels_count: Cantidad de reels del usuario
+    - stats.avatars_count: Cantidad de avatares (si puede crearlos)
+    - stats.commissions_count: Cantidad de comisiones ganadas
+    - recent_reels: Lista de reels recientes del usuario
+
+Métodos del usuario referenciados:
+    - current_user.can_create_avatars(): Verificación de permisos para avatares
+    - current_user.can_create_reels(): Verificación de permisos para reels
+
+Rutas Flask referenciadas (url_for):
+    - user.profile: Perfil del usuario
+
+Iconografía Font Awesome:
+    - fas fa-tachometer-alt: Dashboard principal
+    - fas fa-video: Reels y estadística
+    - fas fa-user-circle: Avatares
+    - fas fa-dollar-sign: Comisiones
+    - fas fa-bolt: Acciones rápidas
+    - fas fa-plus-circle, fas fa-user-plus: Acciones de creación
+    - fas fa-user-edit: Editar perfil
+    - fas fa-chart-bar: Estadísticas
+    - fas fa-clock: Actividad reciente
+    - fas fa-eye: Ver detalles
+    - fas fa-plus: Crear nuevo
+
+Métodos Jinja utilizados:
+    - reel.description[:50]: Truncamiento de texto a 50 caracteres
+    - reel.description|length: Filtro length para verificar longitud
+    - reel.status.value.title(): Capitalización del estado del reel
+    - reel.created_at.strftime('%d/%m/%Y'): Formato de fecha DD/MM/AAAA
+
+Estados de reel manejados:
+    - 'published': Badge verde (bg-success)
+    - 'pending': Badge amarillo (bg-warning)  
+    - otros: Badge azul (bg-info)
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Dashboard - Gem-AvatART{% endblock %}
 
 {% block content %}
+<<!-- Contenedor principal centrado -->
 <div class="container">
     <div class="row">
         <div class="col-md-12">
+            
+            <!-- ===== HEADER DEL DASHBOARD ===== -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1><i class="fas fa-tachometer-alt"></i> Mi Dashboard</h1>
                 <div class="text-muted">
@@ -13,8 +79,10 @@
                 </div>
             </div>
 
-            <!-- Stats Cards -->
+            <!-- ===== TARJETAS DE ESTADÍSTICAS PERSONALES ===== -->
             <div class="row mb-4">
+                
+                <!-- Estadística: Mis reels -->
                 <div class="col-md-4">
                     <div class="card text-white bg-primary">
                         <div class="card-body">
@@ -31,6 +99,7 @@
                     </div>
                 </div>
 
+                <!-- Estadística condicional: Mis avatares (solo si puede crearlos) -->
                 {% if current_user.can_create_avatars() %}
                 <div class="col-md-4">
                     <div class="card text-white bg-success">
@@ -49,6 +118,7 @@
                 </div>
                 {% endif %}
 
+                <!-- Estadística: Comisiones ganadas -->
                 <div class="col-md-4">
                     <div class="card text-white bg-info">
                         <div class="card-body">
@@ -64,9 +134,10 @@
                         </div>
                     </div>
                 </div>
+                
             </div>
 
-            <!-- Quick Actions -->
+            <!-- ===== PANEL DE ACCIONES RÁPIDAS ===== -->
             <div class="row mb-4">
                 <div class="col-md-12">
                     <div class="card">
@@ -74,7 +145,10 @@
                             <h5><i class="fas fa-bolt"></i> Acciones Rápidas</h5>
                         </div>
                         <div class="card-body">
+                            <!-- Grid de botones de acciones principales -->
                             <div class="row">
+                                
+                                <!-- Acción condicional: Crear reel -->
                                 {% if current_user.can_create_reels() %}
                                 <div class="col-md-3">
                                     <a href="#" class="btn btn-outline-primary btn-lg w-100">
@@ -84,6 +158,7 @@
                                 </div>
                                 {% endif %}
                                 
+                                <!-- Acción condicional: Crear avatar -->
                                 {% if current_user.can_create_avatars() %}
                                 <div class="col-md-3">
                                     <a href="#" class="btn btn-outline-success btn-lg w-100">
@@ -93,6 +168,7 @@
                                 </div>
                                 {% endif %}
                                 
+                                <!-- Acción: Editar perfil -->
                                 <div class="col-md-3">
                                     <a href="{{ url_for('user.profile') }}" class="btn btn-outline-info btn-lg w-100">
                                         <i class="fas fa-user-edit"></i><br>
@@ -100,19 +176,21 @@
                                     </a>
                                 </div>
                                 
+                                <!-- Acción: Ver estadísticas -->
                                 <div class="col-md-3">
                                     <a href="#" class="btn btn-outline-warning btn-lg w-100">
                                         <i class="fas fa-chart-bar"></i><br>
                                         Estadísticas
                                     </a>
                                 </div>
+                                
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Activity -->
+            <!-- ===== SECCIÓN DE ACTIVIDAD RECIENTE ===== -->
             <div class="row">
                 <div class="col-md-12">
                     <div class="card">
@@ -120,6 +198,8 @@
                             <h5><i class="fas fa-clock"></i> Actividad Reciente</h5>
                         </div>
                         <div class="card-body">
+                            
+                            <!-- Tabla condicional de reels recientes -->
                             {% if recent_reels %}
                                 <div class="table-responsive">
                                     <table class="table table-hover">
@@ -134,18 +214,25 @@
                                         <tbody>
                                             {% for reel in recent_reels %}
                                             <tr>
+                                                <!-- Título con descripción truncada -->
                                                 <td>
                                                     <strong>{{ reel.title }}</strong>
                                                     {% if reel.description %}
                                                         <br><small class="text-muted">{{ reel.description[:50] }}{% if reel.description|length > 50 %}...{% endif %}</small>
                                                     {% endif %}
                                                 </td>
+                                                
+                                                <!-- Estado con badge colorido -->
                                                 <td>
                                                     <span class="badge bg-{{ 'success' if reel.status.value == 'published' else 'warning' if reel.status.value == 'pending' else 'info' }}">
                                                         {{ reel.status.value.title() }}
                                                     </span>
                                                 </td>
+                                                
+                                                <!-- Fecha formateada -->
                                                 <td>{{ reel.created_at.strftime('%d/%m/%Y') }}</td>
+                                                
+                                                <!-- Botón de ver detalles -->
                                                 <td>
                                                     <a href="#" class="btn btn-sm btn-outline-primary">
                                                         <i class="fas fa-eye"></i> Ver
@@ -156,11 +243,15 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                
+                            <!-- Estado vacío con CTA motivacional -->
                             {% else %}
                                 <div class="text-center py-4">
                                     <i class="fas fa-video fa-3x text-muted mb-3"></i>
                                     <h5 class="text-muted">No tienes reels aún</h5>
                                     <p class="text-muted">¡Crea tu primer reel para comenzar!</p>
+                                    
+                                    <!-- CTA condicional para crear primer reel -->
                                     {% if current_user.can_create_reels() %}
                                         <a href="#" class="btn btn-primary">
                                             <i class="fas fa-plus"></i> Crear mi primer Reel
@@ -168,10 +259,12 @@
                                     {% endif %}
                                 </div>
                             {% endif %}
+                            
                         </div>
                     </div>
                 </div>
             </div>
+            
         </div>
     </div>
 </div>

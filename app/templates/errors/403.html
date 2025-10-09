@@ -1,0 +1,180 @@
+{#
+Template de error 403 (Acceso Denegado) para Gem-AvatART.
+
+Este template se muestra cuando un usuario intenta acceder a un recurso
+para el cual no tiene los permisos necesarios. Proporciona una interfaz
+amigable que explica el error y ofrece opciones de navegación alternativas.
+
+El template incluye:
+    - Mensaje de error claro y comprensible
+    - Código de estado HTTP prominente (403)
+    - Explicación del problema de permisos
+    - Botones de navegación para volver o ir al inicio
+    - Diseño responsive y accesible
+    - Iconografía consistente con el resto de la aplicación
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-md-6, justify-content-center
+    - Typography: display-1, lead, text-center, text-danger
+    - Spacing: mt-5, mb-3, mb-4
+    - Buttons: btn, btn-primary, btn-outline-secondary
+    - Components: card, card-body para estructura mejorada
+    - Utilities: text-center, d-flex, align-items-center
+
+Variables Jinja utilizadas:
+    - url_for('main.index'): Enlace a la página principal
+    - Funciones JavaScript: history.back() para volver
+
+Rutas Flask referenciadas (url_for):
+    - main.index: Página principal de la aplicación
+
+Iconografía Font Awesome:
+    - fas fa-shield-alt: Icono de seguridad/permisos
+    - fas fa-home: Icono de inicio
+    - fas fa-arrow-left: Icono de volver
+    - fas fa-exclamation-triangle: Advertencia
+
+Casos de uso:
+    - Usuario intenta acceder a panel de administrador sin permisos
+    - Usuario final intenta acceder a funciones de productor
+    - Acceso a recursos restringidos por rol
+    - Sesión expirada con permisos insuficientes
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Acceso Denegado - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con espaciado superior -->
+<div class="container mt-5">
+    <!-- Fila centrada para el contenido del error -->
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <!-- Card principal del error -->
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center p-5">
+                    <!-- Icono de seguridad grande -->
+                    <div class="mb-4">
+                        <i class="fas fa-shield-alt text-danger" style="font-size: 5rem;"></i>
+                    </div>
+                    
+                    <!-- Código de error prominente -->
+                    <h1 class="display-1 text-danger fw-bold mb-3">403</h1>
+                    
+                    <!-- Título del error -->
+                    <h2 class="mb-3">¡Acceso Denegado!</h2>
+                    
+                    <!-- Descripción detallada del error -->
+                    <p class="lead text-muted mb-4">
+                        No tienes los permisos necesarios para acceder a este recurso. 
+                        Este contenido está restringido según tu nivel de acceso.
+                    </p>
+                    
+                    <!-- Información adicional sobre permisos -->
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Información:</strong> Si crees que deberías tener acceso a esta página, 
+                        contacta con tu administrador o revisa tu rol de usuario.
+                    </div>
+                    
+                    <!-- Acciones disponibles -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <!-- Botón principal para ir al inicio -->
+                        <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i> Ir al Inicio
+                        </a>
+                        
+                        <!-- Botón secundario para volver -->
+                        <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i> Volver Atrás
+                        </button>
+                    </div>
+                    
+                    <!-- Enlaces adicionales de ayuda -->
+                    <div class="mt-4 pt-3 border-top">
+                        <p class="text-muted small mb-2">¿Necesitas ayuda?</p>
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="{{ url_for('main.contact') if url_for('main.contact') else '#' }}" 
+                               class="text-decoration-none small">
+                                <i class="fas fa-envelope me-1"></i> Contactar Soporte
+                            </a>
+                            {% if current_user.is_authenticated %}
+                                <a href="{{ url_for('user.dashboard') if current_user.role == 'final_user' 
+                                         else url_for('producer.dashboard') if current_user.role in ['producer', 'subproducer'] 
+                                         else url_for('admin.dashboard') }}" 
+                                   class="text-decoration-none small">
+                                    <i class="fas fa-tachometer-alt me-1"></i> Mi Dashboard
+                                </a>
+                            {% else %}
+                                <a href="{{ url_for('auth.login') }}" class="text-decoration-none small">
+                                    <i class="fas fa-sign-in-alt me-1"></i> Iniciar Sesión
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información técnica adicional (solo en desarrollo) -->
+            {% if config.DEBUG %}
+                <div class="card mt-3">
+                    <div class="card-header bg-light">
+                        <small class="text-muted">
+                            <i class="fas fa-code me-1"></i> Información de Desarrollo
+                        </small>
+                    </div>
+                    <div class="card-body">
+                        <small class="text-muted">
+                            <strong>URL solicitada:</strong> {{ request.url }}<br>
+                            <strong>Usuario:</strong> {{ current_user.username if current_user.is_authenticated else 'Anónimo' }}<br>
+                            <strong>Rol:</strong> {{ current_user.role if current_user.is_authenticated else 'N/A' }}<br>
+                            <strong>Timestamp:</strong> {{ moment().format('YYYY-MM-DD HH:mm:ss') if moment else 'N/A' }}
+                        </small>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para funcionalidad adicional -->
+<script>
+// Registrar el error para analytics (si está configurado)
+document.addEventListener('DOMContentLoaded', function() {
+    // Log del error 403 para monitoreo
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'exception', {
+            'description': 'Error 403 - Acceso Denegado',
+            'fatal': false
+        });
+    }
+    
+    // Opcional: Auto-redirect después de cierto tiempo si viene de una acción específica
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auto_redirect') === 'true') {
+        setTimeout(function() {
+            window.location.href = '{{ url_for("main.index") }}';
+        }, 5000);
+        
+        // Mostrar countdown
+        let countdown = 5;
+        const countdownElement = document.createElement('div');
+        countdownElement.className = 'alert alert-info mt-3';
+        countdownElement.innerHTML = `
+            <i class="fas fa-clock me-2"></i>
+            Serás redirigido automáticamente en <span id="countdown">${countdown}</span> segundos...
+        `;
+        document.querySelector('.card-body').appendChild(countdownElement);
+        
+        const timer = setInterval(function() {
+            countdown--;
+            document.getElementById('countdown').textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+    }
+});
+</script>
+{% endblock %}

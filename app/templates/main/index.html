@@ -1,27 +1,83 @@
-{% extends "base/layout.html" %}
+{#
+Template de página principal (landing page) para Gem-AvatART.
+
+Este template implementa la landing page principal de la aplicación, diseñada para
+convertir visitantes en usuarios registrados. Incluye secciones hero, estadísticas,
+características, proceso de trabajo y call-to-action finales.
+
+El template incluye:
+    - Hero section con propuesta de valor principal y CTAs
+    - Sección de estadísticas dinámicas con datos del backend
+    - Grid de características principales del producto
+    - Proceso de trabajo paso a paso
+    - Call-to-action final para conversión
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, d-flex, align-items-center, justify-content-center
+    - Typography: display-*, lead, fw-bold, text-*, fs-*
+    - Spacing: py-*, mb-*, gap-*, mx-auto
+    - Components: btn, btn-lg, btn-light, btn-outline-light, card, card-body
+    - Utilities: bg-*, text-center, h-100, rounded-circle, opacity-*
+
+Variables Jinja utilizadas:
+    - stats.total_users: Número total de usuarios registrados
+    - stats.total_reels: Número total de reels completados
+    - stats.total_avatars: Número total de avatares activos
+    - stats.total_producers: Número total de productores activos
+
+Rutas Flask referenciadas (url_for):
+    - auth.register: Formulario de registro de usuarios
+    - main.about: Página de información sobre la plataforma
+
+Iconografía Font Awesome:
+    - fas fa-rocket, fas fa-info-circle: CTAs principales
+    - fas fa-video: Hero icon y estadística de reels
+    - fas fa-users, fas fa-user-tie, fas fa-industry: Estadísticas
+    - fas fa-robot, fas fa-network-wired, fas fa-chart-line: Características
+    - fas fa-user-plus: CTA final de registro
+
+Estilos inline utilizados:
+    - width: 80px; height: 80px: Círculos numerados del proceso
+#}
+
+
+{% extends "base.html" %}
 
 {% block title %}Gem-AvatART - Crea Reels con IA{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
+<!-- ===== HERO SECTION ===== -->
+<!-- Sección principal con propuesta de valor y CTAs primarios -->
 <section class="bg-primary text-white py-5">
     <div class="container">
+        <!-- Grid responsive para contenido hero y visual -->
         <div class="row align-items-center">
+            <!-- Columna izquierda: Contenido de texto y CTAs -->
             <div class="col-lg-6">
+                <!-- Título principal con tipografía display de Bootstrap -->
                 <h1 class="display-4 fw-bold mb-4">Crea Reels Increíbles con Avatars IA</h1>
+                
+                <!-- Subtítulo descriptivo con clase lead -->
                 <p class="lead mb-4">
                     Plataforma profesional para crear contenido de video usando tecnología HeyGen. 
                     Gestiona tu red de productores, subproductores y afiliados.
                 </p>
+                
+                <!-- Contenedor flex para CTAs principales -->
                 <div class="d-flex gap-3">
+                    <!-- CTA primario: Registro gratuito -->
                     <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg">
                         <i class="fas fa-rocket"></i> Comenzar Gratis
                     </a>
+                    
+                    <!-- CTA secundario: Más información -->
                     <a href="{{ url_for('main.about') }}" class="btn btn-outline-light btn-lg">
                         <i class="fas fa-info-circle"></i> Conocer Más
                     </a>
                 </div>
             </div>
+            
+            <!-- Columna derecha: Icono visual representativo -->
             <div class="col-lg-6 text-center">
                 <i class="fas fa-video display-1 opacity-75"></i>
             </div>
@@ -29,53 +85,72 @@
     </div>
 </section>
 
-<!-- Stats Section -->
+<!-- ===== ESTADÍSTICAS SECTION ===== -->
+<!-- Métricas principales de la plataforma con datos dinámicos del backend -->
 <section class="py-5 bg-light">
     <div class="container">
+        <!-- Grid de 4 columnas para estadísticas principales -->
         <div class="row text-center">
+            
+            <!-- Card estadística: Usuarios registrados -->
             <div class="col-md-3 mb-4">
+                <!-- Usa clase stat-card definida en base.html con gradiente -->
                 <div class="card stat-card h-100">
                     <div class="card-body">
                         <i class="fas fa-users display-4 mb-3"></i>
+                        <!-- Variable Jinja desde view main.index() -->
                         <h3>{{ stats.total_users }}</h3>
                         <p class="card-text">Usuarios Registrados</p>
                     </div>
                 </div>
             </div>
+            
+            <!-- Card estadística: Reels completados -->
             <div class="col-md-3 mb-4">
                 <div class="card stat-card h-100">
                     <div class="card-body">
                         <i class="fas fa-video display-4 mb-3"></i>
+                        <!-- Variable Jinja: total_reels desde ReelStatus.COMPLETED -->
                         <h3>{{ stats.total_reels }}</h3>
                         <p class="card-text">Reels Creados</p>
                     </div>
                 </div>
             </div>
+            
+            <!-- Card estadística: Avatares activos -->
             <div class="col-md-3 mb-4">
                 <div class="card stat-card h-100">
                     <div class="card-body">
                         <i class="fas fa-user-tie display-4 mb-3"></i>
+                        <!-- Variable Jinja: total_avatars desde AvatarStatus.ACTIVE -->
                         <h3>{{ stats.total_avatars }}</h3>
                         <p class="card-text">Avatars Disponibles</p>
                     </div>
                 </div>
             </div>
+            
+            <!-- Card estadística: Productores activos -->
             <div class="col-md-3 mb-4">
                 <div class="card stat-card h-100">
                     <div class="card-body">
                         <i class="fas fa-industry display-4 mb-3"></i>
+                        <!-- Variable Jinja: total_producers desde UserRole.PRODUCER -->
                         <h3>{{ stats.total_producers }}</h3>
                         <p class="card-text">Productores Activos</p>
                     </div>
                 </div>
             </div>
+            
         </div>
     </div>
 </section>
 
-<!-- Features Section -->
+<!-- ===== CARACTERÍSTICAS PRINCIPALES ===== -->
+<!-- Grid de características clave del producto con iconografía -->
 <section class="py-5">
     <div class="container">
+        
+        <!-- Header de sección centrado -->
         <div class="row">
             <div class="col-lg-8 mx-auto text-center mb-5">
                 <h2 class="display-5 fw-bold">¿Por qué elegir Gem-AvatART?</h2>
@@ -85,7 +160,10 @@
             </div>
         </div>
         
+        <!-- Grid de 3 columnas para características principales -->
         <div class="row">
+            
+            <!-- Característica 1: Avatares IA -->
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-body text-center">
@@ -99,6 +177,7 @@
                 </div>
             </div>
             
+            <!-- Característica 2: Sistema Multi-nivel -->
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-body text-center">
@@ -112,6 +191,7 @@
                 </div>
             </div>
             
+            <!-- Característica 3: Analytics completo -->
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-body text-center">
@@ -124,62 +204,84 @@
                     </div>
                 </div>
             </div>
+            
         </div>
     </div>
 </section>
 
-<!-- How it Works -->
+<!-- ===== PROCESO DE TRABAJO ===== -->
+<!-- Explicación visual del flujo de trabajo de la plataforma -->
 <section class="py-5 bg-light">
     <div class="container">
+        
+        <!-- Header de sección -->
         <div class="row">
             <div class="col-lg-8 mx-auto text-center mb-5">
                 <h2 class="display-5 fw-bold">¿Cómo Funciona?</h2>
             </div>
         </div>
         
+        <!-- Grid de 4 pasos del proceso -->
         <div class="row">
+            
+            <!-- Paso 1: Registro -->
             <div class="col-md-3 text-center mb-4">
-                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                <!-- Círculo numerado con estilos inline y clases Bootstrap -->
+                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                     style="width: 80px; height: 80px;">
                     <span class="fw-bold fs-3">1</span>
                 </div>
                 <h5>Registro</h5>
                 <p class="text-muted">Regístrate como afiliado o solicita ser productor</p>
             </div>
             
+            <!-- Paso 2: Crear Avatar -->
             <div class="col-md-3 text-center mb-4">
-                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                     style="width: 80px; height: 80px;">
                     <span class="fw-bold fs-3">2</span>
                 </div>
                 <h5>Crear Avatar</h5>
                 <p class="text-muted">Los productores crean avatars personalizados</p>
             </div>
             
+            <!-- Paso 3: Generar Reels -->
             <div class="col-md-3 text-center mb-4">
-                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                     style="width: 80px; height: 80px;">
                     <span class="fw-bold fs-3">3</span>
                 </div>
                 <h5>Generar Reels</h5>
                 <p class="text-muted">Crea reels usando los avatars aprobados</p>
             </div>
             
+            <!-- Paso 4: Ganar Comisiones -->
             <div class="col-md-3 text-center mb-4">
-                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                     style="width: 80px; height: 80px;">
                     <span class="fw-bold fs-3">4</span>
                 </div>
                 <h5>Ganar Comisiones</h5>
                 <p class="text-muted">Recibe comisiones automáticas por cada reel</p>
             </div>
+            
         </div>
     </div>
 </section>
 
-<!-- CTA Section -->
+<!-- ===== CALL TO ACTION FINAL ===== -->
+<!-- Sección de conversión final con CTA prominente -->
 <section class="py-5 bg-primary text-white">
     <div class="container text-center">
+        <!-- Título principal del CTA -->
         <h2 class="display-5 fw-bold mb-4">¿Listo para comenzar?</h2>
+        
+        <!-- Subtítulo motivacional -->
         <p class="lead mb-4">
             Únete a nuestra plataforma y comienza a crear contenido profesional hoy mismo
         </p>
+        
+        <!-- CTA principal que lleva al registro -->
         <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg">
             <i class="fas fa-user-plus"></i> Registrarse Ahora
         </a>

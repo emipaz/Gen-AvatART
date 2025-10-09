@@ -1,3 +1,99 @@
+{#}
+Template de gestión de avatares para administración de Gem-AvatART.
+
+Este template implementa la interfaz de administración de avatares con sistema
+de filtrado, aprobación/rechazo y visualización detallada. Permite a los
+administradores gestionar todos los avatares creados en la plataforma.
+
+El template incluye:
+    - Sidebar de navegación administrativa consistente
+    - Sistema de filtros por estado de avatar
+    - Tabla responsive con información detallada de avatares
+    - Visualización de thumbnails de avatares
+    - Estados visuales con badges semánticos
+    - Acciones contextuales de aprobación y rechazo
+    - Información del creador con enlaces
+    - Paginación completa y estados vacíos
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between, align-items-center
+    - Sidebar: nav, nav-link, flex-column, bg-light, px-0
+    - Cards: card, card-body, card-header
+    - Forms: form-label, form-select, btn-group
+    - Table: table, table-responsive, table-hover, thead, tbody
+    - Badges: badge, bg-success, bg-warning, bg-danger, bg-info, bg-light, text-dark
+    - Pagination: pagination, page-item, page-link, justify-content-center
+    - Images: rounded, me-2
+    - Typography: text-muted, text-center, text-success, text-warning
+    - Spacing: mb-*, py-*, g-3, fa-2x, fa-3x
+
+Variables Jinja utilizadas:
+    - avatars: Objeto de paginación con lista de avatares
+    - avatars.total: Total de avatares encontrados
+    - avatars.items: Lista de avatares de la página actual
+    - avatars.pages: Número total de páginas
+    - avatars.has_prev/has_next: Navegación de paginación
+    - request.args: Parámetros de filtrado actuales
+
+Campos del formulario de filtros (name attributes):
+    - status: Filtro por estado (pending, approved, rejected, processing)
+    - page: Número de página actual para paginación
+
+Rutas Flask referenciadas (url_for):
+    - admin.dashboard: Dashboard principal
+    - admin.users, admin.producers, admin.reels, admin.commissions: Otras secciones
+    - admin.avatars: Gestión de avatares (enlace activo)
+    - admin.user_detail: Detalles del creador del avatar
+    - admin.avatar_detail: Ver detalles de avatar específico
+    - admin.approve_avatar: Aprobar avatar pendiente
+    - admin.reject_avatar: Rechazar avatar pendiente
+
+Iconografía Font Awesome:
+    - fas fa-tachometer-alt: Admin panel
+    - fas fa-user-circle: Avatares e icono principal
+    - fas fa-home, fas fa-users, fas fa-industry, fas fa-video, fas fa-dollar-sign: Navegación
+    - fas fa-filter: Filtrar resultados
+    - fas fa-times: Limpiar filtros
+    - fas fa-eye: Ver detalles
+    - fas fa-check: Aprobar avatar
+    - fas fa-times: Rechazar avatar
+    - fas fa-globe: Avatar público
+    - fas fa-lock: Avatar privado
+
+Métodos Jinja utilizados:
+    - avatar.status.value.title(): Capitalización del estado
+    - avatar.avatar_type.title(): Capitalización del tipo de avatar
+    - avatar.description[:50]: Truncamiento de descripción
+    - avatar.description|length: Verificación de longitud
+    - avatar.created_at.strftime(): Formateo de fechas
+    - request.args.get(): Obtener parámetros de filtro actuales
+    - avatars.iter_pages(): Iteración para paginación
+
+Estados de avatar manejados:
+    - approved: Badge verde (bg-success)
+    - pending: Badge amarillo (bg-warning)
+    - rejected: Badge rojo (bg-danger)
+    - processing: Badge azul (bg-info)
+
+Propiedades del avatar mostradas:
+    - name: Nombre del avatar
+    - description: Descripción truncada a 50 caracteres
+    - thumbnail_url: Imagen miniatura del avatar
+    - created_by: Información del creador
+    - status: Estado actual del avatar
+    - avatar_type: Tipo de avatar
+    - is_public: Visibilidad pública/privada
+    - created_at: Fecha y hora de creación
+
+Estilos inline utilizados:
+    - width: 40px; height: 40px; object-fit: cover: Thumbnails de avatares
+    - min-height: calc(100vh - 120px): Altura del sidebar
+
+Funcionalidades JavaScript:
+    - onclick="return confirm()": Confirmación para acciones destructivas
+    - title attributes: Tooltips para iconos de visibilidad
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Avatars - Admin - Gem-AvatART{% endblock %}

@@ -1,0 +1,458 @@
+{#}
+Template de gestión de equipo para productores en Gem-AvatART.
+
+Este template implementa la interfaz completa para que los productores gestionen
+su equipo de subproductores y usuarios finales. Incluye funcionalidades para
+invitar nuevos miembros, ver estadísticas detalladas de cada miembro, gestionar
+permisos y monitorear la actividad del equipo.
+
+El template incluye:
+    - Lista completa de miembros del equipo con filtros
+    - Estadísticas individuales de cada miembro
+    - Funcionalidad para invitar nuevos miembros
+    - Gestión de roles y permisos
+    - Historial de actividad de cada miembro
+    - Sistema de búsqueda y filtrado
+    - Acciones administrativas (activar/desactivar usuarios)
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between
+    - Cards: card, card-body, card-header
+    - Tables: table, table-responsive, table-hover, table-striped
+    - Forms: form-control, form-select, btn
+    - Badges: badge, bg-success, bg-warning, bg-danger, bg-light
+    - Buttons: btn, btn-primary, btn-outline-*, btn-sm
+    - Modals: modal, modal-dialog, modal-content, modal-header, modal-body
+    - Typography: text-muted, text-center
+    - Spacing: mb-*, mt-*, p-*
+
+Variables Jinja utilizadas:
+    - current_user: Usuario productor autenticado
+    - team_members: Lista completa de miembros del equipo
+    - team_stats: Estadísticas globales del equipo
+    - pending_invitations: Invitaciones pendientes de aceptar
+
+Rutas Flask referenciadas (url_for):
+    - producer.dashboard: Volver al dashboard
+    - producer.invite_user: Invitar nuevo miembro
+    - producer.member_detail: Ver detalle de miembro
+    - producer.toggle_member_status: Activar/desactivar miembro
+    - producer.remove_member: Remover miembro del equipo
+
+Filtros disponibles:
+    - role: Filtrar por rol (subproducer, final_user)
+    - status: Filtrar por estado (active, inactive)
+    - search: Búsqueda por nombre o username
+
+Acciones por miembro:
+    - Ver perfil detallado
+    - Ver estadísticas de rendimiento
+    - Activar/desactivar cuenta
+    - Remover del equipo (con confirmación)
+
+Iconografía Font Awesome:
+    - fas fa-users: Equipo y gestión
+    - fas fa-user-plus: Invitar miembros
+    - fas fa-search: Búsqueda
+    - fas fa-filter: Filtros
+    - fas fa-eye: Ver detalles
+    - fas fa-user-check: Usuario activo
+    - fas fa-user-times: Usuario inactivo
+    - fas fa-trash: Eliminar miembro
+    - fas fa-chart-bar: Estadísticas
+    - fas fa-envelope: Invitaciones pendientes
+
+Funcionalidades de gestión:
+    - Búsqueda en tiempo real de miembros
+    - Filtrado por múltiples criterios
+    - Paginación para equipos grandes
+    - Modales de confirmación para acciones críticas
+    - Estadísticas de rendimiento individual
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Gestión de Equipo - Productor - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con layout fluido -->
+<div class="container-fluid">
+    <!-- Header de la página con navegación -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <!-- Título principal con icono representativo -->
+            <h1 class="mb-1"><i class="fas fa-users text-primary"></i> Gestión de Equipo</h1>
+            <!-- Breadcrumb de navegación -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('producer.dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active">Equipo</li>
+                </ol>
+            </nav>
+        </div>
+        
+        <!-- Botón para invitar nuevos miembros -->
+        <a href="{{ url_for('producer.invite_user') }}" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Invitar Miembro
+        </a>
+    </div>
+
+    <!-- Fila de estadísticas del equipo -->
+    <div class="row g-3 mb-4">
+        <!-- Estadística: Total de miembros -->
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-users fa-3x me-3"></i>
+                        <div>
+                            <h3 class="mb-0">{{ team_members|length if team_members else 0 }}</h3>
+                            <p class="mb-0">Total Miembros</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadística: Miembros activos -->
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-check fa-3x me-3"></i>
+                        <div>
+                            <h3 class="mb-0">{{ team_stats.active_members if team_stats else 0 }}</h3>
+                            <p class="mb-0">Activos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadística: Subproductores -->
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-tie fa-3x me-3"></i>
+                        <div>
+                            <h3 class="mb-0">{{ team_stats.subproducers_count if team_stats else 0 }}</h3>
+                            <p class="mb-0">Subproductores</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadística: Invitaciones pendientes -->
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-envelope fa-3x me-3"></i>
+                        <div>
+                            <h3 class="mb-0">{{ pending_invitations|length if pending_invitations else 0 }}</h3>
+                            <p class="mb-0">Pendientes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de filtros y búsqueda -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <!-- Campo de búsqueda por nombre -->
+                <div class="col-md-4">
+                    <label class="form-label">Buscar Miembro</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" name="search" 
+                               value="{{ request.args.get('search', '') }}" 
+                               placeholder="Nombre o username">
+                    </div>
+                </div>
+
+                <!-- Filtro por rol -->
+                <div class="col-md-3">
+                    <label class="form-label">Filtrar por Rol</label>
+                    <select name="role" class="form-select">
+                        <option value="">Todos los roles</option>
+                        <option value="subproducer" {{ 'selected' if request.args.get('role') == 'subproducer' }}>
+                            Subproductor
+                        </option>
+                        <option value="final_user" {{ 'selected' if request.args.get('role') == 'final_user' }}>
+                            Usuario Final
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Filtro por estado -->
+                <div class="col-md-3">
+                    <label class="form-label">Filtrar por Estado</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos los estados</option>
+                        <option value="active" {{ 'selected' if request.args.get('status') == 'active' }}>
+                            Activo
+                        </option>
+                        <option value="inactive" {{ 'selected' if request.args.get('status') == 'inactive' }}>
+                            Inactivo
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Botones de filtro -->
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de miembros del equipo -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Miembros del Equipo</h5>
+        </div>
+        <div class="card-body">
+            {% if team_members %}
+                <!-- Tabla responsive con información de miembros -->
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>Miembro</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Último Acceso</th>
+                                <th>Reels Creados</th>
+                                <th>Fecha Ingreso</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in team_members %}
+                            <tr>
+                                <!-- Información del miembro -->
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <!-- Avatar del miembro o placeholder -->
+                                        {% if member.avatar_url %}
+                                            <img src="{{ member.avatar_url }}" class="rounded-circle me-2" 
+                                                 style="width: 40px; height: 40px;" alt="Avatar">
+                                        {% else %}
+                                            <div class="bg-light rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                 style="width: 40px; height: 40px;">
+                                                <i class="fas fa-user text-muted"></i>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        <div>
+                                            <strong>{{ member.full_name }}</strong>
+                                            <br><small class="text-muted">@{{ member.username }}</small>
+                                            <br><small class="text-muted">{{ member.email }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Rol del miembro -->
+                                <td>
+                                    <span class="badge bg-light text-dark">
+                                        {{ member.role.value.title() }}
+                                    </span>
+                                </td>
+
+                                <!-- Estado de actividad -->
+                                <td>
+                                    <span class="badge bg-{{ 'success' if member.status.value == 'active' else 'danger' }}">
+                                        <i class="fas fa-{{ 'check' if member.status.value == 'active' else 'times' }}"></i>
+                                        {{ member.status.value.title() }}
+                                    </span>
+                                </td>
+
+                                <!-- Último acceso -->
+                                <td>
+                                    {% if member.last_login %}
+                                        {{ member.last_login.strftime('%d/%m/%Y') }}
+                                        <br><small class="text-muted">{{ member.last_login.strftime('%H:%M') }}</small>
+                                    {% else %}
+                                        <span class="text-muted">Nunca</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Estadísticas de reels -->
+                                <td>
+                                    <span class="badge bg-info">{{ member.reels.count() if member.reels else 0 }}</span>
+                                </td>
+
+                                <!-- Fecha de ingreso al equipo -->
+                                <td>
+                                    {{ member.created_at.strftime('%d/%m/%Y') }}
+                                </td>
+
+                                <!-- Acciones disponibles -->
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <!-- Ver perfil detallado -->
+                                        <a href="{{ url_for('producer.member_detail', member_id=member.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" title="Ver Perfil">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+
+                                        <!-- Toggle estado del miembro -->
+                                        <button type="button" class="btn btn-sm btn-outline-{{ 'warning' if member.status.value == 'active' else 'success' }}" 
+                                                onclick="toggleMemberStatus({{ member.id }}, '{{ member.full_name }}')"
+                                                title="{{ 'Desactivar' if member.status.value == 'active' else 'Activar' }}">
+                                            <i class="fas fa-{{ 'user-times' if member.status.value == 'active' else 'user-check' }}"></i>
+                                        </button>
+
+                                        <!-- Remover del equipo -->
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="removeMember({{ member.id }}, '{{ member.full_name }}')"
+                                                title="Remover del Equipo">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <!-- Estado vacío cuando no hay miembros -->
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No hay miembros en tu equipo</h4>
+                    <p class="text-muted">Comienza invitando subproductores y usuarios finales.</p>
+                    <a href="{{ url_for('producer.invite_user') }}" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Invitar Primer Miembro
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para toggle de estado -->
+<div class="modal fade" id="toggleStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cambiar Estado del Miembro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="toggleStatusMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmToggleStatus">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para remover miembro -->
+<div class="modal fade" id="removeMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Remover Miembro del Equipo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="removeMemberMessage"></p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Advertencia:</strong> Esta acción no se puede deshacer.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemoveMember">Remover</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para manejo de modales y acciones -->
+<script>
+let currentMemberId = null;
+
+// Función para toggle de estado de miembro
+function toggleMemberStatus(memberId, memberName) {
+    currentMemberId = memberId;
+    document.getElementById('toggleStatusMessage').textContent = 
+        `¿Estás seguro de que deseas cambiar el estado de ${memberName}?`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('toggleStatusModal'));
+    modal.show();
+}
+
+// Función para remover miembro
+function removeMember(memberId, memberName) {
+    currentMemberId = memberId;
+    document.getElementById('removeMemberMessage').textContent = 
+        `¿Estás seguro de que deseas remover a ${memberName} del equipo?`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('removeMemberModal'));
+    modal.show();
+}
+
+// Confirmar toggle de estado
+document.getElementById('confirmToggleStatus').addEventListener('click', function() {
+    if (currentMemberId) {
+        // Realizar petición para cambiar estado
+        fetch(`{{ url_for('producer.toggle_member_status', member_id=0) }}`.replace('0', currentMemberId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error al cambiar el estado del miembro');
+            }
+        });
+    }
+});
+
+// Confirmar remoción de miembro
+document.getElementById('confirmRemoveMember').addEventListener('click', function() {
+    if (currentMemberId) {
+        // Realizar petición para remover miembro
+        fetch(`{{ url_for('producer.remove_member', member_id=0) }}`.replace('0', currentMemberId), {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error al remover el miembro del equipo');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
