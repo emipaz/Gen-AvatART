@@ -1,11 +1,37 @@
 """
-Módulo de inicialización de la aplicación Flask.
+Módulo de inicialización de la aplicación Flask para Gen-AvatART.
 
 Este módulo contiene la factory function para crear y configurar la aplicación Flask,
-así como la inicialización de todas las extensiones necesarias.
+así como la inicialización de todas las extensiones necesarias para el funcionamiento
+completo del sistema.
+
+El módulo incluye:
+    - Factory function create_app()    : Creación y configuración de la aplicación
+    - Inicialización de extensiones    : SQLAlchemy, Login, Migrate, Mail, JWT
+    - Configuración de Flask-Login     : Gestión de sesiones de usuario
+    - Registro de blueprints           : Organización modular de rutas
+    - Manejadores de errores           : 404, 403, 500 con templates personalizados
+    - Context processors               : Variables globales para templates
+
+Funcionalidades principales:
+    - Patrón Application Factory para múltiples configuraciones
+    - Gestión completa de autenticación y autorización
+    - Sistema de migraciones de base de datos
+    - Envío de correos electrónicos
+    - API REST con autenticación JWT
+    - Manejo elegante de errores HTTP
+    - Inyección automática de contexto en templates
+
+Extensiones inicializadas:
+    - SQLAlchemy    : ORM para manejo de base de datos
+    - LoginManager  : Gestión de sesiones de usuario
+    - Migrate       : Control de versiones de BD
+    - Mail          : Servicio de correo electrónico
+    - JWTManager    : Tokens para autenticación API
 """
 
 from flask import Flask
+from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -31,6 +57,7 @@ def create_app(config_name='default'):
     Args:
         config_name (str, opcional): Nombre de la configuración a usar.
                                    Debe coincidir con una clave en config_dict.
+                                   Opciones: 'development', 'production', 'testing', 'default'.
                                    Por defecto es 'default'.
     
     Returns:
@@ -39,6 +66,12 @@ def create_app(config_name='default'):
     
     Raises:
         KeyError: Si config_name no existe en config_dict.
+    
+    Note:
+        - La aplicación se configura según el entorno especificado
+        - Todas las extensiones se inicializan automáticamente
+        - Los blueprints se registran con sus prefijos correspondientes
+        - Los manejadores de error se configuran para una UX consistente
     """
     app = Flask(__name__)
     
@@ -52,7 +85,7 @@ def create_app(config_name='default'):
     mail.init_app(app)           # Configurar servicio de email
     jwt.init_app(app)            # Configurar JWT para API authentication
     
-    # Configurar Flask-Login para la gestión de sesione
+    # Configurar Flask-Login para la gestión de sesiones
     # Vista por defecto para login
     login_manager.login_view  = 'auth.login'
     # mensaje mostrado al intentar acceder a una vista protegida sin estar autenticado
@@ -108,30 +141,64 @@ def create_app(config_name='default'):
         """
         Manejador personalizado para errores 404 (Página no encontrada).
         
+        Se ejecuta cuando el usuario accede a una URL que no existe
+        en la aplicación, proporcionando una experiencia de usuario
+        consistente con el diseño de la aplicación.
+        
         Args:
             error: Objeto de error proporcionado por Flask.
         
         Returns:
             tuple: Tupla con (template_renderizado, código_estado_http)
+        
+        Note:
+            - Renderiza template personalizado para mantener la UX
+            - Retorna código HTTP 404 estándar
         """
-        from flask import render_template
+        
         return render_template('errors/404.html'), 404
     
+    @app.errorhandler(403)
+    def forbidden_error(error):
+        """
+        Manejador personalizado para errores 403 (Acceso Prohibido).
+        
+        Se ejecuta cuando un usuario autenticado intenta acceder a un
+        recurso para el cual no tiene permisos suficientes. Común en
+        sistemas con roles y permisos granulares.
+        
+        Args:
+            error: Objeto de error proporcionado por Flask.
+        
+        Returns:
+            tuple: Tupla con (template_renderizado, código_estado_http)
+        
+        Note:
+            - Importante para sistema de roles (admin, producer, etc.)
+            - Proporciona feedback claro sobre restricciones de acceso
+        """
+        return render_template('errors/403.html'), 403
+
     @app.errorhandler(500)
     def internal_error(error):
         """
         Manejador personalizado para errores 500 (Error interno del servidor).
         
+        Se ejecuta cuando ocurre una excepción no manejada en el servidor.
         Realiza rollback de la sesión de base de datos para evitar
-        estados inconsistentes en caso de error.
+        estados inconsistentes y proporciona una página de error elegante.
         
         Args:
             error: Objeto de error proporcionado por Flask.
         
         Returns:
             tuple: Tupla con (template_renderizado, código_estado_http)
+        
+        Note:
+            - Realiza rollback automático de BD para evitar corrupción
+            - Template de error no debe depender de BD
+            - Útil para ocultar detalles técnicos en producción
         """
-        from flask import render_template
         db.session.rollback()
         return render_template('errors/500.html'), 500
     
@@ -143,9 +210,16 @@ def create_app(config_name='default'):
         
         Hace que 'current_user' esté disponible en todos los templates
         sin necesidad de pasarlo explícitamente desde cada vista.
+        Simplifica la lógica de plantillas y mejora la consistencia.
         
         Returns:
             dict: Diccionario con variables a inyectar en el contexto de templates.
+                 Las claves se convierten en variables disponibles en Jinja2.
+        
+        Note:
+            - Se ejecuta automáticamente en cada renderizado de template
+            - Útil para información que se necesita en múltiples vistas
+            - Evita repetir código en cada función de vista
         """
         from flask_login import current_user
         return dict(current_user=current_user)
