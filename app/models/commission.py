@@ -82,11 +82,9 @@ class Commission(db.Model):
     amount          = db.Column(db.Float, nullable = False)
     percentage      = db.Column(db.Float, nullable = False)  # Porcentaje aplicado
     
-    
     # Integración con Stripe Connect
     application_fee_amount   = db.Column(db.Float, nullable = True)    # Monto exacto del application_fee
     stripe_payment_intent_id = db.Column(db.String(100), index = True) # ID del Payment Intent de Stripe
-    
     
     # Estado y procesamiento
     status   = db.Column(db.Enum(CommissionStatus), nullable = False, default = CommissionStatus.PENDING)
@@ -99,7 +97,6 @@ class Commission(db.Model):
     
     # Metadatos adicionales
     meta_data = db.Column(db.JSON)  # Para información adicional de Stripe y contexto
-    
     
     # Timestamps
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
@@ -150,7 +147,6 @@ class Commission(db.Model):
             str: Nombre de la empresa o 'N/A' si no existe
         """
         return self.producer.company_name if self.producer else 'N/A'
-    
     
     def approve(self):
         """
@@ -242,7 +238,6 @@ class Commission(db.Model):
             self.metadata['refund'] = refund_data
         db.session.commit()
        
-    
     def cancel(self, reason=None):
         """
         Cancela la comisión con una razón opcional.
@@ -300,9 +295,7 @@ class Commission(db.Model):
         db.session.add(commission)
         db.session.commit()
         return commission
-    
-    
-    
+     
     @staticmethod
     def get_user_total_earnings(user_id, status=None):
         """
@@ -380,7 +373,7 @@ class Commission(db.Model):
             'amount'                   : self.amount,                                                # ✅ MANTENER
             'percentage'               : self.percentage,                                            # ✅ MANTENER
             'application_fee_amount'   : self.application_fee_amount,                                # ✅ NUEVO
-            'stripe_payment_intent_id' : self.stripe_payment_intent_id,                             # ✅ NUEVO
+            'stripe_payment_intent_id' : self.stripe_payment_intent_id,                              # ✅ NUEVO
             'status'                   : self.status.value,                                          # ✅ MANTENER
             'currency'                 : self.currency,                                              # ✅ MANTENER
             'payment_method'           : self.payment_method,                                        # ✅ MANTENER
@@ -388,7 +381,7 @@ class Commission(db.Model):
             'metadata'                 : self.metadata or {},                                        # ✅ NUEVO
             'is_stripe_processed'      : self.is_stripe_processed(),                                 # ✅ NUEVO
             'notes'                    : self.notes,                                                 # ✅ MANTENER
-            'created_at'               : self.created_at.isoformat() if self.created_at else None,  # ✅ MANTENER
-            'approved_at'              : self.approved_at.isoformat() if self.approved_at else None,# ✅ MANTENER
-            'paid_at'                  : self.paid_at.isoformat() if self.paid_at else None         # ✅ MANTENER
+            'created_at'               : self.created_at.isoformat() if self.created_at else None,   # ✅ MANTENER
+            'approved_at'              : self.approved_at.isoformat() if self.approved_at else None, # ✅ MANTENER
+            'paid_at'                  : self.paid_at.isoformat() if self.paid_at else None          # ✅ MANTENER
         }
