@@ -36,12 +36,16 @@ Características técnicas:
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from functools import wraps
+from datetime import datetime
 from app import db
 from app.models.user import User, UserRole, UserStatus
 from app.models.producer import Producer
 from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission, CommissionStatus
+
+# Importación del modelo de solicitudes de productor
+from app.models.producer_request import ProducerRequest, ProducerRequestStatus
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -128,8 +132,8 @@ def dashboard():
         'pending_reels'       : Reel.query.filter_by( status = ReelStatus.PENDING).count(),
         'completed_reels'     : Reel.query.filter_by( status = ReelStatus.COMPLETED).count(),
         'total_avatars'       : Avatar.query.count(),
-        'pending_avatars'     : Avatar.query.filter_by( status = AvatarStatus.PROCESSING).count(),
-        'approved_avatars'    : Avatar.query.filter_by( status = AvatarStatus.ACTIVE).count(),
+        'pending_avatars'     : Avatar.query.filter_by( status = AvatarStatus.PENDING).count(),
+        'approved_avatars'    : Avatar.query.filter_by( status = AvatarStatus.APPROVED).count(),
         'total_commissions'   : Commission.query.count(),
         'pending_commissions' : Commission.query.filter_by( status = CommissionStatus.PENDING).count()
     }
@@ -141,13 +145,13 @@ def dashboard():
     recent_reels = Reel.query.order_by(Reel.created_at.desc()).limit(5).all()
     
     # Elementos pendientes para el template
-    pending_avatars = Avatar.query.filter_by(status = AvatarStatus.PROCESSING).limit(5).all()
+    pending_avatars = Avatar.query.filter_by(status = AvatarStatus.PENDING).limit(5).all()
     pending_reels   = Reel.query.filter_by(  status = ReelStatus.PENDING).limit(5).all()
     
     return render_template('admin/dashboard.html', 
                          stats           = stats, 
                          recent_users    = recent_users, 
-                         recent_reels    = =recent_reels,
+                         recent_reels    = recent_reels,
                          pending_avatars = pending_avatars,
                          pending_reels   = pending_reels)
 
@@ -470,7 +474,7 @@ def create_producer():
             business_type      = business_type,
             website            = website,
             max_subproducers   = max_subproducers,
-            max_affiliates    = max_affiliates,
+            max_affiliates     = max_affiliates,
             monthly_api_limit  = monthly_api_limit
         )
         
@@ -809,7 +813,7 @@ def reject_avatar(avatar_id):
 @login_required
 @admin_required
 def api_stats():
-    """"
+    """
     API REST para estadísticas administrativas en tiempo real.
     
     Proporciona estadísticas completas del sistema en formato JSON
@@ -873,7 +877,7 @@ def api_stats():
             'admins'       : User.query.filter_by(role=UserRole.ADMIN).count(),
             'producers'    : User.query.filter_by(role=UserRole.PRODUCER).count(),
             'subproducers' : User.query.filter_by(role=UserRole.SUBPRODUCER).count(),
-            'affiliates'   : User.query.filter_by(role=UserRole.AFFILIATE).count()
+            'affiliates'   : User.query.filter_by(role=UserRole.FINAL_USER).count()
         },
         'reels': {
             'total'      : Reel.query.count(),
@@ -898,3 +902,405 @@ def api_stats():
     }
     
     return jsonify(stats)
+
+@admin_bp.route('/producer-requests')
+@login_required
+@admin_required
+def producer_requests():
+    """
+    Lista paginada de todas las solicitudes de productor.
+    
+    Proporciona una vista administrativa completa de todas las solicitudes
+    para convertirse en productor, incluyendo filtrado por estado y
+    búsqueda por usuario. Esencial para el flujo de aprobación.
+    
+    Query Parameters:
+        page (int, opcional): Número de página para paginación (default: 1)
+        status (str, opcional): Filtro por estado (pending, approved, rejected)
+        search (str, opcional): Búsqueda por nombre de usuario o email
+    
+    Returns:
+        Template: 'admin/producer_requests.html' con lista paginada de solicitudes
+    
+    Context Variables:
+        requests (Pagination): Objeto de paginación con solicitudes filtradas
+        pending_count (int): Número de solicitudes pendientes (para badges)
+    
+    Note:
+        - Vista crítica para administradores gestionar solicitudes
+        - Incluye información del usuario solicitante con join optimizado
+        - Ordenamiento por fecha de creación (más recientes primero)
+        - Acceso directo a funciones de aprobación/rechazo
+        - Badge con número de solicitudes pendientes para priorización
+    """
+    # Parámetros de consulta para filtrado y paginación
+    page          = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status')
+    search        = request.args.get('search', '')
+    
+    # Consulta base con join para información del usuario
+    query = ProducerRequest.query.join(ProducerRequest.user)
+    
+    # Aplicar filtros dinámicamente
+    if status_filter:
+        try:
+            status_enum = ProducerRequestStatus(status_filter)
+            query       = query.filter(ProducerRequest.status == status_enum)
+        except ValueError:
+            # Estado inválido, ignorar filtro
+            pass
+    
+    # Búsqueda por información del usuario
+    if search:
+        from app.models.user import User
+        query = query.filter(
+            db.or_(
+                User.username.contains(search),
+                User.email.contains(search),
+                User.first_name.contains(search),
+                User.last_name.contains(search),
+                ProducerRequest.company_name.contains(search)
+            )
+        )
+    
+    # Ejecutar consulta con paginación (más recientes primero)
+    requests = query.order_by(ProducerRequest.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    # Contar solicitudes pendientes para badge informativo
+    pending_count = ProducerRequest.query.filter_by(
+        status=ProducerRequestStatus.PENDING
+    ).count()
+    
+    return render_template('admin/producer_requests.html', 
+                         requests=requests, 
+                         pending_count=pending_count)
+
+@admin_bp.route('/producer-requests/<int:request_id>')
+@login_required
+@admin_required  
+def producer_request_detail(request_id):
+    """
+    Vista detallada de una solicitud específica de productor.
+    
+    Muestra información completa de la solicitud incluyendo datos
+    del solicitante, motivación, información empresarial y historial
+    de revisión. Incluye opciones de aprobación/rechazo.
+    
+    Args:
+        request_id (int): ID único de la solicitud a mostrar
+    
+    Returns:
+        Template: 'admin/producer_request_detail.html' con información completa
+    
+    Context Variables:
+        producer_request (ProducerRequest): Objeto solicitud con toda la información
+        user_stats (dict): Estadísticas del usuario solicitante
+    
+    Note:
+        - Información completa del usuario y su actividad en la plataforma
+        - Historial de revisiones anteriores si las hay
+        - Formularios inline para aprobar/rechazar con motivos
+        - Estadísticas del usuario para evaluar experiencia previa
+    """
+    # Obtener solicitud con información relacionada
+    producer_request = ProducerRequest.query.options(
+        db.joinedload(ProducerRequest.user),
+        db.joinedload(ProducerRequest.reviewed_by)
+    ).get_or_404(request_id)
+    
+    # Estadísticas del usuario solicitante para contexto
+    user = producer_request.user
+    user_stats = {
+        'total_reels'       : user.reels.count(),
+        'completed_reels'   : user.reels.filter_by(status=ReelStatus.COMPLETED).count(),
+        'total_commissions' : user.commissions_earned.count(),
+        'member_since'      : user.created_at,
+        'last_login'        : user.last_login,
+        'previous_requests' : ProducerRequest.query.filter(
+            ProducerRequest.user_id == user.id,
+            ProducerRequest.id != request_id
+        ).count()
+    }
+    
+    return render_template('admin/producer_request_detail.html',
+                         producer_request=producer_request,
+                         user_stats=user_stats)
+
+@admin_bp.route('/producer-requests/<int:request_id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_producer_request(request_id):
+    """
+    Aprobar una solicitud de productor y elevar permisos de usuario.
+    
+    Procesa una solicitud de productor marcándola como aprobada y
+    actualizando el rol del usuario solicitante a PRODUCER. Utiliza
+    el método approve() del modelo para garantizar consistencia.
+    
+    Args:
+        request_id (int): ID de la solicitud a aprobar
+    
+    Returns:
+        Redirect: Redirección a lista de solicitudes con mensaje de confirmación
+    
+    Form Data (POST):
+        notes (str, opcional): Notas administrativas sobre la aprobación
+    
+    Note:
+        - Utiliza método approve() del modelo para transacción atómica
+        - Cambio de rol es permanente hasta nueva intervención administrativa
+        - Usuario obtiene acceso inmediato a funcionalidades de productor
+        - Se registra auditoría completa automáticamente
+        - Manejo de errores robusto con rollback automático
+        - Notificación automática al usuario (futuro enhancement)
+    """
+    # Obtener solicitud con información relacionada
+    producer_request = ProducerRequest.query.get_or_404(request_id)
+    
+    # Capturar notas administrativas opcionales
+    notes = request.form.get('notes')
+    
+    try:
+        # Usar método del modelo para aprobación atómica
+        producer_request.approve(current_user, notes=notes)
+        
+        # Mensaje de éxito con información del usuario
+        user = producer_request.user
+        flash(f"Solicitud de {user.username} aprobada exitosamente. "
+              f"Ahora tiene permisos de productor.", "success")
+              
+    except ValueError as e:
+        # Error de validación (solicitud no en estado correcto)
+        flash(f"Error al aprobar solicitud: {str(e)}", "error")
+        
+    except Exception as e:
+        # Error inesperado durante el proceso
+        db.session.rollback()
+        flash(f"Error interno al procesar la solicitud: {str(e)}", "error")
+
+    return redirect(url_for('admin.producer_requests'))
+
+@admin_bp.route('/producer-requests/<int:request_id>/reject', methods=['POST'])
+@login_required
+@admin_required
+def reject_producer_request(request_id):
+    """
+    Rechazar una solicitud de productor por no cumplir criterios.
+    
+    Marca una solicitud de productor como REJECTED, denegando
+    el acceso a funcionalidades de productor. Utiliza el método
+    reject() del modelo para garantizar consistencia de datos.
+    
+    Args:
+        request_id (int): ID de la solicitud a rechazar
+    
+    Returns:
+        Redirect: Redirección a lista de solicitudes con mensaje de confirmación
+    
+    Form Data (POST):
+        rejection_reason (str, opcional): Motivo del rechazo para el usuario
+        notes (str, opcional): Notas internas del administrador
+    
+    Note:
+        - Utiliza método reject() del modelo para transacción consistente
+        - Acción reversible, usuario puede volver a solicitar
+        - Se registra auditoría completa automáticamente
+        - Usuario no cambia de rol, mantiene permisos actuales
+        - Motivo del rechazo ayuda al usuario para futuras solicitudes
+        - Notificación automática al usuario (futuro enhancement)
+    """
+    # Obtener solicitud con información relacionada
+    producer_request = ProducerRequest.query.get_or_404(request_id)
+    
+    # Capturar datos del formulario
+    rejection_reason = request.form.get('rejection_reason')
+    notes = request.form.get('notes')
+    
+    try:
+        # Usar método del modelo para rechazo consistente
+        producer_request.reject(current_user, reason=rejection_reason, notes=notes)
+        
+        # Mensaje de confirmación con información del usuario
+        user = producer_request.user
+        flash(f"Solicitud de {user.username} rechazada.", "info")
+        
+    except ValueError as e:
+        # Error de validación (solicitud no en estado correcto)
+        flash(f"Error al rechazar solicitud: {str(e)}", "error")
+        
+    except Exception as e:
+        # Error inesperado durante el proceso
+        db.session.rollback()
+        flash(f"Error interno al procesar la solicitud: {str(e)}", "error")
+
+    return redirect(url_for('admin.producer_requests'))
+
+@admin_bp.route('/producers/<int:producer_id>/approve-api-key', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def approve_api_key(producer_id):
+    """
+    Aprobar manualmente la API key de HeyGen de un productor.
+    
+    Marca la API key del productor como válida sin realizar validación
+    automática. Útil cuando la validación automática falla pero el
+    administrador confirma manualmente que la key es funcional.
+    
+    Args:
+        producer_id (int): ID del productor cuya API key se aprobará
+    
+    Returns:
+        Redirect: Redirección a lista de productores con mensaje de confirmación
+    
+    Note:
+        - Bypass de validación automática para casos especiales
+        - Útil cuando HeyGen API tiene problemas temporales
+        - Administrador asume responsabilidad de la validez de la key
+        - Cambio se refleja inmediatamente en capacidades del productor
+        - Incluye rollback automático en caso de error de base de datos
+        - Manejo graceful de errores para campos opcionales del modelo
+    """
+    # Obtener productor por ID
+    producer = Producer.query.get_or_404(producer_id)
+    
+    # Intentar marcar API key como válida con manejo de errores
+    try:
+        # Campo opcional que puede no existir en todas las versiones del modelo
+        producer.api_key_status = 'valid'
+        db.session.commit()
+        flash('API key marcada como válida.', 'success')
+    except Exception as e:
+        # Rollback en caso de error y notificar problema
+        db.session.rollback()
+        flash(f'No se pudo actualizar el estado de la API key: {e}', 'danger')
+
+    return redirect(url_for('admin.producers'))
+
+@admin_bp.route('/producers/<int:producer_id>/reset-limits', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def reset_producer_limits(producer_id):
+    """
+    Resetear los límites y contadores mensuales de un productor.
+    
+    Restablece a cero todos los contadores mensuales del productor,
+    incluyendo llamadas API y uso de recursos. Útil para resolver
+    problemas de límites o conceder uso adicional excepcional.
+    
+    Args:
+        producer_id (int): ID del productor cuyos límites se resetearán
+    
+    Returns:
+        Redirect: Redirección a lista de productores con mensaje de confirmación
+    
+    Note:
+        - Resetea contadores sin cambiar los límites máximos configurados
+        - Útil para casos excepcionales o resolución de problemas
+        - Registra timestamp del reset para auditoría
+        - Manejo graceful de campos opcionales del modelo Producer
+        - Permite uso inmediato después del reset
+        - Acción potencialmente crítica que puede afectar costos de API
+    """
+    # Obtener productor por ID
+    producer = Producer.query.get_or_404(producer_id)
+
+    # Resetear contadores con manejo de atributos opcionales
+    # Estos campos pueden variar según la versión del modelo
+    try:
+        # Contador de llamadas API del mes actual
+        producer.api_calls_this_month = 0
+    except AttributeError:
+        # Campo opcional, ignorar si no existe en el modelo
+        pass
+
+    try:
+        # Contador general de uso mensual
+        producer.used_this_month = 0
+    except AttributeError:
+        # Campo opcional, ignorar si no existe en el modelo
+        pass
+
+    try:
+        # Timestamp del último reset para auditoría
+        producer.last_reset_at = datetime.utcnow()
+    except AttributeError:
+        # Campo opcional, ignorar si no existe en el modelo
+        pass
+
+    # Actualizar timestamp de modificación (campo estándar)
+    producer.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    flash('Límites mensuales reseteados correctamente.', 'success')
+    return redirect(url_for('admin.producers'))
+
+@admin_bp.route('/producers/<int:producer_id>/suspend', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def suspend_producer(producer_id):
+    """
+    Suspender temporalmente un productor y deshabilitar acceso API.
+    
+    Suspende las capacidades de productor bloqueando el acceso a la API
+    de HeyGen y deshabilitando la creación de avatares y gestión de equipos.
+    Medida disciplinaria temporal que puede ser revertida.
+    
+    Args:
+        producer_id (int): ID del productor a suspender
+    
+    Returns:
+        Redirect: Redirección a lista de productores con mensaje de confirmación
+    
+    Form Data (POST):
+        suspension_reason (str, opcional): Motivo de la suspensión para auditoría
+        suspension_duration (int, opcional): Duración en días (0 = indefinida)
+    
+    Note:
+        - Suspensión temporal que puede ser revertida por administrador
+        - Bloquea acceso a API de HeyGen inmediatamente
+        - Subproductores y afiliados del productor mantienen acceso limitado
+        - Reels en proceso pueden completarse pero no se crean nuevos
+        - Manejo graceful de diferentes versiones del modelo Producer
+        - Registra timestamp para auditoría y posible reversión automática
+    """
+    # Obtener productor por ID
+    producer = Producer.query.get_or_404(producer_id)
+    
+    # Marcar estado de API como suspendida
+    try:
+        # Campo específico para estado de API key
+        producer.api_key_status = 'suspended'
+    except AttributeError:
+        # Campo opcional, ignorar si no existe en el modelo
+        pass
+        
+    # Marcar estado general del productor como suspendido
+    try:
+        # Campo de estado general del productor
+        producer.status = 'suspended'
+    except AttributeError:
+        # Campo opcional, ignorar si no existe en el modelo
+        pass
+
+    # Capturar datos opcionales del formulario
+    suspension_reason = request.form.get('suspension_reason')
+    if suspension_reason:
+        try:
+            producer.suspension_reason = suspension_reason
+        except AttributeError:
+            pass
+
+    # Registrar timestamp de la suspensión
+    try:
+        producer.suspended_at = datetime.utcnow()
+    except AttributeError:
+        pass
+
+    # Actualizar timestamp de modificación (campo estándar)
+    producer.updated_at = datetime.utcnow()
+    db.session.commit()
+    
+    flash('Productor suspendido correctamente.', 'warning')
+    return redirect(url_for('admin.producers'))

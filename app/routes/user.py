@@ -34,6 +34,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app import db
 from app.models.user import User
+from app.models.producer_request import ProducerRequest, ProducerRequestStatus
 import os
 from PIL import Image
 
@@ -282,3 +283,84 @@ def dashboard():
     recent_reels = current_user.reels.order_by(db.desc('created_at')).limit(5).all()
     
     return render_template('user/dashboard.html', stats=stats, recent_reels=recent_reels)
+
+@user_bp.route('/request-producer', methods=['GET', 'POST'])
+@login_required
+def request_producer():
+    """
+    Ruta para solicitar convertirse en productor.
+    
+    Permite a los usuarios finales solicitar ser productores enviando
+    información comercial y motivaciones. Solo pueden tener una solicitud
+    activa por vez y no pueden solicitar si ya son productores.
+    
+    Methods:
+        GET  : Muestra el formulario de solicitud
+        POST : Procesa la solicitud de productor
+    
+    Form Data (POST):
+        company_name (str)         : Nombre de la empresa o marca (requerido)
+        business_type (str)        : Tipo de negocio o rubro (opcional)
+        website (str)              : Sitio web de la empresa (opcional)
+        expected_volume (str)      : Volumen esperado de videos/mes (opcional)
+        motivation (str)           : Motivación y descripción (opcional)
+    
+    Returns:
+        GET : Template 'user/request_producer.html' con estado actual
+        POST: Redirección al dashboard con mensaje de confirmación
+    
+    Context Variables:
+        approved (bool) : True si el usuario ya es productor
+        existing (bool) : True si ya tiene solicitud pendiente
+    
+    Note:
+        - Solo usuarios finales pueden hacer solicitudes
+        - Una solicitud pendiente por usuario como máximo
+        - Productores existentes ven mensaje de confirmación
+        - Validación automática de datos requeridos
+        - Estado inicial siempre es PENDING para revisión admin
+    """
+    # Verificar si ya es productor
+    approved = current_user.is_producer()
+    
+    # Verificar si ya tiene una solicitud pendiente
+    existing = ProducerRequest.user_has_pending_request(current_user.id)
+    
+    if request.method == 'POST' and not approved and not existing:
+        # Obtener datos del formulario
+        company_name    = request.form.get('company_name', '').strip()
+        business_type   = request.form.get('business_type', '').strip()
+        website         = request.form.get('website', '').strip()
+        expected_volume = request.form.get('expected_volume', '').strip()
+        motivation      = request.form.get('motivation', '').strip()
+        
+        # Validar campo obligatorio
+        if not company_name:
+            flash('El nombre de la empresa es obligatorio', 'error')
+            return render_template('user/request_producer.html', 
+                                 approved=approved, existing=existing)
+        
+        # Crear nueva solicitud
+        producer_request = ProducerRequest(
+            user_id         = current_user.id,
+            company_name    = company_name,
+            business_type   = business_type or None,
+            website         = website or None,
+            expected_volume = expected_volume or None,
+            motivation      = motivation or None,
+            status          = ProducerRequestStatus.PENDING
+        )
+        
+        try:
+            db.session.add(producer_request)
+            db.session.commit()
+            
+            flash('Solicitud enviada correctamente. Te contactaremos pronto por email.', 'success')
+            return redirect(url_for('user.dashboard'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al enviar la solicitud: {str(e)}', 'error')
+    
+    return render_template('user/request_producer.html', 
+                         approved=approved, existing=existing)

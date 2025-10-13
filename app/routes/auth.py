@@ -36,13 +36,48 @@ Estados de usuario:
 
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
+from functools import wraps
 from werkzeug.security import check_password_hash
 from app import db
 from app.models.user import User, UserRole, UserStatus
 from app.models.producer import Producer
+from app.services.email_service import send_verification_email
 from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__)
+
+def email_verified_required(f):
+    """
+    Decorador que restringe acceso si el usuario no verificó su email.
+    
+    Este decorador verifica que el usuario autenticado tenga el campo
+    email_verified en True antes de permitir acceso a rutas protegidas.
+    Si no está verificado, redirige a completar perfil/verificación.
+    
+    Args:
+        f: Función de vista a proteger
+    
+    Returns:
+        function: Función decorada con validación de verificación
+    
+    Note:
+        - Debe usarse después de @login_required
+        - Redirige a 'auth.complete_profile' si no está verificado
+        - Complementa la autenticación básica de Flask-Login
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Si no hay usuario logueado, que el @login_required se ocupe
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+
+        # Si el user no está verificado, lo mandamos a completar perfil/verificación
+        if not getattr(current_user, 'email_verified', False):
+            flash('Verificá tu email para continuar.', 'warning')
+            return redirect(url_for('auth.complete_profile'))
+
+        return f(*args, **kwargs)
+    return decorated_function
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -106,8 +141,8 @@ def login():
                 return redirect( url_for( 'producer.dashboard' ))
             elif user.is_subproducer():
                 return redirect( url_for( 'subproducer.dashboard' ))
-            else:  # final_user
-                return redirect( url_for( 'final_user.dashboard' ))
+            else:  # final_user / affiliate
+                return redirect( url_for( 'affiliate.dashboard' ))
         else:
             flash('Email o contraseña incorrectos', 'error')
     
@@ -118,7 +153,7 @@ def register():
     """""
     Ruta de registro público para nuevos usuarios (solo afiliados).
     
-    Permite el registro público únicamente para el rol AFFILIATE,
+    Permite el registro público únicamente para el rol FINAL_USER,
     con estado inicial PENDING que requiere aprobación administrativa.
     Otros roles (producer, subproducer) se crean mediante invitación.
     
@@ -140,7 +175,7 @@ def register():
         POST: Redirección a login si exitoso, template con errores si falla
     
     Note:
-        - Solo se permite registro público para AFFILIATE
+        - Solo se permite registro público para FINAL_USER
         - Estado inicial siempre es PENDING (requiere aprobación)
         - Validación de unicidad para email y username
         - Contraseña se hashea automáticamente con set_password()
@@ -180,23 +215,32 @@ def register():
             flash('Ya existe un usuario con este nombre de usuario', 'error')
             return render_template('auth/register.html')
         
-        # Crear nuevo usuario
+        # Crear nuevo usuario con verificación pendiente
         user = User(
-            email      = email,
-            username   = username,
-            first_name = first_name,
-            last_name  = last_name,
-            phone      = phone,
-            role       = UserRole.FINAL_USER,
-            status     = UserStatus.PENDING
+            email          = email,
+            username       = username,
+            first_name     = first_name,
+            last_name      = last_name,
+            phone          = phone,
+            role           = UserRole.FINAL_USER,
+            status         = UserStatus.PENDING,
+            email_verified = False  # nuevo campo para verificación de email
         )
         user.set_password(password)
+        user.generate_verification_token()  # genera token único
         
         db.session.add(user)
         db.session.commit()
-        
-        flash('Registro exitoso. Tu cuenta está pendiente de aprobación.', 'success')
-        return redirect(url_for('auth.login'))
+
+        # Enviar correo de verificación
+        try:
+            send_verification_email(user)
+            flash('Registro exitoso. Revisá tu correo para verificar tu cuenta.', 'success')
+        except Exception as e:
+            flash(f'Usuario creado, pero no se pudo enviar el correo: {str(e)}', 'warning')
+
+        # Mostrar página de confirmación
+        return render_template('auth/verification_sent.html', email=user.email)
     
     return render_template('auth/register.html')
 
@@ -230,6 +274,202 @@ def register_invite(token):
     # TODO: Implementar sistema de tokens de invitación
     # Por ahora, simplemente redirigir al registro normal
     return redirect(url_for('auth.register'))
+
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    """
+    Verifica el email del usuario mediante el token recibido.
+    
+    Esta ruta maneja la verificación de email cuando el usuario hace clic
+    en el enlace enviado por correo. Marca el email como verificado y
+    redirige al flujo de completar perfil.
+    
+    Args:
+        token (str): Token único de verificación generado al registrarse
+    
+    Returns:
+        Template o Redirect: Página de éxito/error según validez del token
+    
+    Process:
+        1. Buscar usuario por token en la base de datos
+        2. Si existe, marcar email_verified = True
+        3. Limpiar token de verificación
+        4. Hacer login automático del usuario
+        5. Redirigir a completar perfil
+    
+    Note:
+        - Token se invalida después del primer uso
+        - Login automático para mejor UX
+        - Redirige a completar perfil después de verificación
+    """
+    # Buscar al usuario por el token guardado en la BD
+    user = User.query.filter_by(email_verification_token=token).first()
+
+    if not user:
+        return render_template('auth/verification_failed.html')
+
+    # Marcar como verificado y limpiar token
+    user.email_verified = True
+    user.email_verification_token = None
+    db.session.commit()
+
+    # Iniciar sesión automáticamente para mejor UX
+    login_user(user)
+
+    flash("Tu correo fue verificado correctamente. Completá tu perfil para continuar.", "success")
+    return redirect(url_for('auth.complete_profile'))
+
+@auth_bp.route('/resend-verification')
+@login_required
+def resend_verification():
+    """
+    Reenvía el email de verificación al usuario logueado.
+    
+    Permite al usuario solicitar un nuevo email de verificación si no
+    recibió el original o expiró. Genera un nuevo token y reenvía el email.
+    
+    Returns:
+        Redirect: Redirige al index con mensaje de confirmación o error
+    
+    Note:
+        - Solo usuarios no verificados pueden usar esta función
+        - Genera nuevo token invalidando el anterior
+        - Manejo elegante de errores de envío de email
+    """
+    # Si ya está verificado, no hace falta reenviar
+    if getattr(current_user, "email_verified", False):
+        flash("Tu email ya está verificado.", "info")
+        return redirect(url_for('main.index'))
+
+    # Genera un token nuevo y guarda
+    current_user.generate_verification_token()
+    db.session.commit()
+
+    # Envía el correo
+    try:
+        send_verification_email(current_user)
+        flash("Te enviamos un nuevo correo de verificación.", "success")
+    except Exception as e:
+        flash(f"No pudimos enviar el correo: {e}", "error")
+
+    return redirect(url_for('main.index'))
+
+@auth_bp.route('/complete-profile', methods=['GET', 'POST'])
+@login_required
+def complete_profile():
+    """
+    Permite al usuario completar información adicional de su perfil.
+    
+    Esta ruta se utiliza después de verificar el email para recopilar
+    información adicional del perfil como país, ciudad, teléfono e
+    información profesional.
+    
+    Methods:
+        GET  : Muestra el formulario de completar perfil
+        POST : Procesa la información adicional del perfil
+    
+    Form Data (POST):
+        phone (str, opcional)            : Teléfono del usuario
+        country (str, opcional)          : País de residencia
+        city (str, opcional)             : Ciudad de residencia
+        professional_info (str, opcional): Información profesional
+        terms (bool, opcional)           : Aceptación de términos
+    
+    Returns:
+        GET : Template 'auth/complete_profile.html'
+        POST: Redirección al dashboard si exitoso
+    
+    Note:
+        - Solo accesible para usuarios con email verificado
+        - Información opcional pero recomendada
+        - Mejora la experiencia de onboarding
+    """
+    user = current_user
+
+    if request.method == 'POST':
+        user.phone            = request.form.get('phone')
+        user.country          = request.form.get('country')
+        user.city             = request.form.get('city')
+        user.professional_info = request.form.get('professional_info')
+
+        db.session.commit()
+        flash('Perfil actualizado correctamente.', 'success')
+        return redirect(url_for('main.index'))
+
+    return render_template('auth/complete_profile.html', user=user)
+
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    """
+    Verifica el email del usuario mediante el token recibido.
+    
+    Esta ruta procesa los enlaces de verificación enviados por email
+    y activa la cuenta del usuario si el token es válido.
+    
+    Args:
+        token (str): Token único de verificación
+    
+    Returns:
+        Template: Página de verificación exitosa o fallida
+    
+    Note:
+        - Busca el usuario por email_verification_token
+        - Marca email_verified = True si es válido
+        - Limpia el token después del uso
+        - Inicia sesión automáticamente después de verificar
+    """
+    # Buscar al usuario por el token guardado en la BD
+    user = User.query.filter_by(email_verification_token=token).first()
+
+    if not user:
+        return render_template('auth/verification_failed.html')
+
+    # Marcar como verificado 
+    user.email_verified = True
+    user.email_verification_token = None
+    db.session.commit()
+
+    # Iniciar sesión automáticamente y mandarlo a completar perfil 
+    login_user(user)
+
+    flash("Tu correo fue verificado correctamente. Completá tu perfil para continuar.", "success")
+    return redirect(url_for('auth.complete_profile'))
+
+@auth_bp.route('/resend-verification')
+@login_required
+def resend_verification():
+    """
+    Reenvía el email de verificación al usuario logueado.
+    
+    Permite a los usuarios solicitar un nuevo email de verificación
+    si no recibieron el original o si expiró el token.
+    
+    Returns:
+        Redirect: Redirección al index con mensaje de estado
+    
+    Note:
+        - Solo funciona si el usuario no está ya verificado
+        - Genera un nuevo token antes de reenviar
+        - Maneja errores de envío de email elegantemente
+    """
+    # Si ya está verificado, no hace falta reenviar
+    if getattr(current_user, "email_verified", False):
+        flash("Tu email ya está verificado.", "info")
+        return redirect(url_for('main.index'))
+
+    # Genera un token nuevo y guarda
+    if hasattr(current_user, "generate_verification_token"):
+        current_user.generate_verification_token()
+        db.session.commit()
+
+    # Envía el correo
+    try:
+        send_verification_email(current_user)
+        flash("Te enviamos un nuevo correo de verificación.", "success")
+    except Exception as e:
+        flash(f"No pudimos enviar el correo: {e}", "danger")
+
+    return redirect(url_for('main.index'))
 
 @auth_bp.route('/logout')
 @login_required
