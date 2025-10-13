@@ -6,7 +6,7 @@ mediante la integración con HeyGen. Los clones son avatares que pueden ser
 utilizados por usuarios autorizados para generar videos mediante permisos granulares.
 
 El módulo incluye:
-    - Enum AvatarStatus: Estados posibles de un clone/avatar (ACTUALIZADO según README)
+    - Enum AvatarStatus: Estados posibles de un clone/avatar
     - Clase Avatar: Modelo principal (equivale a CLONE en el README)
 
 Funcionalidades principales:
@@ -26,16 +26,20 @@ class AvatarStatus(Enum):
     """
     Enumeración que define los estados posibles de un avatar.
     
-   Estados disponibles (ACTUALIZADO según README):
+   Estados disponibles:
+        PENDING    : Pendiente de aprobación
+        APPROVED   : Aprobado por el admin
         ACTIVE     : Clone activo y disponible para uso
         INACTIVE   : Clone deshabilitado por el productor
         PROCESSING : Clone en proceso de creación en HeyGen
         FAILED     : Falló la creación del clone en HeyGen
     """
-    ACTIVE      = "active"       # Clone activo y disponible ✅ MANTENER
-    INACTIVE    = "inactive"     # Nuevo: para habilitar/deshabilitar
-    PROCESSING  = "processing"   # ✅ MANTENER: en proceso de creación
-    FAILED      = "failed"       # Nuevo: si falla la creación
+    PENDING     = "pending"      # Pendiente de aprobación
+    APPROVED    = "approved"     # Aprobado por el admin
+    ACTIVE      = "active"       # Clone activo y disponible para uso   
+    INACTIVE    = "inactive"     # Clone deshabilitado
+    PROCESSING  = "processing"   # En proceso de creación
+    FAILED      = "failed"       # Si falló la creación
 
 class Avatar(db.Model):
     """
@@ -145,16 +149,6 @@ class Avatar(db.Model):
         """
         return self.created_by.full_name if self.created_by else 'Desconocido'
     
-    # @property
-    # def approver_name(self):
-    #     """
-    #     Obtiene el nombre completo del usuario que aprobó el avatar.
-        
-    #     Returns:
-    #         str or None: Nombre completo del aprobador o None si no está aprobado
-    #     """
-    #     return self.approved_by.full_name if self.approved_by else None
-    
     @property
     def tag_list(self):
         """
@@ -174,7 +168,17 @@ class Avatar(db.Model):
         
         Args:
             tag_list (list): Lista de strings con las etiquetas
+        Note:
+            Acepta tanto ['marketing', 'ventas'] como 'marketing, ventas'
         """
+        if isinstance(tag_list, str):
+            tag_list = [ t.strip() 
+                         for t in tag_list.split(',') 
+                            if t.strip()
+                        ]
+        elif not isinstance(tag_list, (list, tuple)):
+            tag_list = []
+        
         self.tags = ', '.join([
                                 tag.strip() 
                                 for tag in tag_list 

@@ -35,6 +35,9 @@ from .commission import Commission, CommissionStatus
 # Modelo de permisos granulares por clone según README
 from .clone_permission import ClonePermission, PermissionSubjectType, PermissionStatus
 
+# Modelo de solicitudes para convertirse en productor
+from .producer_request import ProducerRequest, ProducerRequestStatus
+
 # Lista explícita de todos los símbolos exportados por este módulo
 # Esto controla qué elementos están disponibles cuando se hace:
 # from app.models import *
@@ -52,6 +55,8 @@ __all__ = [
     'ClonePermission',
     'PermissionSubjectType',
     'PermissionStatus',
+    'ProducerRequest',
+    'ProducerRequestStatus'
 ]
 
 # Nota: Al usar __all__, se mejora la legibilidad del código y se previene

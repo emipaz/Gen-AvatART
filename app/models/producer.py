@@ -179,7 +179,7 @@ class Producer(db.Model):
         except Exception:
             return None
            
-    # ✅ NUEVOS métodos según README - Stripe Connect
+    # Stripe Connect
     def set_stripe_account(self, account_id):
         """
         Establece la cuenta de Stripe Connect del productor.
@@ -188,7 +188,7 @@ class Producer(db.Model):
             account_id (str): ID de la cuenta de Stripe Connect
             
         Note:
-            ✅ NUEVO - Para integración con Stripe Connect según README
+            Para integración con Stripe Connect
         """
         self.stripe_account_id = account_id
         db.session.commit()
@@ -261,7 +261,7 @@ class Producer(db.Model):
         Returns:
             bool: True si tiene API key de HeyGen configurada, False en caso contrario
         """
-        return bool(self.heygen_api_key_encrypted)  # ✅ MANTENER
+        return bool(self.heygen_api_key_encrypted) 
     
     def can_operate(self):
         """
@@ -362,7 +362,6 @@ class Producer(db.Model):
         self.status = ProducerStatus.INACTIVE
         db.session.commit()  # ✅ MANTENER
 
-    
     def to_dict(self):
         """
         Convierte el objeto Producer a un diccionario para serialización JSON.

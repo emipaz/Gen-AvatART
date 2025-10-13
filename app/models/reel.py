@@ -426,7 +426,7 @@ class Reel(db.Model):
             db.session.add(producer_commission)
         db.session.commit()
     
-    # ✅ NUEVO método según README - Auto-generar comisiones al completar
+    # NUEVO método - Auto-generar comisiones al completar
     def complete_and_generate_commissions(self, video_url, thumbnail_url=None, video_id=None):
         """
         Completa el procesamiento y genera comisiones automáticamente.
@@ -446,8 +446,6 @@ class Reel(db.Model):
         # Generar comisiones automáticamente
         self.generate_commissions()
 
-
-    # TAMBIÉN CORREGIR el to_dict() para remover campos que ya no existen:
     def to_dict(self):
         """
         Convierte el objeto Reel a un diccionario para serialización JSON.

@@ -31,6 +31,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from enum import Enum
+import secrets
 
 class UserRole(Enum):
     """
@@ -46,7 +47,7 @@ class UserRole(Enum):
     PRODUCER    = "producer"    # Productor principal
     SUBPRODUCER = "subproducer" # Sub-productor
     FINAL_USER  = "final_user"  # ✅ CAMBIO - Usuario final (era AFFILIATE)
-
+    AFFILIATE   = FINAL_USER    # Mantener para compatibilidad, pero usar FINAL_USER
 class UserStatus(Enum):
     """
     Enumeración que define los estados posibles de una cuenta de usuario.
@@ -82,6 +83,14 @@ class User(UserMixin, db.Model):
         role (UserRole)       : Rol del usuario en el sistema
         status (UserStatus)   : Estado actual de la cuenta
         is_verified (bool)    : Si el email ha sido verificado
+        country (str)         : País del usuario
+        city (str)            : Ciudad del usuario
+        professional_info (str): Información profesional adicional
+        
+        email_verified (bool)                 : Si el email ha sido verificado
+        email_verification_token (str)        : Token para verificación de email
+        email_verification_sent_at (datetime) : Fecha de envío del token
+        
         created_at (datetime) : Fecha de registro
         updated_at (datetime) : Fecha de última actualización
         last_login (datetime) : Fecha del último inicio de sesión
@@ -106,6 +115,27 @@ class User(UserMixin, db.Model):
     status      = db.Column(db.Enum(UserStatus), nullable = False, default = UserStatus.PENDING)
     is_verified = db.Column(db.Boolean, default = False)
 
+    # Información adicional del perfil
+    country           = db.Column(db.String(100))
+    city              = db.Column(db.String(100))
+    professional_info = db.Column(db.Text)
+
+    # Verificación de email
+    email_verified             = db.Column(db.Boolean, default=False)
+    email_verification_token   = db.Column(db.String(100), unique=True, nullable=True)
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)
+
+    # Información adicional del perfil
+    country           = db.Column(db.String(100))
+    city              = db.Column(db.String(100))
+    professional_info = db.Column(db.Text)
+
+    # Verificación de email
+    email_verified             = db.Column(db.Boolean, default=False)
+    email_verification_token   = db.Column(db.String(100), unique=True, nullable=True)
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)
+      
+    
     # Campos de auditoría y timestamps
     created_at = db.Column(db.DateTime, default = datetime.utcnow)
     updated_at = db.Column(db.DateTime, default = datetime.utcnow, onupdate = datetime.utcnow)
@@ -125,6 +155,29 @@ class User(UserMixin, db.Model):
     # Relación con comisiones ganadas por el usuario
     commissions_earned = db.relationship('Commission', backref = 'user', lazy='dynamic')
     
+    def generate_verification_token(self):
+        """
+        Genera un token único para la verificación del correo electrónico.
+        
+        Crea un token seguro utilizando secrets.token_urlsafe() y lo
+        almacena junto con la fecha de generación para implementar
+        expiración y tracking de envíos.
+        
+        Returns:
+            str: Token único generado para verificación
+            
+        Note:
+            - El token se guarda automáticamente en la BD con commit()
+            - Se actualiza email_verification_sent_at para tracking
+            - Token tiene 32 bytes de entropía (URL-safe base64)
+        """
+        import secrets
+        self.email_verification_token   = secrets.token_urlsafe(32)
+        self.email_verification_sent_at = datetime.utcnow()
+        db.session.add(self)
+        db.session.commit()
+        return self.email_verification_token
+     
     def __repr__(self):
         """
         Representación en string del objeto User.
@@ -213,6 +266,9 @@ class User(UserMixin, db.Model):
             ✅ NUEVO - Reemplaza is_affiliate() según README
         """
         return self.role == UserRole.FINAL_USER
+    
+    # alias temporal para compatibilidad
+    is_affiliate = is_final_user
     
     def can_create_avatars(self):
         """
