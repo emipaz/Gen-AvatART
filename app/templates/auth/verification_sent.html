@@ -1,0 +1,109 @@
+{#
+==============================================================
+TEMPLATE: VERIFICATION_SENT - CONFIRMACIÓN DE EMAIL ENVIADO
+==============================================================
+
+Propósito y Funcionalidad:
+- Pantalla de confirmación mostrada después del registro exitoso del usuario
+- Informa que se ha enviado un correo de verificación a la dirección proporcionada
+- Proporciona opciones para ir al login o reenviar el email de verificación
+- Template responsivo con diseño centrado y feedback visual positivo
+
+Contexto de Uso:
+- Se renderiza desde auth.py después del registro exitoso (/register POST)
+- También se puede mostrar después de solicitar un reenvío de verificación
+- Parte del flujo completo de verificación de email del sistema
+- Interface temporal hasta que el usuario verifique su email
+
+Variables de Contexto:
+- email: La dirección de email del usuario donde se envió la verificación
+
+Bootstrap 5 Classes Utilizadas:
+Container y Layout:
+- container: Contenedor responsivo centrado
+- py-5: Padding vertical (top y bottom) de 3rem
+- text-center: Alineación de texto al centro
+- mx-auto: Margin horizontal automático para centrar
+
+Card Component:
+- card: Componente contenedor con bordes redondeados
+- shadow-sm: Sombra sutil para elevación visual
+- p-4: Padding interno de 1.5rem en todos los lados
+
+Text y Typography:
+- fw-bold: Font weight bold para títulos
+- mb-3, mb-4, mt-3, mt-4: Margin bottom/top en diferentes escalas
+- text-muted: Color de texto gris para información secundaria
+- text-success: Color verde para elementos de éxito
+- text-primary: Color primario del tema para links importantes
+
+Button Components:
+- btn: Clase base para botones
+- btn-primary: Botón con color primario del tema
+
+Responsive Design:
+- Máximo ancho de 500px para mantener legibilidad en desktop
+- Layout que se adapta automáticamente en mobile
+- Tipografía escalable según el dispositivo
+
+Rutas Flask Utilizadas:
+- {{ url_for('auth.login') }}: Redirección al formulario de login
+- {{ url_for('auth.resend_verification') }}: Funcionalidad para reenviar email
+
+Font Awesome Icons:
+- fas fa-envelope fa-3x: Ícono de sobre de gran tamaño para feedback visual
+- fas fa-sign-in-alt: Ícono de inicio de sesión para el botón principal
+
+Estados y Flujo:
+- Estado de confirmación positiva (mensaje enviado exitosamente)
+- Proporciona path de continuación hacia el login
+- Incluye opción de recuperación (reenviar email)
+- Feedback inmediato después de acción del usuario
+
+Características UX:
+- Mensaje claro y directo sobre la acción realizada
+- Confirmación visual con ícono de sobre verde
+- Múltiples opciones de navegación para diferentes escenarios
+- Información personalizada mostrando el email específico del usuario
+#}
+
+{% extends "base.html" %}
+{% block title %}Verificación enviada - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Sección principal: Confirmación de email enviado -->
+<section class="container py-5 text-center">
+  <!-- Card contenedor con ancho máximo y centrado -->
+  <div class="card shadow-sm p-4 mx-auto" style="max-width: 500px;">
+    
+    <!-- Ícono de confirmación visual -->
+    <div class="mb-4 text-success">
+      <i class="fas fa-envelope fa-3x"></i>
+    </div>
+    
+    <!-- Título principal del mensaje de confirmación -->
+    <h3 class="fw-bold mb-3">¡Revisá tu correo!</h3>
+    
+    <!-- Mensaje explicativo personalizado con el email del usuario -->
+    <p class="text-muted">
+      Enviamos un enlace de verificación a <strong>{{ email }}</strong>.  
+      Hacé clic en ese enlace para activar tu cuenta.
+    </p>
+
+    <!-- Acción principal: Ir al login -->
+    <div class="mt-4">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+        <i class="fas fa-sign-in-alt"></i> Ir al inicio de sesión
+      </a>
+    </div>
+
+    <!-- Acción alternativa: Reenviar verificación -->
+    <div class="mt-3">
+      <small class="text-muted">
+        ¿No recibiste el email? 
+        <a href="{{ url_for('auth.resend_verification') }}" class="text-primary">Reenviar verificación</a>
+      </small>
+    </div>
+  </div>
+</section>
+{% endblock %}

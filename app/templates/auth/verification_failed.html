@@ -1,0 +1,91 @@
+{#
+Template de verificación fallida para Gem-AvatART.
+
+Este template se muestra cuando el proceso de verificación de email falla,
+ya sea por token inválido, expirado o corrupto. Proporciona opciones para
+reenviar la verificación y volver al flujo de autenticación.
+
+El template incluye:
+    - Mensaje de error centrado con iconografía clara
+    - Explicación del problema de verificación
+    - Botón principal para reenviar verificación
+    - Botón secundario para volver al login
+    - Diseño card responsive con estado de error
+
+Clases Bootstrap utilizadas:
+    - Layout: py-5, text-center, container, mx-auto
+    - Components: card, card-body, btn, btn-primary, btn-outline-secondary
+    - Utilities: shadow-sm, p-4, mb-3, mt-4, mt-3
+    - Colors: text-danger, text-muted
+
+Casos de uso del template:
+    - Token de verificación inválido o corrupto
+    - Token de verificación expirado por tiempo
+    - URL de verificación malformada
+    - Usuario intenta usar token ya utilizado
+
+Rutas Flask referenciadas (url_for):
+    - auth.resend_verification: Reenvío de email de verificación
+    - auth.login: Volver al formulario de inicio de sesión
+
+Iconografía Font Awesome:
+    - fas fa-times-circle: Indicador de error/falla (3x size)
+    - fas fa-redo: Reenviar verificación
+    - fas fa-arrow-left: Navegación hacia atrás
+
+Estados de error manejados:
+    - Token no encontrado en base de datos
+    - Token expirado por límite de tiempo
+    - Token ya utilizado previamente
+    - URL malformada o parámetros incorrectos
+
+Flujo de navegación:
+    - Botón primario: Reenviar verificación (auth.resend_verification)
+    - Botón secundario: Volver al login (auth.login)
+    - Auto-redirect después de reenvío exitoso
+
+Características de UX:
+    - Mensaje claro del problema sin detalles técnicos
+    - Iconografía visual para identificación rápida del error
+    - Acciones principales destacadas con colores apropiados
+    - Texto explicativo sin generar ansiedad al usuario
+#}
+
+{% extends 'base.html' %}
+{% block title %}Verificación fallida - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Sección principal centrada con padding vertical -->
+<section class="py-5 text-center">
+  <div class="container">
+    <!-- Card de error centrado con ancho máximo -->
+    <div class="card shadow-sm p-4 mx-auto" style="max-width: 500px;">
+      
+      <!-- Icono de error prominente -->
+      <div class="mb-3 text-danger">
+        <i class="fas fa-times-circle fa-3x"></i>
+      </div>
+      
+      <!-- Título principal del error -->
+      <h2 class="fw-bold mb-3">Verificación fallida</h2>
+      
+      <!-- Explicación del problema para el usuario -->
+      <p class="text-muted">El enlace de verificación no es válido o ha expirado.</p>
+      
+      <!-- Acción principal: Reenviar verificación -->
+      <div class="mt-4">
+        <a href="{{ url_for('auth.resend_verification') }}" class="btn btn-primary">
+          <i class="fas fa-redo"></i> Reenviar correo de verificación
+        </a>
+      </div>
+      
+      <!-- Acción secundaria: Volver al login -->
+      <div class="mt-3">
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">
+          <i class="fas fa-arrow-left"></i> Volver al inicio de sesión
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

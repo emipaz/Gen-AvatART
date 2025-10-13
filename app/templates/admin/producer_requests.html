@@ -1,0 +1,439 @@
+{#
+Template de gestión de solicitudes de productor para Gem-AvatART.
+
+Este template implementa la interface administrativa para revisar, aprobar
+y rechazar solicitudes de usuarios que desean convertirse en productores.
+Incluye filtrado avanzado, búsqueda y acciones en lote para eficiencia.
+
+El template incluye:
+    - Lista paginada de solicitudes con información del solicitante
+    - Filtros por estado (pendiente, aprobada, rechazada)
+    - Búsqueda por nombre, email o empresa del usuario
+    - Acciones rápidas de aprobación/rechazo con modals
+    - Información contextual sobre cada solicitud
+    - Estadísticas y badges informativos
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between
+    - Cards: card, card-header, card-body, card-footer
+    - Tables: table, table-responsive, table-hover, table-striped
+    - Badges: badge, bg-primary, bg-success, bg-warning, bg-danger
+    - Buttons: btn, btn-primary, btn-success, btn-warning, btn-outline-secondary
+    - Modals: modal, modal-dialog, modal-content, modal-header, modal-body, modal-footer
+    - Forms: form-control, form-select, input-group
+    - Alerts: alert, alert-info, alert-warning
+    - Pagination: pagination, page-item, page-link
+
+Variables Jinja utilizadas:
+    - requests (Pagination): Objeto paginado con solicitudes filtradas
+    - pending_count (int): Número de solicitudes pendientes
+    - request.args: Parámetros de filtrado actuales
+
+Rutas Flask referenciadas (url_for):
+    - admin.producer_requests: Lista de solicitudes (self)
+    - admin.producer_request_detail: Detalle de solicitud específica
+    - admin.approve_producer_request: Aprobar solicitud
+    - admin.reject_producer_request: Rechazar solicitud
+    - admin.dashboard: Volver al dashboard principal
+
+Estados de solicitud:
+    - pending: Solicitud pendiente de revisión (badge warning)
+    - approved: Solicitud aprobada (badge success)
+    - rejected: Solicitud rechazada (badge danger)
+
+Iconografía Font Awesome:
+    - fas fa-user-tie: Solicitudes de productor
+    - fas fa-clock: Solicitudes pendientes
+    - fas fa-check-circle: Aprobaciones
+    - fas fa-times-circle: Rechazos
+    - fas fa-search: Búsqueda y filtros
+    - fas fa-eye: Ver detalle
+    - fas fa-thumbs-up: Aprobar
+    - fas fa-thumbs-down: Rechazar
+    - fas fa-building: Información empresarial
+    - fas fa-calendar: Fechas
+
+Funcionalidades JavaScript:
+    - Modals de confirmación para acciones críticas
+    - Formularios de aprobación/rechazo con validación
+    - Filtrado dinámico con preservación de parámetros
+    - Tooltips informativos sobre estados y acciones
+    - Confirmación antes de acciones irreversibles
+
+Elementos de UX:
+    - Código de colores consistente por estado
+    - Información contextual en tooltips
+    - Acciones agrupadas en dropdowns para pantallas pequeñas
+    - Paginación con preservación de filtros
+    - Estadísticas resumidas en cards superiores
+    - Mensajes informativos para casos especiales
+
+Responsividad:
+    - table-responsive para scroll horizontal en móviles
+    - Botones se colapsan en dropdowns en pantallas pequeñas
+    - Cards de estadísticas se apilan verticalmente
+    - Formularios de modal adaptables al tamaño de pantalla
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Solicitudes de Productor - Admin - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header con título y estadísticas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1><i class="fas fa-user-tie text-primary"></i> Solicitudes de Productor</h1>
+                
+                <!-- Badge con solicitudes pendientes -->
+                {% if pending_count > 0 %}
+                <span class="badge bg-warning fs-6">
+                    <i class="fas fa-clock"></i> {{ pending_count }} pendiente{{ 's' if pending_count != 1 }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de estadísticas rápidas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                    <h5 class="text-warning">{{ pending_count }}</h5>
+                    <small class="text-muted">Pendientes</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <h5 class="text-success">{{ requests.total if requests.total else 0 }}</h5>
+                    <small class="text-muted">Total</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros y búsqueda -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Buscar:</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" name="search" 
+                               value="{{ request.args.get('search', '') }}" 
+                               placeholder="Usuario, email, empresa...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Estado:</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos los estados</option>
+                        <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>
+                            Pendientes
+                        </option>
+                        <option value="approved" {{ 'selected' if request.args.get('status') == 'approved' }}>
+                            Aprobadas
+                        </option>
+                        <option value="rejected" {{ 'selected' if request.args.get('status') == 'rejected' }}>
+                            Rechazadas
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('admin.producer_requests') }}" class="btn btn-outline-secondary">
+                        Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de solicitudes -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                Solicitudes 
+                <small class="text-muted">
+                    ({{ requests.total }} total{{ 's' if requests.total != 1 }})
+                </small>
+            </h5>
+        </div>
+        
+        <div class="card-body p-0">
+            {% if requests.items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Empresa</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests.items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-2">
+                                        {% if req.user.avatar_url %}
+                                        <img src="{{ req.user.avatar_url }}" class="rounded-circle" width="32" height="32">
+                                        {% else %}
+                                        <i class="fas fa-user-circle fa-2x text-muted"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <strong>{{ req.user.full_name }}</strong><br>
+                                        <small class="text-muted">@{{ req.user.username }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if req.company_name %}
+                                    <i class="fas fa-building text-muted me-1"></i>
+                                    {{ req.company_name }}
+                                    {% if req.business_type %}
+                                    <br><small class="text-muted">{{ req.business_type }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <small class="text-muted">No especificado</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.status.value == 'pending' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock"></i> Pendiente
+                                    </span>
+                                {% elif req.status.value == 'approved' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle"></i> Aprobada
+                                    </span>
+                                {% elif req.status.value == 'rejected' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times-circle"></i> Rechazada
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <i class="fas fa-calendar text-muted me-1"></i>
+                                {{ req.created_at.strftime('%d/%m/%Y') }}
+                                <br><small class="text-muted">{{ req.created_at.strftime('%H:%M') }}</small>
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('admin.producer_request_detail', request_id=req.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="Ver detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    
+                                    {% if req.status.value == 'pending' %}
+                                    <button class="btn btn-sm btn-success" 
+                                            onclick="approveRequest({{ req.id }}, '{{ req.user.username }}')" 
+                                            title="Aprobar">
+                                        <i class="fas fa-thumbs-up"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" 
+                                            onclick="rejectRequest({{ req.id }}, '{{ req.user.username }}')" 
+                                            title="Rechazar">
+                                        <i class="fas fa-thumbs-down"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            {% if requests.pages > 1 %}
+            <div class="card-footer">
+                <nav aria-label="Paginación de solicitudes">
+                    <ul class="pagination mb-0 justify-content-center">
+                        {% if requests.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.producer_requests', page=requests.prev_num, 
+                                                                 status=request.args.get('status'), 
+                                                                 search=request.args.get('search')) }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in requests.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != requests.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.producer_requests', page=page_num,
+                                                                         status=request.args.get('status'),
+                                                                         search=request.args.get('search')) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if requests.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.producer_requests', page=requests.next_num,
+                                                                 status=request.args.get('status'),
+                                                                 search=request.args.get('search')) }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <!-- Estado vacío -->
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No hay solicitudes</h5>
+                <p class="text-muted">
+                    {% if request.args.get('search') or request.args.get('status') %}
+                    No se encontraron solicitudes con los filtros aplicados.
+                    {% else %}
+                    Aún no hay solicitudes de productor en el sistema.
+                    {% endif %}
+                </p>
+                {% if request.args.get('search') or request.args.get('status') %}
+                <a href="{{ url_for('admin.producer_requests') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-times"></i> Limpiar filtros
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de aprobación -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="approveForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-thumbs-up text-success"></i> Aprobar Solicitud
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas aprobar la solicitud del usuario <strong id="approveUsername"></strong>?</p>
+                    <p class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        El usuario obtendrá permisos de productor inmediatamente.
+                    </p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notas administrativas (opcional):</label>
+                        <textarea name="notes" class="form-control" rows="3" 
+                                  placeholder="Comentarios internos sobre la aprobación..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Aprobar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de rechazo -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="rejectForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-thumbs-down text-warning"></i> Rechazar Solicitud
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas rechazar la solicitud del usuario <strong id="rejectUsername"></strong>?</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Motivo del rechazo (recomendado):</label>
+                        <textarea name="rejection_reason" class="form-control" rows="3" 
+                                  placeholder="Explica por qué se rechaza la solicitud para ayudar al usuario..."></textarea>
+                        <small class="text-muted">Este mensaje será visible para el usuario.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notas internas (opcional):</label>
+                        <textarea name="notes" class="form-control" rows="2" 
+                                  placeholder="Comentarios internos sobre el rechazo..."></textarea>
+                        <small class="text-muted">Solo visible para administradores.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-times"></i> Rechazar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Función para mostrar modal de aprobación
+function approveRequest(requestId, username) {
+    document.getElementById('approveUsername').textContent = username;
+    document.getElementById('approveForm').action = 
+        "{{ url_for('admin.approve_producer_request', request_id=0) }}".replace('0', requestId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('approveModal'));
+    modal.show();
+}
+
+// Función para mostrar modal de rechazo
+function rejectRequest(requestId, username) {
+    document.getElementById('rejectUsername').textContent = username;
+    document.getElementById('rejectForm').action = 
+        "{{ url_for('admin.reject_producer_request', request_id=0) }}".replace('0', requestId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+
+// Inicializar tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{#
+Template de completar perfil para Gem-AvatART.
+
+Este template implementa el formulario de completar información adicional del perfil
+después de la verificación de email. Permite al usuario agregar datos opcionales
+como ubicación geográfica, información profesional y términos de servicio.
+
+El template incluye:
+    - Formulario centrado con campos opcionales de perfil
+    - Validaciones HTML5 y placeholders informativos
+    - Checkbox obligatorio para términos y condiciones
+    - Navegación con opción de volver atrás
+    - Diseño card responsive con header informativo
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, d-flex, justify-content-between
+    - Components: card, card-header, card-body, form-control, btn
+    - Form: form-label, form-check, form-check-input, form-check-label
+    - Grid: row, g-3, col-md-6, col-12
+    - Utilities: my-5, shadow-sm, align-items-center
+
+IDs de elementos:
+    - terms: Checkbox para aceptación de términos y condiciones
+
+Campos del formulario (name attributes):
+    - phone             : Número de teléfono del usuario (opcional)
+    - country           : País de residencia (opcional)
+    - city              : Ciudad de residencia (opcional)
+    - professional_info : Información profesional del usuario (opcional)
+    - terms             : Aceptación de términos y condiciones (requerido)
+
+Rutas Flask referenciadas (url_for):
+    - auth.complete_profile : Procesamiento POST del formulario
+    - main.index            : Enlace de navegación para volver
+
+Variables Jinja utilizadas:
+    - user.phone             : Teléfono actual del usuario (prellenado)
+    - user.country           : País actual del usuario (prellenado)
+    - user.city              : Ciudad actual del usuario (prellenado)
+    - user.professional_info : Info profesional actual (prellenado)
+
+Iconografía Font Awesome:
+    - fas fa-user-check : Verificación de usuario completada
+    - fas fa-arrow-left : Navegación hacia atrás
+    - fas fa-save       : Guardar información
+
+Campos de formulario:
+    - Teléfono         : Input tel con placeholder de formato argentino
+    - País             : Input text con placeholder de Argentina
+    - Ciudad           : Input text con placeholder de CABA
+    - Info profesional : Textarea con placeholder explicativo
+    - Términos        : Checkbox obligatorio para continuar
+
+JavaScript incluido:
+    - Foco automático en campo teléfono al cargar página
+    - Event listener DOMContentLoaded para mejor UX
+#}
+
+{% extends "base.html" %}
+{% block title %}Completar perfil - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal centrado con ancho máximo -->
+<div class="container my-5" style="max-width: 760px;">
+  <!-- Card principal del formulario con sombra sutil -->
+  <div class="card shadow-sm">
+    
+    <!-- Header del card con icono y título -->
+    <div class="card-header d-flex align-items-center">
+      <i class="fas fa-user-check me-2"></i>
+      <strong>Completar perfil</strong>
+    </div>
+    
+    <!-- Cuerpo del card con formulario de información adicional -->
+    <div class="card-body">
+      <!-- Mensaje informativo sobre verificación exitosa -->
+      <p class="text-muted mb-4">
+        ¡Tu email está verificado! Completá estos datos para continuar.
+      </p>
+
+      <!-- Formulario POST para completar información del perfil -->
+      <form method="POST" action="{{ url_for('auth.complete_profile') }}">
+        <!-- Grid responsive con espaciado entre elementos -->
+        <div class="row g-3">
+          
+          <!-- Campo de teléfono (opcional) -->
+          <div class="col-md-6">
+            <label class="form-label">Teléfono</label>
+            <input type="tel" name="phone" class="form-control" 
+                   placeholder="+54 11 1234-5678" value="{{ user.phone or '' }}">
+          </div>
+          
+          <!-- Campo de país (opcional) -->
+          <div class="col-md-6">
+            <label class="form-label">País</label>
+            <input type="text" name="country" class="form-control" 
+                   placeholder="Argentina" value="{{ user.country or '' }}">
+          </div>
+          
+          <!-- Campo de ciudad (opcional) -->
+          <div class="col-md-6">
+            <label class="form-label">Ciudad</label>
+            <input type="text" name="city" class="form-control" 
+                   placeholder="CABA" value="{{ user.city or '' }}">
+          </div>
+          
+          <!-- Campo de información profesional (textarea completo) -->
+          <div class="col-12">
+            <label class="form-label">Información profesional</label>
+            <textarea name="professional_info" class="form-control" rows="3" 
+                   placeholder="Rol, experiencia, links, etc.">{{ user.professional_info or '' }}</textarea>
+          </div>
+          
+          <!-- Checkbox obligatorio para términos y condiciones -->
+          <div class="col-12 form-check mt-2">
+            <input class="form-check-input" type="checkbox" value="1" id="terms" name="terms">
+            <label class="form-check-label" for="terms">
+              Acepto los términos y condiciones
+            </label>
+          </div>
+        </div>
+
+        <!-- Grupo de botones de navegación y acción -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+          <!-- Botón de navegación hacia atrás -->
+          <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+          </a>
+          <!-- Botón de envío para guardar información -->
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Guardar y continuar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+  // JavaScript para mejorar la experiencia de usuario
+  document.addEventListener('DOMContentLoaded', () => {
+    // Foco automático en el primer campo al cargar la página
+    const firstInput = document.querySelector('input[name="phone"]');
+    if (firstInput) {
+      firstInput.focus();
+    }
+  });
+</script>
+{% endblock %}
