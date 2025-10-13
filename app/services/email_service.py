@@ -175,6 +175,34 @@ def send_template_email(template_name : str,
 # EMAILS ESPECÍFICOS DEL SISTEMA GEM-AVATAART
 # ============================================================================
 
+def send_verification_email(user):
+    """
+    Envía el email de verificación al usuario.
+    Genera/actualiza el token y arma el enlace absoluto.
+    """
+    from flask import url_for
+    # genera y guarda token + timestamp en el usuario
+    token = user.generate_verification_token()
+
+    # enlace que usaremos en el próximo paso (ruta verify_email todavía no creada)
+    verify_url = url_for('auth.verify_email', token=token, _external=True)
+
+    sender = current_app.config.get("MAIL_DEFAULT_SENDER") or current_app.config.get("MAIL_USERNAME")
+
+    msg = Message(
+        subject="Verificá tu email - Gem-AvatART",
+        recipients=[user.email],
+        sender=sender,
+        body=(
+            f"Hola {user.first_name}!\n\n"
+            "Gracias por registrarte en Gem-AvatART.\n"
+            "Por favor verificá tu email haciendo click en el siguiente enlace:\n\n"
+            f"{verify_url}\n\n"
+            "Si no fuiste vos, podés ignorar este mensaje."
+        ),
+    )
+    mail.send(msg)
+
 def send_welcome_email(user_email : str, user_name : str, verification_token : str) -> bool:
     """
     Envía email de bienvenida con enlace de verificación.
@@ -334,16 +362,16 @@ def send_clone_permission_granted(user_email: str, user_name: str, clone_name: s
         bool: True si se envió correctamente
     """
     return send_template_email(
-        template_name="clone_permission_granted",
-        subject=f"🎭 Tienes acceso al clone '{clone_name}'",
-        recipients=[user_email],
-        template_vars={
-            "user_name": user_name,
-            "clone_name": clone_name,
-            "producer_name": producer_name,
-            "daily_limit": daily_limit if daily_limit > 0 else "Ilimitado",
-            "monthly_limit": monthly_limit if monthly_limit > 0 else "Ilimitado",
-            "create_reel_link": f"{current_app.config['FRONTEND_URL']}/create-reel"
+        template_name = "clone_permission_granted",
+        subject       = f"🎭 Tienes acceso al clone '{clone_name}'",
+        recipients    = [user_email],
+        template_vars = {
+            "user_name"        : user_name,
+            "clone_name"       : clone_name,
+            "producer_name"    : producer_name,
+            "daily_limit"      : daily_limit if daily_limit > 0 else "Ilimitado",
+            "monthly_limit"    : monthly_limit if monthly_limit > 0 else "Ilimitado",
+            "create_reel_link" : f"{current_app.config['FRONTEND_URL']}/create-reel"
         }
     )
 
@@ -361,13 +389,13 @@ def send_stripe_connect_setup_notification(user_email: str, user_name: str,
         bool: True si se envió correctamente
     """
     return send_template_email(
-        template_name="stripe_connect_setup",
-        subject="💳 Configura tu cuenta de pagos en Stripe",
-        recipients=[user_email],
-        template_vars={
-            "user_name": user_name,
-            "onboarding_link": onboarding_link,
-            "benefits": [
+        template_name = "stripe_connect_setup",
+        subject       = "💳 Configura tu cuenta de pagos en Stripe",
+        recipients    = [user_email],
+        template_vars = {
+            "user_name"       : user_name,
+            "onboarding_link" : onboarding_link,
+            "benefits"        : [
                 "Recibe pagos directamente en tu cuenta",
                 "Gestiona automáticamente las comisiones",
                 "Acceso a reportes detallados de ingresos",
