@@ -35,7 +35,7 @@ class Config:
     por defecto seguros.
     
     Attributes:
-        SECRET_KEY (str)                    : Clave secreta para sesiones Flask
+        SECRET_KEY (str)                   : Clave secreta para sesiones Flask
         SQLALCHEMY_DATABASE_URI (str)      : URI de conexión a la base de datos
         SQLALCHEMY_TRACK_MODIFICATIONS     : Deshabilita seguimiento de cambios (optimización)
         HEYGEN_BASE_URL (str)              : URL base para la API de HeyGen
@@ -168,9 +168,9 @@ basándose en variables de entorno o parámetros de inicialización.
 
 Keys:
     development (DevelopmentConfig): Para desarrollo local con debug
-    production (ProductionConfig) : Para servidores de producción
-    testing (TestingConfig)       : Para ejecución de tests
-    default (DevelopmentConfig)   : Configuración por defecto
+    production (ProductionConfig)  : Para servidores de producción
+    testing (TestingConfig)        : Para ejecución de tests
+    default (DevelopmentConfig)    : Configuración por defecto
 
 Usage:
     config_name = os.environ.get('FLASK_ENV', 'default')

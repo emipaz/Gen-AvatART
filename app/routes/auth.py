@@ -398,78 +398,41 @@ def complete_profile():
 
     return render_template('auth/complete_profile.html', user=user)
 
-@auth_bp.route('/verify-email/<token>')
-def verify_email(token):
-    """
-    Verifica el email del usuario mediante el token recibido.
+# @auth_bp.route('/resend-verification')
+# @login_required
+# def resend_verification():
+#     """
+#     Reenvía el email de verificación al usuario logueado.
     
-    Esta ruta procesa los enlaces de verificación enviados por email
-    y activa la cuenta del usuario si el token es válido.
+#     Permite a los usuarios solicitar un nuevo email de verificación
+#     si no recibieron el original o si expiró el token.
     
-    Args:
-        token (str): Token único de verificación
+#     Returns:
+#         Redirect: Redirección al index con mensaje de estado
     
-    Returns:
-        Template: Página de verificación exitosa o fallida
-    
-    Note:
-        - Busca el usuario por email_verification_token
-        - Marca email_verified = True si es válido
-        - Limpia el token después del uso
-        - Inicia sesión automáticamente después de verificar
-    """
-    # Buscar al usuario por el token guardado en la BD
-    user = User.query.filter_by(email_verification_token=token).first()
+#     Note:
+#         - Solo funciona si el usuario no está ya verificado
+#         - Genera un nuevo token antes de reenviar
+#         - Maneja errores de envío de email elegantemente
+#     """
+#     # Si ya está verificado, no hace falta reenviar
+#     if getattr(current_user, "email_verified", False):
+#         flash("Tu email ya está verificado.", "info")
+#         return redirect(url_for('main.index'))
 
-    if not user:
-        return render_template('auth/verification_failed.html')
+#     # Genera un token nuevo y guarda
+#     if hasattr(current_user, "generate_verification_token"):
+#         current_user.generate_verification_token()
+#         db.session.commit()
 
-    # Marcar como verificado 
-    user.email_verified = True
-    user.email_verification_token = None
-    db.session.commit()
+#     # Envía el correo
+#     try:
+#         send_verification_email(current_user)
+#         flash("Te enviamos un nuevo correo de verificación.", "success")
+#     except Exception as e:
+#         flash(f"No pudimos enviar el correo: {e}", "danger")
 
-    # Iniciar sesión automáticamente y mandarlo a completar perfil 
-    login_user(user)
-
-    flash("Tu correo fue verificado correctamente. Completá tu perfil para continuar.", "success")
-    return redirect(url_for('auth.complete_profile'))
-
-@auth_bp.route('/resend-verification')
-@login_required
-def resend_verification():
-    """
-    Reenvía el email de verificación al usuario logueado.
-    
-    Permite a los usuarios solicitar un nuevo email de verificación
-    si no recibieron el original o si expiró el token.
-    
-    Returns:
-        Redirect: Redirección al index con mensaje de estado
-    
-    Note:
-        - Solo funciona si el usuario no está ya verificado
-        - Genera un nuevo token antes de reenviar
-        - Maneja errores de envío de email elegantemente
-    """
-    # Si ya está verificado, no hace falta reenviar
-    if getattr(current_user, "email_verified", False):
-        flash("Tu email ya está verificado.", "info")
-        return redirect(url_for('main.index'))
-
-    # Genera un token nuevo y guarda
-    if hasattr(current_user, "generate_verification_token"):
-        current_user.generate_verification_token()
-        db.session.commit()
-
-    # Envía el correo
-    try:
-        send_verification_email(current_user)
-        flash("Te enviamos un nuevo correo de verificación.", "success")
-    except Exception as e:
-        flash(f"No pudimos enviar el correo: {e}", "danger")
-
-    return redirect(url_for('main.index'))
+#     return redirect(url_for('main.index'))
 
 @auth_bp.route('/logout')
 @login_required
