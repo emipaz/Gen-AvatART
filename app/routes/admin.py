@@ -39,7 +39,7 @@ from functools import wraps
 from datetime import datetime
 from app import db
 from app.models.user import User, UserRole, UserStatus
-from app.models.producer import Producer
+from app.models.producer import Producer, ProducerStatus
 from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission, CommissionStatus
@@ -303,8 +303,19 @@ def approve_user(user_id):
     """
 
     user = User.query.get_or_404(user_id)
+
+    # 1) Actualiza el usuario
     user.status = UserStatus.ACTIVE
     user.is_verified = True
+
+    # 2) Si es productor, sincroniza su Producer
+    if user.is_producer() and getattr(user, "producer_profile", None):
+        p = user.producer_profile
+        p.status = ProducerStatus.ACTIVE
+        p.is_verified = True
+        if not p.verified_at:
+            p.verified_at = datetime.utcnow()
+
     db.session.commit()
     
     flash(f'Usuario {user.username} aprobado exitosamente', 'success')
@@ -333,8 +344,19 @@ def suspend_user(user_id):
         - Datos y relaciones se mantienen intactos
         - Puede reactivarse cambiando estado a ACTIVE
     """
+    from app.models.producer import ProducerStatus
+
     user         = User.query.get_or_404(user_id)
+
+    # Suspender al usuario
     user.status  = UserStatus.SUSPENDED
+
+    # Si es producer, sincronizar su perfil de productor
+    if user.is_producer() and getattr(user, 'producer_profile', None):
+        p = user.producer_profile
+        p.status = ProducerStatus.SUSPENDED
+        p.is_verified = False
+
     db.session.commit()
     
     flash(f'Usuario {user.username} suspendido', 'warning')
