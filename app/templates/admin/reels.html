@@ -345,9 +345,13 @@ Funcionalidades de paginación:
                                         <!-- Celda con información del avatar utilizado -->
                                         <td>
                                             <!-- Enlace al detalle del avatar específico -->
-                                            <a href="{{ url_for('admin.avatar_detail', avatar_id=reel.avatar.id) }}">
-                                                {{ reel.avatar.name }}
-                                            </a>
+                                            {% if reel.avatar %}
+                                                <a href="{{ url_for('admin.avatar_detail', avatar_id=reel.avatar.id) }}">
+                                                    {{ reel.avatar.name }}
+                                                </a>
+                                            {% else %}
+                                                —
+                                            {% endif %}
                                         </td>
                                         
                                         <!-- Celda con estado actual del reel -->
@@ -384,23 +388,16 @@ Funcionalidades de paginación:
                                         
                                         <!-- Celda con acciones disponibles para el reel -->
                                         <td>
-                                            <!-- Grupo de botones para organizar acciones relacionadas -->
-                                            <!-- btn-group agrupa visualmente los botones de acción -->
                                             <div class="btn-group" role="group">
-                                                <!-- Botón para ver detalles del reel -->
-                                                <!-- btn-outline-primary usa borde azul sin fondo -->
-                                                <!-- btn-sm reduce el tamaño para mejor ajuste en tabla -->
-                                                <a href="#" class="btn btn-sm btn-outline-primary">
+                                                <!-- Botón para ver detalle del reel -->
+                                                <a href="{{ url_for('user.view_reel', reel_id=reel.id) }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="fas fa-eye"></i> Ver
                                                 </a>
-                                                
-                                                <!-- Botón condicional para reproducir video si está disponible -->
+
+                                                <!-- Botón para abrir en HeyGen -->
                                                 {% if reel.video_url %}
-                                                    <!-- Enlace externo al video generado -->
-                                                    <!-- target="_blank" abre en nueva pestaña -->
-                                                    <!-- btn-outline-success usa borde verde para acción positiva -->
-                                                    <a href="{{ reel.video_url }}" target="_blank" class="btn btn-sm btn-outline-success">
-                                                        <i class="fas fa-play"></i> Video
+                                                    <a href="{{ reel.video_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success">
+                                                        <i class="fas fa-external-link-alt"></i> HeyGen
                                                     </a>
                                                 {% endif %}
                                             </div>

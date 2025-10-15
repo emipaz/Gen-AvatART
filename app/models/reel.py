@@ -94,13 +94,18 @@ class Reel(db.Model):
         stripe_payment_intent_id (str)     : ID del Payment Intent de Stripe para tracking de pagos
     """
     __tablename__ = 'reels'
-    
-    # Clave primaria
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
     
-    # Relaciones con otras tablas
-    creator_id     = db.Column(db.Integer, db.ForeignKey('users.id'),   nullable = False)
-    avatar_id      = db.Column(db.Integer, db.ForeignKey('avatars.id'), nullable = False)
+    # FK
+    creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    owner_id   = db.Column(db.Integer, db.ForeignKey('users.id'))  # <-- NUEVO (propietario/cliente)
+    avatar_id  = db.Column(db.Integer, db.ForeignKey('avatars.id'), nullable=True)  # <-- antes era False
+
+    # relaciones (las usa tu template y propiedades)
+    creator = db.relationship('User', foreign_keys=[creator_id], backref='reels_creados')
+    owner   = db.relationship('User', foreign_keys=[owner_id],   backref='reels_propios')
+    avatar  = db.relationship('Avatar', back_populates='reels')
     
     # Información básica del reel
     title       = db.Column(db.String(200), nullable = False)  # Título del video
@@ -131,7 +136,7 @@ class Reel(db.Model):
     # Información de procesamiento y errores
     processing_started_at   = db.Column(db.DateTime)  # Inicio del procesamiento
     processing_completed_at = db.Column(db.DateTime)  # Fin del procesamiento
-    error_message          = db.Column(db.Text)       # Mensaje de error si falla
+    error_message           = db.Column(db.Text)      # Mensaje de error si falla
     
     # Estadísticas de uso
     view_count     = db.Column(db.Integer, default = 0)  # Contador de visualizaciones
@@ -144,14 +149,13 @@ class Reel(db.Model):
     stripe_payment_intent_id = db.Column(db.String(100), index=True)  # Para tracking de pagos
     
     # Campos de auditoría y timestamps
-    created_at   = db.Column(db.DateTime, default = datetime.utcnow)                           # Fecha de creación
-    updated_at   = db.Column(db.DateTime, default = datetime.utcnow, onupdate = datetime.utcnow) # Última actualización                                                    # Fecha de aprobación
-    published_at = db.Column(db.DateTime)                                                    # Fecha de publicación
+    created_at   = db.Column(db.DateTime, default = datetime.utcnow)                              # Fecha de creación
+    updated_at   = db.Column(db.DateTime, default = datetime.utcnow, onupdate = datetime.utcnow)  # Última actualización                                                    # Fecha de aprobación
+    published_at = db.Column(db.DateTime)                                                         # Fecha de publicación
     
     # Definición de relaciones con otros modelos
     commissions = db.relationship('Commission', backref = 'reel', lazy = 'dynamic')
     
-      
     
     def __repr__(self):
         """

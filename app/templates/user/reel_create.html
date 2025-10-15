@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Crear Reel{% endblock %}
+{% block content %}
+
+<div class="container my-5" style="max-width: 720px;">
+  <h3 class="mb-4"><i class="fas fa-video me-2"></i>Crear nuevo Reel</h3>
+
+  <form method="post">
+    <!-- Campo: título -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Título</label>
+      <input type="text" name="title" class="form-control" required placeholder="Ejemplo: Presentación Gem-AvatART" value="{{ title or '' }}">
+    </div>
+
+    <!-- Campo: avatar -->
+    {% if avatars and avatars|length > 0 %}
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Avatar</label>
+            <select name="avatar_id" class="form-select">
+                <option value="">— Seleccionar avatar —</option>
+                {% for avatar in avatars %}
+                    <option value="{{ avatar.id }}">{{ avatar.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    {% else %}
+        <div class="alert alert-warning py-2">
+            No hay avatares disponibles por ahora. Podés crear el reel y asignar un avatar más tarde.
+        </div>
+    {% endif %}
+
+    <!-- Campo: guion -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Guion / Texto del Reel</label>
+      <textarea name="script" class="form-control" rows="6" placeholder="Escribí el texto o guion del video...">{{ script or '' }}</textarea>
+    </div>
+
+    <!-- Botones -->
+    <div class="d-flex justify-content-between">
+      <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Cancelar
+      </a>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save me-1"></i> Guardar Reel
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

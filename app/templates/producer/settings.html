@@ -731,7 +731,7 @@ function updateProfile(event) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': '{{ csrf_token() }}'
+            'Content-Type': 'application/json'
         }
     })
     .then(response => response.json())
@@ -753,7 +753,7 @@ function updateRates(event) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': '{{ csrf_token() }}'
+            'Content-Type': 'application/json'
         }
     })
     .then(response => response.json())
@@ -775,7 +775,7 @@ function updateNotifications(event) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': '{{ csrf_token() }}'
+            'Content-Type': 'application/json'
         }
     })
     .then(response => response.json())
@@ -793,7 +793,7 @@ function testHeyGenAPI() {
     fetch('{{ url_for("producer.test_heygen") }}', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': '{{ csrf_token() }}'
+            'Content-Type': 'application/json'
         }
     })
     .then(response => response.json())

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Mis Reels{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">🎬 Mis Reels</h3>
+
+    {% if current_user.is_producer() or current_user.is_subproducer() %}
+      <a href="{{ url_for('user.create_reel') }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus me-1"></i> Crear Reel
+      </a>
+    {% endif %}
+  </div>
+
+  {% if reels %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Título</th>
+            <th>Avatar</th>
+            <th>Estado</th>
+            <th>Creado</th>
+            <th>Propietario</th>
+            <th>Visibilidad</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for reel in reels %}
+            <tr>
+              <td>{{ reel.id }}</td>
+              <td>{{ reel.title or '—' }}</td>
+              <td>
+                {% if reel.avatar %}
+                  {{ reel.avatar.name }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if reel.status.value == 'COMPLETED' %}
+                  <span class="badge bg-success">Completado</span> 
+                {% elif reel.status.value == 'PENDING' %}
+                  <span class="badge bg-warning text-dark">Pendiente</span>
+                {% elif reel.status.value == 'FAILED' %}
+                  <span class="badge bg-danger">Fallido</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ reel.status.value }}</span>
+                {% endif %}
+              </td>
+              <td>{{ reel.created_at.strftime('%d/%m/%Y') if reel.created_at else '—' }}</td>
+              <td>{{ reel.owner.username if reel.owner else '—' }}</td>
+              <td>
+                {% if reel.is_public %}
+                  <span class="badge bg-info text-dark">Público</span>
+                {% else %}
+                  <span class="badge bg-secondary">Privado</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('user.view_reel', reel_id=reel.id) }}" class="btn btn-outline-primary btn-sm">
+                  <i class="fas fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-light border text-center py-4">
+      <i class="fas fa-video-slash fa-2x text-muted mb-2"></i>
+      <p class="mb-0">Aún no hay reels disponibles.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

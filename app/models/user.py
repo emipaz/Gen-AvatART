@@ -150,7 +150,7 @@ class User(UserMixin, db.Model):
     producer_profile = db.relationship('Producer', backref = 'user', uselist = False, cascade = 'all, delete-orphan')
     
     # Relación con reels creados por este usuario
-    reels = db.relationship('Reel', foreign_keys = 'Reel.creator_id', backref = 'creator', lazy = 'dynamic')
+    reels = db.relationship('Reel', foreign_keys = 'Reel.creator_id', backref = 'creator_user', lazy = 'dynamic')
 
     # Relación con comisiones ganadas por el usuario
     commissions_earned = db.relationship('Commission', backref = 'user', lazy='dynamic')

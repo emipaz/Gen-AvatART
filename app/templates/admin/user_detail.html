@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Detalle de Usuario{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('admin.users') }}">Usuarios</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center mb-3">
+    <div class="me-3">
+      <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center"
+            style="width:56px;height:56px;">
+        <i class="fas fa-user fa-lg text-muted"></i>
+      </span>
+    </div>
+    <div>
+      <h3 class="mb-0">
+        {{ (user.first_name ~ ' ' ~ user.last_name)|trim if (user.first_name or user.last_name) else user.username }}
+      </h3>
+      <div class="text-muted">{{ user.email }}</div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted small">Rol</div>
+          <div class="fw-semibold">{{ user.role.value if user.role else '—' }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted small">Estado</div>
+          <div class="fw-semibold">{{ user.status.value if user.status else '—' }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted small">Registro</div>
+          <div class="fw-semibold">{{ user.created_at.strftime('%d/%m/%Y %H:%M') if user.created_at else '—' }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted small">Último acceso</div>
+          <div class="fw-semibold">{{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else '—' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Métricas -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <div class="text-muted small">Reels</div>
+          <div class="display-6">{{ stats.total_reels or 0 }}</div>
+          <div class="text-success small">{{ stats.completed_reels or 0 }} completados</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <div class="text-muted small">Comisiones</div>
+          <div class="display-6">{{ stats.total_commissions or 0 }}</div>
+          <div class="small">Pendientes: {{ stats.pending_earnings or 0 }}</div>
+        </div>
+      </div>
+    </div>
+
+    {% if user.is_producer() and user.producer_profile %}
+    <div class="col-6 col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <div class="text-muted small">Avatares</div>
+          <div class="display-6">{{ stats.avatars_count or 0 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <div class="text-muted small">API (mes)</div>
+          <div class="display-6">{{ stats.api_calls_this_month or 0 }}</div>
+          <div class="small">Límite: {{ stats.monthly_api_limit or '—' }}</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Acciones rápidas -->
+  <div class="d-flex gap-2">
+
+    <!-- Formulario para aprobar usuario -->
+    <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+      <!-- Aprobar: habilitado si el estado es 'pending' o 'suspended' -->
+      <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm"
+              {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
+        <i class="fas fa-check me-1"></i> Aprobar
+      </button>
+    </form>
+
+    <!-- Formulario para suspender usuario -->
+    <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
+      <!-- Suspender: habilitado solo si el estado es 'active' -->
+      <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm"
+              {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
+        <i class="fas fa-ban me-1"></i> Suspender
+      </button>
+    </form>
+
+    <!-- Formulario para eliminar usuario -->
+    <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
+      <button class="btn btn-danger btn-sm">
+        <i class="fas fa-trash-alt me-1"></i> Eliminar
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

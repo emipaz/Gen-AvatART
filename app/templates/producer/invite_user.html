@@ -444,7 +444,7 @@ function resendInvitation(invitationId) {
         fetch(`{{ url_for('producer.resend_invitation', invitation_id=0) }}`.replace('0', invitationId), {
             method: 'POST',
             headers: {
-                'X-CSRFToken': '{{ csrf_token() }}'
+                'Content-Type': 'application/json'
             }
         })
         .then(response => response.json())
@@ -464,7 +464,7 @@ function cancelInvitation(invitationId) {
         fetch(`{{ url_for('producer.cancel_invitation', invitation_id=0) }}`.replace('0', invitationId), {
             method: 'DELETE',
             headers: {
-                'X-CSRFToken': '{{ csrf_token() }}'
+                'Content-Type': 'application/json'
             }
         })
         .then(response => response.json())

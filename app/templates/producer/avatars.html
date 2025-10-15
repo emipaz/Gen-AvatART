@@ -502,8 +502,7 @@ function saveAccessChanges() {
     fetch(`/producer/avatar/${currentAvatarId}/access`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token() }}'
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({ access_list: accessList })
     })

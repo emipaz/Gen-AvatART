@@ -66,7 +66,7 @@ Estados de reel manejados:
 {% block title %}Dashboard - Gem-AvatART{% endblock %}
 
 {% block content %}
-<<!-- Contenedor principal centrado -->
+<!-- Contenedor principal centrado -->
 <div class="container">
     <div class="row">
         <div class="col-md-12">
@@ -230,7 +230,7 @@ Estados de reel manejados:
                                                 </td>
                                                 
                                                 <!-- Fecha formateada -->
-                                                <td>{{ reel.created_at.strftime('%d/%m/%Y') }}</td>
+                                                <td>{{ reel.created_at.strftime('%d/%m/%Y') if reel.created_at else '—' }}</td>
                                                 
                                                 <!-- Botón de ver detalles -->
                                                 <td>

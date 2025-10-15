@@ -46,6 +46,14 @@ migrate       = Migrate()        # Migraciones de base de datos
 mail          = Mail()           # Envío de correos electrónicos
 jwt           = JWTManager()     # Gestión de tokens JWT
 
+# --- IMPORTS PARA MIGRACIONES (no afectan runtime) ---
+# aseguran que los modelos estén en db.metadata cuando Alembic autogenera
+try:
+    from app.models import user, producer, avatar, reel, commission  # añade otros módulos si tienes
+except Exception:
+    pass
+# -----------------------------------------------------
+
 def create_app(config_name='default'):
     """
     Factory function para crear y configurar la aplicación Flask.
@@ -77,6 +85,10 @@ def create_app(config_name='default'):
     
     # Cargar configuración
     app.config.from_object(config_dict[config_name])
+
+    # Mostrar tracebacks en consola cuando está en DEBUG
+    if app.config.get("DEBUG", False):
+        app.config["PROPAGATE_EXCEPTIONS"] = True
     
     # Inicializar extensiones con la app
     db.init_app(app)             # Configurar SQLAlchemy con la app
@@ -179,28 +191,30 @@ def create_app(config_name='default'):
         """
         return render_template('errors/403.html'), 403
 
-    @app.errorhandler(500)
-    def internal_error(error):
-        """
-        Manejador personalizado para errores 500 (Error interno del servidor).
-        
-        Se ejecuta cuando ocurre una excepción no manejada en el servidor.
-        Realiza rollback de la sesión de base de datos para evitar
-        estados inconsistentes y proporciona una página de error elegante.
-        
-        Args:
-            error: Objeto de error proporcionado por Flask.
-        
-        Returns:
-            tuple: Tupla con (template_renderizado, código_estado_http)
-        
-        Note:
-            - Realiza rollback automático de BD para evitar corrupción
-            - Template de error no debe depender de BD
-            - Útil para ocultar detalles técnicos en producción
-        """
-        db.session.rollback()
-        return render_template('errors/500.html'), 500
+    # ⬇️ SOLO registrar el 500 custom si NO estamos en debug
+    if not app.debug:
+        @app.errorhandler(500)
+        def internal_error(error):
+            """
+            Manejador personalizado para errores 500 (Error interno del servidor).
+            
+            Se ejecuta cuando ocurre una excepción no manejada en el servidor.
+            Realiza rollback de la sesión de base de datos para evitar
+            estados inconsistentes y proporciona una página de error elegante.
+            
+            Args:
+                error: Objeto de error proporcionado por Flask.
+            
+            Returns:
+                tuple: Tupla con (template_renderizado, código_estado_http)
+            
+            Note:
+                - Realiza rollback automático de BD para evitar corrupción
+                - Template de error no debe depender de BD
+                - Útil para ocultar detalles técnicos en producción
+            """
+            db.session.rollback()
+            return render_template('errors/500.html'), 500
     
     # Context processors
     @app.context_processor

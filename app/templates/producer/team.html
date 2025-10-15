@@ -418,8 +418,7 @@ document.getElementById('confirmToggleStatus').addEventListener('click', functio
         fetch(`{{ url_for('producer.toggle_member_status', member_id=0) }}`.replace('0', currentMemberId), {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
+                'Content-Type': 'application/json'
             }
         })
         .then(response => response.json())
@@ -440,8 +439,7 @@ document.getElementById('confirmRemoveMember').addEventListener('click', functio
         fetch(`{{ url_for('producer.remove_member', member_id=0) }}`.replace('0', currentMemberId), {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
+                'Content-Type': 'application/json'
             }
         })
         .then(response => response.json())

@@ -155,7 +155,6 @@ def dashboard():
                          pending_avatars = pending_avatars,
                          pending_reels   = pending_reels)
 
-
 @admin_bp.route('/users')
 @login_required
 @admin_required
@@ -266,15 +265,15 @@ def user_detail(user_id):
         'pending_earnings'  : sum([c.amount for c in user.commissions_earned.filter_by(status=CommissionStatus.PENDING)])
     }
     
-    # Si es productor, obtener estadísticas adicionales
-    if user.is_producer() and user.producer_profile:
+    # Si es productor, sumar métricas opcionales sin romper si no existen
+    if user.is_producer() and getattr(user, 'producer_profile', None):
         producer = user.producer_profile
         user_stats.update({
-            'subproducers_count'   : producer.current_subproducers_count,
-            'affiliates_count'     : producer.current_affiliates_count,
-            'avatars_count'        : producer.avatars.count(),
-            'api_calls_this_month' : producer.api_calls_this_month,
-            'monthly_api_limit'    : producer.monthly_api_limit
+            'subproducers_count'  : getattr(producer, 'current_subproducers_count', 0) or 0,
+            'affiliates_count'    : getattr(producer, 'current_affiliates_count', 0) or 0,
+            'avatars_count'       : (producer.avatars.count() if hasattr(producer, 'avatars') and producer.avatars is not None else 0),
+            'api_calls_this_month': getattr(producer, 'api_calls_this_month', 0) or 0,
+            'monthly_api_limit'   : getattr(producer, 'monthly_api_limit', None),
         })
     
     return render_template('admin/user_detail.html', user=user, stats=user_stats)
@@ -305,6 +304,7 @@ def approve_user(user_id):
 
     user = User.query.get_or_404(user_id)
     user.status = UserStatus.ACTIVE
+    user.is_verified = True
     db.session.commit()
     
     flash(f'Usuario {user.username} aprobado exitosamente', 'success')
@@ -466,23 +466,20 @@ def create_producer():
         db.session.add(user)
         db.session.flush()  # Para obtener el ID del usuario
         
-        # Crear perfil de productor
+        # Crear perfil de productor  
         producer = Producer(
-            user_id            = user.id,
-            heygen_api_key     = heygen_api_key,
-            company_name       = company_name,
-            business_type      = business_type,
-            website            = website,
-            max_subproducers   = max_subproducers,
-            max_affiliates     = max_affiliates,
-            monthly_api_limit  = monthly_api_limit
+            user_id                  = user.id,
+            heygen_api_key_encrypted = heygen_api_key,
+            company_name             = company_name,
+            business_type            = business_type,
+            website                  = website,
+            max_subproducers         = max_subproducers,
+            max_affiliates           = max_affiliates,
+            monthly_api_limit        = monthly_api_limit
         )
         
         db.session.add(producer)
         db.session.commit()
-        
-        # Validar API key
-        producer.validate_api_key()
         
         flash(f'Productor {username} creado exitosamente', 'success')
         return redirect(url_for('admin.user_detail', user_id=user.id))
@@ -519,9 +516,18 @@ def producers():
     page = request.args.get('page', 1, type=int)
 
     # Consulta con join a User para información completa
-    producers = Producer.query.join(User).order_by(User.created_at.desc()).paginate(
-        page=page, per_page=20, error_out=False
+    producers = (
+        Producer.query
+        .join(User)
+        .order_by(User.created_at.desc())
+        .paginate(page=page, per_page=20, error_out=False)
     )
+
+    # 🔧 Normalizar business_type para que el template no falle al agrupar
+    for p in producers.items:
+        if p.business_type is None:
+            p.business_type = ""
+
     # Renderizar template con productores
     return render_template('admin/producers.html', producers=producers)
 
@@ -566,6 +572,13 @@ def reels():
     )
     
     return render_template('admin/reels.html', reels=reels)
+
+@admin_bp.route('/reels/<int:reel_id>')
+@login_required
+@admin_required
+def reel_detail(reel_id):
+    reel = Reel.query.get_or_404(reel_id)
+    return render_template('admin/reel_detail.html', reel=reel)
 
 @admin_bp.route('/commissions')
 @login_required

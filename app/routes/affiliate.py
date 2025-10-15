@@ -143,9 +143,10 @@ def dashboard():
     # Obtener actividad reciente para vista rápida
     recent_reels = user_reels.order_by(Reel.created_at.desc()).limit(5).all()
     
-    return render_template('affiliate/dashboard.html',
-                         stats        = stats,
-                         recent_reels = recent_reels)
+    # return render_template('affiliate/dashboard.html',
+    #                      stats        = stats,
+    #                      recent_reels = recent_reels)
+    return redirect(url_for('user.dashboard'))
 
 @affiliate_bp.route('/reels')
 @login_required

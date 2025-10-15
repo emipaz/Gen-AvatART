@@ -128,7 +128,7 @@ class Avatar(db.Model):
     # Definición de relaciones con otros modelos
     created_by  = db.relationship('User', foreign_keys = [created_by_id] , backref = 'created_avatars')
     # approved_by = db.relationship('User', foreign_keys = [approved_by_id], backref = 'approved_avatars')
-    reels       = db.relationship('Reel', backref = 'avatar', lazy = 'dynamic')
+    reels       = db.relationship('Reel', back_populates = 'avatar', lazy = 'dynamic')
     
     def __repr__(self):
         """

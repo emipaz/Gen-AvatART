@@ -96,8 +96,12 @@ class Producer(db.Model):
     country       = db.Column(db.String(50))                     # ✅ MANTENER
     website       = db.Column(db.String(100))       
     
+    # Límites/metrics de gestión
+    max_subproducers   = db.Column(db.Integer, default=10)
+    max_affiliates     = db.Column(db.Integer, default=100)
+    monthly_api_limit  = db.Column(db.Integer, default=1000)
     
-     # Integración con servicios externos
+    # Integración con servicios externos
     heygen_api_key_encrypted = db.Column(db.Text)  # ✅ MANTENER - API key de HeyGen encriptada
     
     # ✅ NUEVO según README - Integración con Stripe Connect
@@ -117,8 +121,8 @@ class Producer(db.Model):
     # Definición de relaciones con otros modelos
     avatars = db.relationship('Avatar', backref = 'producer', lazy = 'dynamic')  # Avatares creados
     
-    commissions = db.relationship('Commission', backref = 'producer', lazy = 'dynamic')
-    
+    commissions = db.relationship('Commission', backref = 'producer', lazy = 'dynamic')  # Comisiones ganadas
+
     
     def __repr__(self):
         """

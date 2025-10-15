@@ -32,9 +32,11 @@ Características técnicas:
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+from datetime import datetime
 from app import db
 from app.models.user import User
 from app.models.producer_request import ProducerRequest, ProducerRequestStatus
+from app.models.reel import Reel, ReelStatus
 import os
 from PIL import Image
 
@@ -364,3 +366,99 @@ def request_producer():
     
     return render_template('user/request_producer.html', 
                          approved=approved, existing=existing)
+
+# listar reels
+@user_bp.route('/reels')
+@login_required
+def reels():
+    """
+    Lista los reels visibles para el usuario actual.
+    - Admin: ve todos
+    - Producer/Subproducer: ve los creados por sí mismo
+    - Final user: ve los propios y los públicos
+    """
+    if current_user.is_admin():
+        reels = Reel.query.order_by(Reel.created_at.desc()).all()
+    elif current_user.is_producer() or current_user.is_subproducer():
+        reels = Reel.query.filter_by(creator_id=current_user.id).order_by(Reel.created_at.desc()).all()
+    else:
+        reels = Reel.query.filter(
+            (Reel.owner_id == current_user.id) | (Reel.is_public == True)
+        ).order_by(Reel.created_at.desc()).all()
+
+    return render_template('user/reels.html', reels=reels)
+
+# crear reel
+@user_bp.route('/reels/create', methods=['GET', 'POST'])
+@login_required
+def create_reel():
+    # Solo pueden crear: admin / productor / subproductor
+    if not (current_user.is_producer() or current_user.is_subproducer() or current_user.is_admin()):
+        flash('No tenés permisos para crear reels.', 'error')
+        return redirect(url_for('user.reels'))
+
+    from app.models.avatar import Avatar  # <- asegurar import
+    avatars = Avatar.query.order_by(Avatar.name).all()  # para el <select>
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        script = request.form.get('script', '').strip()
+        avatar_id_raw = request.form.get('avatar_id')  # '' si no eligen nada
+
+        if not title or not script:
+            flash('Título y guion son obligatorios.', 'error')
+            return render_template('user/reel_create.html', title=title, script=script, avatars=avatars)
+
+        # Si eligieron un avatar, validarlo y convertirlo a int
+        avatar_id = None
+        if avatar_id_raw:
+            try:
+                avatar = Avatar.query.get(int(avatar_id_raw))
+                if not avatar:
+                    flash('El avatar seleccionado no existe.', 'error')
+                    return render_template('user/reel_create.html', title=title, script=script, avatars=avatars)
+                avatar_id = avatar.id
+            except ValueError:
+                flash('Avatar inválido.', 'error')
+                return render_template('user/reel_create.html', title=title, script=script, avatars=avatars)
+
+        r = Reel(
+            title=title,
+            script=script,
+            creator_id=current_user.id,
+            owner_id=current_user.id,
+            avatar_id=avatar_id,              # <- queda NULL si no eligieron
+            status=ReelStatus.PENDING,
+            is_public=False,
+            resolution='1080p',
+            background_type='default'
+        )
+        db.session.add(r)
+        db.session.commit()
+
+        flash('Reel creado correctamente.', 'success')
+        return redirect(url_for('user.reels'))
+
+    return render_template('user/reel_create.html', avatars=avatars)
+
+# ver reel
+@user_bp.route('/reels/<int:reel_id>')
+@login_required
+def view_reel(reel_id):
+    """Vista detallada de un reel individual."""
+    from app.models.reel import Reel
+
+    reel = Reel.query.get_or_404(reel_id)
+
+    # Validación de acceso
+    if (
+        not current_user.is_admin()
+        and not current_user.is_producer()
+        and reel.owner_id != current_user.id
+        and not reel.is_public
+    ):
+        flash("No tenés permiso para ver este reel.", "danger")
+        return redirect(url_for("user.reels"))
+
+    return render_template('user/reel_view.html', reel=reel)
+
