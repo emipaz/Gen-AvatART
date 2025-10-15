@@ -73,7 +73,7 @@ Acciones disponibles:
     - Ver estadísticas de uso
     - Solicitar avatar personalizado
     - Marcar como favorito
-#}
+{#}
 
 {% extends "base.html" %}
 
@@ -99,7 +99,7 @@ Acciones disponibles:
         </div>
         
         <!-- Botón para solicitar nuevo avatar -->
-        <a href="{{ url_for('producer.request_avatar') }}" class="btn btn-primary">
+        <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Solicitar Avatar
         </a>
     </div>
@@ -113,7 +113,7 @@ Acciones disponibles:
                     <div class="d-flex align-items-center">
                         <i class="fas fa-user-circle fa-3x me-3"></i>
                         <div>
-                            <h3 class="mb-0">{{ available_avatars|length if available_avatars else 0 }}</h3>
+                            <h3 class="mb-0">{{ avatars.total if avatars else 0 }}</h3>
                             <p class="mb-0">Avatars Disponibles</p>
                         </div>
                     </div>
@@ -229,18 +229,21 @@ Acciones disponibles:
     </div>
 
     <!-- Galería de avatars -->
-    {% if available_avatars %}
+    {% if avatars and avatars.total > 0 %}
         <!-- Grid de avatars en tarjetas -->
         <div class="row g-4">
-            {% for avatar in available_avatars %}
+            {% for avatar in avatars.items %}
             <div class="col-lg-4 col-md-6">
                 <!-- Card del avatar con información completa -->
                 <div class="card h-100 shadow-sm">
                     <!-- Imagen del avatar -->
                     <div class="position-relative">
-                        {% if avatar.avatar_url %}
-                            <img src="{{ avatar.avatar_url }}" class="card-img-top" 
-                                 style="height: 250px; object-fit: cover;" alt="{{ avatar.name }}">
+                        {% if avatar.thumbnail_url %}
+                            <img src="{{ avatar.thumbnail_url }}" 
+                                    class="card-img-top" 
+                                    style="height: 250px; object-fit: cover;" 
+                                    alt="{{ avatar.name }}"
+                            >
                         {% else %}
                             <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
                                  style="height: 250px;">
@@ -248,9 +251,18 @@ Acciones disponibles:
                             </div>
                         {% endif %}
                         
-                        <!-- Badge de estado en la esquina -->
-                        <span class="position-absolute top-0 end-0 m-2 badge bg-{{ 'success' if avatar.status == 'active' else 'danger' }}">
-                            {{ avatar.status.title() }}
+                        {# --- Badge de estado en la esquina (soporta Enum o string) --- #}
+                        {% set _raw = avatar.status %}
+                        {% if _raw is string %}
+                            {% set st = _raw.split('.')[-1] | lower %}
+                        {% elif _raw is not none and _raw.name is defined %}
+                            {% set st = _raw.name | lower %}
+                        {% else %}
+                            {% set st = (_raw|string).split('.')[-1] | lower %}
+                        {% endif %}
+
+                        <span class="position-absolute top-0 end-0 m-2 badge bg-{{ 'success' if st == 'active' else ('warning' if st in ['processing','pending'] else 'secondary') }}">
+                            {{ st|capitalize }}
                         </span>
                         
                         <!-- Badge de popularidad si es muy usado -->
@@ -277,10 +289,13 @@ Acciones disponibles:
                             </span>
                             
                             <!-- Género -->
-                            <span class="badge bg-info me-1">
-                                <i class="fas fa-{{ 'mars' if avatar.gender == 'male' else 'venus' }}"></i> 
-                                {{ avatar.gender.title() }}
-                            </span>
+                            {# --- Quitar "gender" y mostrar el tipo de avatar --- #}
+                            {% if avatar.avatar_type %}
+                                <span class="badge bg-info me-1">
+                                    <i class="fas fa-user"></i>
+                                    {{ avatar.avatar_type|capitalize }}
+                                </span>
+                            {% endif %}
                             
                             <!-- Edad aparente si está disponible -->
                             {% if avatar.age_range %}
@@ -302,11 +317,11 @@ Acciones disponibles:
                             </div>
                         </div>
 
-                        <!-- Botones de acción -->
+                        <!-- Botones de acción --> 
                         <div class="mt-auto">
                             <div class="d-grid gap-2">
                                 <!-- Ver detalles del avatar -->
-                                <a href="{{ url_for('producer.avatar_detail', avatar_id=avatar.id) }}" 
+                                <a href="{{ url_for('producer.avatars') }}" 
                                    class="btn btn-primary">
                                     <i class="fas fa-eye"></i> Ver Detalles
                                 </a>
@@ -335,7 +350,7 @@ Acciones disponibles:
             <i class="fas fa-user-circle fa-5x text-muted mb-4"></i>
             <h3 class="text-muted">No hay avatars disponibles</h3>
             <p class="text-muted mb-4">Solicita tu primer avatar para comenzar a crear contenido.</p>
-            <a href="{{ url_for('producer.request_avatar') }}" class="btn btn-primary">
+            <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Solicitar Primer Avatar
             </a>
         </div>

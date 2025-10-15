@@ -1,2 +1,83 @@
-.env
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+*.manifest
+*.spec
+*.log
+*.tmp
+
+# === Virtual environment ===
+.venv/
 env/
+venv/
+ENV/
+
+# === IDEs y editores ===
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# === Archivos de sistema ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Flask / Instance ===
+instance/*.db
+instance/snapshots/
+instance/*.sqlite
+instance/*.sqlite3
+instance/config.json
+*.sqlite3
+
+# === Archivos temporales o de ejecución ===
+*.pid
+*.bak
+*.swp
+*.swo
+*.orig
+
+# === Datos o multimedia pesados ===
+uploads/
+media/
+static/uploads/
+static/videos/
+static/audio/
+static/images/generated/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
+*.webm
+*.zip
+*.rar
+*.tar.gz
+
+# === Seguridad ===
+.env
+.env.*
+*.key
+*.pem
+*.crt
+
+# === Compilados o generados ===
+build/
+dist/
+*.exe
+*.dll
+*.obj
+*.bin
+
+# === Documentación generada ===
+docs/_build/
+*.pdf
+

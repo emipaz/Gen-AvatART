@@ -44,8 +44,10 @@ from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission
 from app.services.heygen_service import HeyGenService
+from app.services.snapshot_service import save_avatar_snapshot
 from app.utils.date_utils import get_current_month_range
 from datetime import datetime
+from uuid import uuid4
 
 producer_bp = Blueprint('producer', __name__)
 
@@ -130,25 +132,46 @@ def dashboard():
         'total_avatars'     : producer.avatars.count(),
         'approved_avatars'  : producer.avatars.filter_by( status = AvatarStatus.ACTIVE).count(),
         'pending_avatars'   : producer.avatars.filter_by( status = AvatarStatus.PROCESSING).count(),
-        'subproducers_count': producer.current_subproducers_count,
-        'affiliates_count'  : producer.current_affiliates_count,
+        # 'subproducers_count': producer.current_subproducers_count,
+        # 'affiliates_count'  : producer.current_affiliates_count,
+        'subproducers_count': getattr(producer, 'current_subproducers_count', 0),
+        'affiliates_count'  : getattr(producer, 'current_affiliates_count', 0),
         'total_earnings'    : Commission.get_user_total_earnings(current_user.id, 'approved'),
         'pending_earnings'  : Commission.get_user_total_earnings(current_user.id, 'pending'),
-        'api_calls_used'    : producer.api_calls_this_month,
-        'api_calls_limit'   : producer.monthly_api_limit,
-        'api_key_status'    : producer.api_key_status
+        # 'api_calls_used'    : producer.api_calls_this_month,
+        # 'api_calls_limit'   : producer.monthly_api_limit,
+        # 'api_key_status'    : producer.api_key_status,
+        'api_calls_used'    : getattr(producer, 'api_calls_this_month', 0),
+        'api_calls_limit'   : getattr(producer, 'monthly_api_limit', 0),
+        'api_key_status'    : getattr(producer, 'api_key_status', 'N/A'),
     }
     
     # Actividad reciente
-    recent_reels   = current_user.reels.order_by(Reel.created_at.desc()).limit(5).all()
+    # recent_reels   = current_user.reels.order_by(Reel.created_at.desc()).limit(5).all()
+    recent_reels = (
+        Reel.query
+            .filter_by(creator_id=current_user.id)
+            .order_by(Reel.created_at.desc())
+            .limit(5)
+            .all()
+    )
     recent_avatars = producer.avatars.order_by(Avatar.created_at.desc()).limit(5).all()
     
     # Elementos pendientes de aprobación
     pending_avatars = producer.avatars.filter_by(status=AvatarStatus.PROCESSING).all()
-    pending_reels   = Reel.query.join(User).filter(
-        User.invited_by_id == current_user.id,
-        Reel.status        == ReelStatus.PENDING
-    ).all()
+    # pending_reels   = Reel.query.join(User).filter(
+    #     User.invited_by_id == current_user.id,
+    #     Reel.status        == ReelStatus.PENDING
+    # ).all()
+    pending_reels = (
+        Reel.query
+            .join(User, Reel.creator_id == User.id)   # <- onclause explícita
+            .filter(
+                User.invited_by_id == current_user.id,
+                Reel.status == ReelStatus.PENDING
+            )
+            .all()
+    )
     
     return render_template('producer/dashboard.html',
                          stats           = stats,
@@ -187,7 +210,9 @@ def avatars():
     page          = request.args.get('page', 1, type=int)
     status_filter = request.args.get('status')
     
-    query = current_user.producer_profile.avatars
+    # query = current_user.producer_profile.avatars
+    producer = current_user.producer_profile
+    query = Avatar.query.filter_by(producer_id=producer.id)
     
     if status_filter:
         query = query.filter_by(status = AvatarStatus(status_filter))
@@ -237,9 +262,17 @@ def create_avatar():
     """
     producer = current_user.producer_profile
     
-    if not producer.has_api_quota():
+    # --- Chequeo de cuota sin depender de métodos del modelo ---
+    api_used  = getattr(producer, 'api_calls_this_month', 0)   # si no existe, 0
+    api_limit = getattr(producer, 'monthly_api_limit', None)   # puede ser None
+
+    def quota_reached():
+        return api_limit is not None and api_limit > 0 and api_used >= api_limit
+
+    if quota_reached():
         flash('Has alcanzado tu límite mensual de API calls', 'error')
         return redirect(url_for('producer.avatars'))
+
     
     if request.method == 'POST':
         name          = request.form.get('name')
@@ -249,7 +282,13 @@ def create_avatar():
         tags          = request.form.get('tags', '')
         is_public     = bool(request.form.get('is_public'))
         is_premium    = bool(request.form.get('is_premium'))
-        price_per_use = float(request.form.get('price_per_use', 0))
+        # Precio: convertir seguro (acepta vacío y coma decimal)
+        price_raw = (request.form.get('price_per_use') or "").strip()
+        if price_raw == "":
+            price_per_use = 0.0
+        else:
+            price_per_use = float(price_raw.replace(",", "."))  # soporta "12,5"
+
         
         # Crear avatar en la base de datos
         avatar = Avatar(
@@ -259,23 +298,45 @@ def create_avatar():
             description    = description,
             avatar_type    = avatar_type,
             language       = language,
-            is_public      = is_public,
-            is_premium     = is_premium,
-            price_per_use  = price_per_use,
-            status         = AvatarStatus.PROCESSING
+            # is_public      = is_public,
+            # is_premium     = is_premium,
+            # price_per_use  = price_per_use,
+            status         = AvatarStatus.PROCESSING,
+            avatar_ref    = f"local_{uuid4().hex}"   # <- evita el NOT NULL
         )
         avatar.set_tags(tags.split(','))
         
         db.session.add(avatar)
         db.session.commit()
+
+        # Guardar snapshot para poder recrear este avatar luego (p. ej., por productor custodio)
+        save_avatar_snapshot(
+            avatar_id=avatar.id,
+            producer_id=producer.id,
+            created_by_id=current_user.id,
+            source="producer_ui",
+            inputs={
+                "name": name,
+                "description": description,
+                "avatar_type": avatar_type,
+                "language": language,
+                "tags": [t.strip() for t in tags.split(",") if t.strip()],
+                "is_public": is_public,
+                "is_premium": is_premium,
+                "price_per_use": price_per_use,
+            },
+            heygen_owner_hint=producer.company_name,
+        )
         
-        # TODO: Integrar con HeyGen para crear el avatar
         # Por ahora, simplemente marcarlo como aprobado
         avatar.status           = AvatarStatus.ACTIVE
         avatar.heygen_avatar_id = f"heygen_{avatar.id}"
         db.session.commit()
         
-        producer.increment_api_usage()
+        # --- Incremento seguro del uso de API (si el campo existe) ---
+        if hasattr(producer, 'api_calls_this_month'):
+            producer.api_calls_this_month = (producer.api_calls_this_month or 0) + 1
+            db.session.commit()
         
         flash('Avatar creado exitosamente', 'success')
         return redirect(url_for('producer.avatars'))

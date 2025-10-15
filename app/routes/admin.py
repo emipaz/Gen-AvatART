@@ -394,6 +394,24 @@ def delete_user(user_id):
         flash('No se puede eliminar un administrador', 'error')
         return redirect(url_for('admin.user_detail', user_id=user_id))
     
+    # Si estoy eliminando a un PRODUCTOR: dejar huérfanos a sus subproductores
+    if user.is_producer():
+        producer = getattr(user, "producer_profile", None)
+
+        # Solo si el modelo User tiene el vínculo al productor (p.ej. users.producer_id)
+        if hasattr(User, "producer_id") and producer:
+            subs = User.query.filter_by(
+                producer_id=producer.id,
+                role=UserRole.SUBPRODUCER
+            ).all()
+
+            for s in subs:
+                # quedan huérfanos
+                s.producer_id = None
+                # sin acceso hasta ser reasignados
+                s.status = UserStatus.SUSPENDED
+                s.updated_at = datetime.utcnow()
+
     # Eliminar usuario y sus datos asociados
     db.session.delete(user)
     db.session.commit()
