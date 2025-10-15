@@ -23,7 +23,6 @@ Cambios según README:
     - ❌ SIMPLIFICADO: commission_rate, payment_method (ahora se maneja en Stripe)
 """
 
-
 from app import db
 from datetime import datetime
 from enum import Enum
@@ -403,3 +402,5 @@ class Producer(db.Model):
             # 'payment_method'      : self.payment_method,     # Se maneja en Stripe Connect
             # 'payment_details'     : self.payment_details,    # Se maneja en Stripe Connect
         }
+    
+    

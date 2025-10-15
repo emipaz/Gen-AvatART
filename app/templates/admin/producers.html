@@ -442,6 +442,23 @@ Funcionalidades JavaScript:
                                                             <i class="fas fa-refresh me-2"></i>Reset Límites
                                                         </a>
                                                     </li>
+
+                                                    <!-- Aprobar / Suspender desde Admin -->
+                                                    <li>
+                                                        <form method="post" action="{{ url_for('admin.approve_producer', producer_id=producer.id) }}" class="d-inline">
+                                                            <button class="dropdown-item text-success" {% if producer.status.value == 'active' %}disabled{% endif %}>
+                                                                <i class="fas fa-check me-1"></i> Aprobar Productor
+                                                            </button> 
+                                                        </form>
+                                                    </li>
+
+                                                    <li>
+                                                        <form method="post" action="{{ url_for('admin.suspend_producer', producer_id=producer.id) }}" class="d-inline">
+                                                            <button class="dropdown-item text-warning" {% if producer.status.value == 'suspended' %}disabled{% endif %}>
+                                                                <i class="fas fa-ban me-1"></i> Suspender Productor
+                                                            </button>
+                                                        </form>
+                                                    </li>
                                                     
                                                     <!-- Suspender/Activar -->
                                                     {% if producer.api_key_status == 'valid' %}

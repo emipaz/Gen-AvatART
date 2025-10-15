@@ -553,6 +553,73 @@ def producers():
     # Renderizar template con productores
     return render_template('admin/producers.html', producers=producers)
 
+@admin_bp.route('/producers/<int:producer_id>')
+@login_required
+@admin_required
+def producer_detail(producer_id):
+    # Cargar productor y su usuario asociado (sin depender de backrefs)
+    producer = Producer.query.get_or_404(producer_id)
+    user = User.query.get(producer.user_id)
+
+    # Métricas básicas seguras (evitan atributos que quizás no existan)
+    avatars_count = producer.avatars.count() if hasattr(producer, 'avatars') else 0
+    commissions_count = producer.commissions.count() if hasattr(producer, 'commissions') else 0
+
+    # Reels del usuario (si hay user)
+    total_reels = Reel.query.filter_by(creator_id=user.id).count() if user else 0
+    completed_reels = (
+        Reel.query.filter_by(creator_id=user.id, status=ReelStatus.COMPLETED).count()
+        if user else 0
+    )
+
+    stats = {
+        "avatars_count": avatars_count,
+        "total_commissions": commissions_count,
+        "total_reels": total_reels,
+        "completed_reels": completed_reels,
+    }
+
+    return render_template('admin/producer_detail.html', producer=producer, user=user, stats=stats)
+
+@admin_bp.post("/producers/<int:producer_id>/approve")
+@login_required
+@admin_required
+def approve_producer(producer_id):
+    """Activa un productor y sincroniza su usuario."""
+    producer = Producer.query.get_or_404(producer_id)
+    user = User.query.get(producer.user_id)
+
+    producer.status = ProducerStatus.ACTIVE
+    producer.is_verified = True
+    producer.verified_at = datetime.utcnow()
+
+    if user:
+        user.status = UserStatus.ACTIVE
+        user.is_verified = True
+        user.updated_at = datetime.utcnow()
+
+    db.session.commit()
+    flash(f"✅ Productor {producer.company_name or user.username} activado correctamente.", "success")
+    return redirect(url_for("admin.producer_detail", producer_id=producer.id))
+
+@admin_bp.post("/producers/<int:producer_id>/suspend")
+@login_required
+@admin_required
+def suspend_producer(producer_id):
+    """Suspende un productor y sincroniza su usuario."""
+    producer = Producer.query.get_or_404(producer_id)
+    user = User.query.get(producer.user_id)
+
+    producer.status = ProducerStatus.SUSPENDED
+
+    if user:
+        user.status = UserStatus.SUSPENDED
+        user.updated_at = datetime.utcnow()
+
+    db.session.commit()
+    flash(f"⚠️ Productor {producer.company_name or user.username} suspendido correctamente.", "warning")
+    return redirect(url_for("admin.producer_detail", producer_id=producer.id))
+
 @admin_bp.route('/reels')
 @login_required
 @admin_required
@@ -1271,71 +1338,4 @@ def reset_producer_limits(producer_id):
     flash('Límites mensuales reseteados correctamente.', 'success')
     return redirect(url_for('admin.producers'))
 
-@admin_bp.route('/producers/<int:producer_id>/suspend', methods=['GET', 'POST'])
-@login_required
-@admin_required
-def suspend_producer(producer_id):
-    """
-    Suspender temporalmente un productor y deshabilitar acceso API.
-    
-    Suspende las capacidades de productor bloqueando el acceso a la API
-    de HeyGen y deshabilitando la creación de avatares y gestión de equipos.
-    Medida disciplinaria temporal que puede ser revertida.
-    
-    Args:
-        producer_id (int): ID del productor a suspender
-    
-    Returns:
-        Redirect: Redirección a lista de productores con mensaje de confirmación
-    
-    Form Data (POST):
-        suspension_reason (str, opcional): Motivo de la suspensión para auditoría
-        suspension_duration (int, opcional): Duración en días (0 = indefinida)
-    
-    Note:
-        - Suspensión temporal que puede ser revertida por administrador
-        - Bloquea acceso a API de HeyGen inmediatamente
-        - Subproductores y afiliados del productor mantienen acceso limitado
-        - Reels en proceso pueden completarse pero no se crean nuevos
-        - Manejo graceful de diferentes versiones del modelo Producer
-        - Registra timestamp para auditoría y posible reversión automática
-    """
-    # Obtener productor por ID
-    producer = Producer.query.get_or_404(producer_id)
-    
-    # Marcar estado de API como suspendida
-    try:
-        # Campo específico para estado de API key
-        producer.api_key_status = 'suspended'
-    except AttributeError:
-        # Campo opcional, ignorar si no existe en el modelo
-        pass
-        
-    # Marcar estado general del productor como suspendido
-    try:
-        # Campo de estado general del productor
-        producer.status = 'suspended'
-    except AttributeError:
-        # Campo opcional, ignorar si no existe en el modelo
-        pass
 
-    # Capturar datos opcionales del formulario
-    suspension_reason = request.form.get('suspension_reason')
-    if suspension_reason:
-        try:
-            producer.suspension_reason = suspension_reason
-        except AttributeError:
-            pass
-
-    # Registrar timestamp de la suspensión
-    try:
-        producer.suspended_at = datetime.utcnow()
-    except AttributeError:
-        pass
-
-    # Actualizar timestamp de modificación (campo estándar)
-    producer.updated_at = datetime.utcnow()
-    db.session.commit()
-    
-    flash('Productor suspendido correctamente.', 'warning')
-    return redirect(url_for('admin.producers'))
