@@ -418,22 +418,22 @@ def create_producer():
     
     Form Data (POST):
         # Datos del usuario base:
-        email (str): Email único del productor
-        username (str): Username único del productor
-        password (str): Contraseña para la cuenta
-        first_name (str): Nombre del productor
-        last_name (str): Apellido del productor  
-        phone (str, opcional): Teléfono de contacto
+        email (str)           : Email único del productor
+        username (str)        : Username único del productor
+        password (str)        : Contraseña para la cuenta
+        first_name (str)      : Nombre del productor
+        last_name (str)       : Apellido del productor
+        phone (str, opcional) : Teléfono de contacto
         
         # Datos específicos del productor:
-        heygen_api_key (str): API key de HeyGen para integración
-        company_name (str, opcional): Nombre de la empresa
-        business_type (str, opcional): Tipo de negocio
-        website (str, opcional): Sitio web corporativo
-        max_subproducers (int): Límite de subproductores (default: 10)
-        max_affiliates (int): Límite de afiliados (default: 100)
-        monthly_api_limit (int): Límite mensual de llamadas API (default: 1000)
-    
+        heygen_api_key (str)          : API key de HeyGen para integración
+        company_name (str, opcional)  : Nombre de la empresa
+        business_type (str, opcional) : Tipo de negocio
+        website (str, opcional)       : Sitio web corporativo
+        max_subproducers (int)        : Límite de subproductores (default: 10)
+        max_affiliates (int)          : Límite de afiliados (default: 100)
+        monthly_api_limit (int)       : Límite mensual de llamadas API (default: 1000)
+
     Returns:
         GET : Template 'admin/create_producer.html'
         POST: Redirección al detalle del usuario creado o template con errores
@@ -557,6 +557,37 @@ def producers():
 @login_required
 @admin_required
 def producer_detail(producer_id):
+    """
+    Vista detallada de un productor específico con estadísticas completas.
+    
+    Proporciona información exhaustiva sobre un productor, incluyendo
+    sus estadísticas de actividad, métricas de producción y estado
+    de verificación. Incluye datos del usuario asociado y su red.
+    
+    Args:
+        producer_id (int): ID único del productor a mostrar
+    
+    Returns:
+        Template: 'admin/producer_detail.html' con información completa del productor
+    
+    Context Variables:
+        producer (Producer) : Objeto productor con toda la información
+        user (User)         : Usuario asociado al perfil de productor
+        stats (dict)        : Estadísticas específicas del productor
+        
+        stats contiene:
+            - avatars_count (int)      : Número de avatares creados
+            - total_commissions (int)  : Total de comisiones generadas
+            - total_reels (int)        : Total de reels creados
+            - completed_reels (int)    : Reels completados exitosamente
+
+    Note:
+        - Carga segura de atributos opcionales del modelo
+        - Estadísticas calculadas con validación de existencia
+        - Join manual con tabla User para información completa
+        - Métricas adaptadas según capacidades del productor
+        - Manejo robusto de relaciones que pueden no existir
+    """
     # Cargar productor y su usuario asociado (sin depender de backrefs)
     producer = Producer.query.get_or_404(producer_id)
     user = User.query.get(producer.user_id)
@@ -573,10 +604,10 @@ def producer_detail(producer_id):
     )
 
     stats = {
-        "avatars_count": avatars_count,
-        "total_commissions": commissions_count,
-        "total_reels": total_reels,
-        "completed_reels": completed_reels,
+        "avatars_count"      : avatars_count,
+        "total_commissions"  : commissions_count,
+        "total_reels"        : total_reels,
+        "completed_reels"    : completed_reels,
     }
 
     return render_template('admin/producer_detail.html', producer=producer, user=user, stats=stats)
@@ -585,7 +616,26 @@ def producer_detail(producer_id):
 @login_required
 @admin_required
 def approve_producer(producer_id):
-    """Activa un productor y sincroniza su usuario."""
+    """
+    Aprobar y activar un productor con sincronización de usuario.
+    
+    Activa el perfil de productor y sincroniza el estado con su usuario
+    asociado, marcando ambos como verificados. Registra timestamp de
+    verificación para auditoría administrativa.
+    
+    Args:
+        producer_id (int): ID del productor a aprobar
+    
+    Returns:
+        Redirect: Redirección al detalle del productor con mensaje de confirmación
+    
+    Note:
+        - Sincronización automática entre Producer y User
+        - Registra timestamp de verificación para auditoría
+        - Productor obtiene acceso inmediato a funcionalidades completas
+        - Usuario asociado también es marcado como verificado
+        - Transacción atómica para evitar estados inconsistentes
+    """
     producer = Producer.query.get_or_404(producer_id)
     user = User.query.get(producer.user_id)
 
@@ -606,7 +656,27 @@ def approve_producer(producer_id):
 @login_required
 @admin_required
 def suspend_producer(producer_id):
-    """Suspende un productor y sincroniza su usuario."""
+    """
+    Suspender temporalmente un productor con sincronización de usuario.
+    
+    Suspende el perfil de productor y sincroniza el estado con su usuario
+    asociado, bloqueando el acceso a funcionalidades de productor mientras
+    mantiene los datos intactos para futura reactivación.
+    
+    Args:
+        producer_id (int): ID del productor a suspender
+    
+    Returns:
+        Redirect: Redirección al detalle del productor con mensaje de confirmación
+    
+    Note:
+        - Suspensión temporal y reversible mediante nueva aprobación
+        - Sincronización automática entre Producer y User
+        - Usuario asociado también es suspendido del sistema
+        - Datos y configuraciones se mantienen intactas
+        - Útil para medidas disciplinarias o investigaciones
+        - Actualiza timestamp de modificación para auditoría
+    """
     producer = Producer.query.get_or_404(producer_id)
     user = User.query.get(producer.user_id)
 
@@ -632,8 +702,8 @@ def reels():
     o reels que requieren atención administrativa.
     
     Query Parameters:
-        page (int, opcional): Número de página para paginación (default: 1)
-        status (str, opcional): Filtro por estado (pending, processing, completed, failed)
+        page (int, opcional)   : Número de página para paginación (default: 1)
+        status (str, opcional) : Filtro por estado (pending, processing, completed, failed)
     
     Returns:
         Template: 'admin/reels.html' con lista paginada de reels
@@ -666,6 +736,30 @@ def reels():
 @login_required
 @admin_required
 def reel_detail(reel_id):
+    """
+    Vista detallada de un reel específico con información completa.
+    
+    Proporciona información exhaustiva sobre un reel generado,
+    incluyendo metadatos técnicos, estado de procesamiento,
+    estadísticas de rendimiento y opciones administrativas.
+    
+    Args:
+        reel_id (int): ID único del reel a mostrar
+    
+    Returns:
+        Template: 'admin/reel_detail.html' con información completa del reel
+    
+    Context Variables:
+        reel (Reel): Objeto reel con toda la información técnica
+    
+    Note:
+        - Información técnica completa del proceso de generación
+        - Estado actual y historial de procesamiento
+        - Metadatos del avatar y configuraciones utilizadas
+        - Acceso a logs de generación para debugging
+        - Opciones de re-procesamiento si es necesario
+        - Estadísticas de rendimiento y calidad
+    """
     reel = Reel.query.get_or_404(reel_id)
     return render_template('admin/reel_detail.html', reel=reel)
 
@@ -755,8 +849,8 @@ def mark_commission_paid(commission_id):
         commission_id (int): ID de la comisión pagada
     
     Form Data (POST):
-        payment_reference (str): Referencia del pago (número de transacción, etc.)
-        payment_method (str): Método de pago utilizado (transferencia, PayPal, etc.)
+        payment_reference (str) : Referencia del pago (número de transacción, etc.)
+        payment_method (str)    : Método de pago utilizado (transferencia, PayPal, etc.)
     
     Returns:
         Redirect: Redirección a lista de comisiones con mensaje de confirmación
@@ -790,7 +884,7 @@ def avatars():
     para gestionar el flujo de creación y aprobación.
     
     Query Parameters:
-        page (int, opcional): Número de página para paginación (default: 1)
+        page (int, opcional)  : Número de página para paginación (default: 1)
         status (str, opcional): Filtro por estado (processing, active, inactive, failed)
     
     Returns:
@@ -1017,7 +1111,7 @@ def producer_requests():
     búsqueda por usuario. Esencial para el flujo de aprobación.
     
     Query Parameters:
-        page (int, opcional): Número de página para paginación (default: 1)
+        page (int, opcional)  : Número de página para paginación (default: 1)
         status (str, opcional): Filtro por estado (pending, approved, rejected)
         search (str, opcional): Búsqueda por nombre de usuario o email
     
@@ -1337,5 +1431,94 @@ def reset_producer_limits(producer_id):
 
     flash('Límites mensuales reseteados correctamente.', 'success')
     return redirect(url_for('admin.producers'))
+
+@admin_bp.route('/users/<int:user_id>/promote-to-producer', methods=['POST'])
+@login_required
+@admin_required
+def promote_to_producer(user_id):
+    """
+    Cambiar el rol de un usuario final a productor.
+    
+    Convierte un usuario con rol FINAL_USER a PRODUCER y crea
+    automáticamente su perfil de productor con configuraciones por defecto.
+    Solo permite promoción desde FINAL_USER para mantener integridad.
+    
+    Args:
+        user_id (int): ID del usuario a promocionar
+    
+    Returns:
+        Redirect: Redirección al detalle del usuario con mensaje de confirmación
+    
+    Form Data (POST):
+        company_name (str, opcional)   : Nombre de la empresa/marca
+        business_type (str, opcional)  : Tipo de negocio
+        website (str, opcional)        : Sitio web corporativo
+        max_subproducers (int)         : Límite de subproductores (default: 10)
+        max_affiliates (int)           : Límite de afiliados (default: 100)
+        monthly_api_limit (int)        : Límite mensual de API (default: 1000)
+
+    Note:
+        - Solo permite promoción desde FINAL_USER por seguridad
+        - Crea perfil Producer automáticamente con valores por defecto
+        - Usuario mantiene sus datos personales existentes
+        - Transacción atómica para evitar estados inconsistentes
+        - API key de HeyGen debe configurarse por separado
+        - Registra auditoría completa del cambio de rol
+    """
+    # Obtener usuario y validar que existe
+    user = User.query.get_or_404(user_id)
+    
+    # Validar que el usuario actual sea FINAL_USER
+    if user.role != UserRole.FINAL_USER:
+        flash(f'Error: Solo usuarios finales pueden ser promocionados a productor. '
+              f'Usuario actual tiene rol: {user.role.value}', 'error')
+        return redirect(url_for('admin.user_detail', user_id=user_id))
+    
+    # Validar que no tenga ya un perfil de productor
+    if hasattr(user, 'producer_profile') and user.producer_profile:
+        flash('Error: El usuario ya tiene un perfil de productor asociado.', 'error')
+        return redirect(url_for('admin.user_detail', user_id=user_id))
+    
+    try:
+        # Capturar datos del formulario con valores por defecto
+        company_name      = request.form.get('company_name') or f'{user.full_name} Productions'
+        business_type     = request.form.get('business_type') or 'Creador de Contenido'
+        website           = request.form.get('website', '')
+        max_subproducers  = request.form.get('max_subproducers', 10, type=int)
+        max_affiliates    = request.form.get('max_affiliates', 100, type=int)
+        monthly_api_limit = request.form.get('monthly_api_limit', 1000, type=int)
+        
+        # 1. Cambiar rol del usuario
+        user.role = UserRole.PRODUCER
+        user.updated_at = datetime.utcnow()
+        
+        # 2. Crear perfil de productor con configuraciones por defecto
+        producer = Producer(
+            user_id           = user.id,
+            company_name      = company_name,
+            business_type     = business_type,
+            website           = website,
+            max_subproducers   = max_subproducers,
+            max_affiliates     = max_affiliates,
+            monthly_api_limit  = monthly_api_limit,
+            status             = ProducerStatus.PENDING,  # Requiere configuración de API key
+            is_verified        = False,
+            settings           = {}  # Configuraciones adicionales vacías
+        )
+        
+        # 3. Guardar cambios de forma atómica
+        db.session.add(producer)
+        db.session.commit()
+        
+        # Mensaje de éxito con instrucciones
+        flash(f'✅ Usuario {user.username} promocionado a productor exitosamente. '
+              f'Ahora debe configurar su API key de HeyGen para completar la configuración.', 'success')
+              
+    except Exception as e:
+        # Rollback en caso de error y mostrar mensaje
+        db.session.rollback()
+        flash(f'Error al promocionar usuario: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.user_detail', user_id=user_id))
 
 

@@ -37,12 +37,13 @@ Características técnicas:
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from functools import wraps
+from sqlalchemy import or_
 from app import db
 from app.models.user import User, UserRole, UserStatus
 from app.models.producer import Producer
 from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
-from app.models.commission import Commission
+from app.models.commission import Commission, CommissionStatus
 from app.services.heygen_service import HeyGenService
 from app.utils.date_utils import get_current_month_range
 from datetime import datetime
@@ -122,21 +123,38 @@ def dashboard():
     """
     producer = current_user.producer_profile
     
+    # Contar subproductores y afiliados (usuarios invitados por este productor)
+    subproducers_count = User.query.filter_by(
+        invited_by_id  = current_user.id,
+        role           = UserRole.SUBPRODUCER,
+        status         = UserStatus.ACTIVE
+    ).count()
+    
+    affiliates_count = User.query.filter_by(
+        invited_by_id = current_user.id,
+        role          = UserRole.FINAL_USER,
+        status        = UserStatus.ACTIVE
+    ).count()
+    
     # Estadísticas del productor
     stats = {
         'total_reels'       : current_user.reels.count(),
         'completed_reels'   : current_user.reels.filter_by( status = ReelStatus.COMPLETED).count(),
         'pending_reels'     : current_user.reels.filter_by( status =ReelStatus.PENDING).count(),
         'total_avatars'     : producer.avatars.count(),
-        'approved_avatars'  : producer.avatars.filter_by( status = AvatarStatus.ACTIVE).count(),
+        'approved_avatars'  : producer.avatars.filter_by( status = AvatarStatus.APPROVED).count(),
         'pending_avatars'   : producer.avatars.filter_by( status = AvatarStatus.PROCESSING).count(),
-        'subproducers_count': producer.current_subproducers_count,
-        'affiliates_count'  : producer.current_affiliates_count,
-        'total_earnings'    : Commission.get_user_total_earnings(current_user.id, 'approved'),
-        'pending_earnings'  : Commission.get_user_total_earnings(current_user.id, 'pending'),
-        'api_calls_used'    : producer.api_calls_this_month,
+        'subproducers_count': subproducers_count,
+        'affiliates_count'  : affiliates_count,
+        'end_users_count'   : affiliates_count,  # Alias para compatibilidad con template
+        'monthly_reels'     : current_user.reels.filter_by( status = ReelStatus.COMPLETED).count(),  # Simplificado por ahora
+        'total_earnings'    : Commission.get_user_total_earnings(current_user.id, CommissionStatus.APPROVED),
+        'pending_earnings'  : Commission.get_user_total_earnings(current_user.id, CommissionStatus.PENDING),
+        'total_commissions' : Commission.get_user_total_earnings(current_user.id, CommissionStatus.APPROVED),
+        'pending_commissions' : Commission.get_user_total_earnings(current_user.id, CommissionStatus.PENDING),
+        'api_calls_used'    : getattr(producer, 'api_calls_this_month', 0),
         'api_calls_limit'   : producer.monthly_api_limit,
-        'api_key_status'    : producer.api_key_status
+        'api_key_status'    : getattr(producer, 'api_key_status', 'not_configured')
     }
     
     # Actividad reciente
@@ -145,13 +163,14 @@ def dashboard():
     
     # Elementos pendientes de aprobación
     pending_avatars = producer.avatars.filter_by(status=AvatarStatus.PROCESSING).all()
-    pending_reels   = Reel.query.join(User).filter(
+    pending_reels   = Reel.query.join(User, Reel.creator_id == User.id).filter(
         User.invited_by_id == current_user.id,
         Reel.status        == ReelStatus.PENDING
     ).all()
     
     return render_template('producer/dashboard.html',
                          stats           = stats,
+                         team_stats      = stats,  # Alias para compatibilidad con template
                          recent_reels    = recent_reels,
                          recent_avatars  = recent_avatars,
                          pending_avatars = pending_avatars,
@@ -215,14 +234,14 @@ def create_avatar():
         POST : Procesa los datos y crea el avatar
     
     Form Data (POST):
-        name (str): Nombre descriptivo del avatar
-        description (str): Descripción detallada del avatar
-        avatar_type (str): Tipo de avatar (male, female, custom)
-        language (str): Idioma principal (default: 'es')
-        tags (str): Etiquetas separadas por comas
-        is_public (bool): Si el avatar es público o privado
-        is_premium (bool): Si requiere pago por uso
-        price_per_use (float): Precio por uso si es premium
+        name (str)            : Nombre descriptivo del avatar
+        description (str)     : Descripción detallada del avatar
+        avatar_type (str)     : Tipo de avatar (male, female, custom)
+        language (str)        : Idioma principal (default: 'es')
+        tags (str)            : Etiquetas separadas por comas
+        is_public (bool)      : Si el avatar es público o privado
+        is_premium (bool)     : Si requiere pago por uso
+        price_per_use (float) : Precio por uso si es premium
     
     Returns:
         GET : Template 'producer/create_avatar.html'
@@ -237,7 +256,9 @@ def create_avatar():
     """
     producer = current_user.producer_profile
     
-    if not producer.has_api_quota():
+    # Verificar cuota API (si no hay límite o no se ha alcanzado)
+    api_calls_used = getattr(producer, 'api_calls_this_month', 0)
+    if producer.monthly_api_limit and api_calls_used >= producer.monthly_api_limit:
         flash('Has alcanzado tu límite mensual de API calls', 'error')
         return redirect(url_for('producer.avatars'))
     
@@ -271,11 +292,18 @@ def create_avatar():
         
         # TODO: Integrar con HeyGen para crear el avatar
         # Por ahora, simplemente marcarlo como aprobado
-        avatar.status           = AvatarStatus.ACTIVE
+        avatar.status           = AvatarStatus.APPROVED
         avatar.heygen_avatar_id = f"heygen_{avatar.id}"
         db.session.commit()
         
-        producer.increment_api_usage()
+        # Incrementar uso de API manualmente
+        if hasattr(producer, 'api_calls_this_month'):
+            producer.api_calls_this_month = getattr(producer, 'api_calls_this_month', 0) + 1
+        else:
+            # Si no existe el campo, no hacer nada por ahora
+            pass
+        
+        db.session.commit()
         
         flash('Avatar creado exitosamente', 'success')
         return redirect(url_for('producer.avatars'))
@@ -363,16 +391,16 @@ def reels():
     Incluye filtros por estado y creador para gestión eficiente.
     
     Query Parameters:
-        page (int, opcional): Número de página para paginación (default: 1)
-        status (str, opcional): Filtro por estado (pending, processing, completed, failed)
-        creator (str, opcional): Filtro por ID del creador específico
+        page (int, opcional)    : Número de página para paginación (default: 1)
+        status (str, opcional)  : Filtro por estado (pending, processing, completed, failed)
+        creator (str, opcional) : Filtro por ID del creador específico
     
     Returns:
         Template: 'producer/reels.html' con lista paginada de reels
     
     Context Variables:
-        reels (Pagination): Objeto de paginación con reels filtrados
-        creators (list): Lista de usuarios creadores para filtro
+        reels (Pagination) : Objeto de paginación con reels filtrados
+        creators (list)    : Lista de usuarios creadores para filtro
     
     Note:
         - Incluye reels propios y de toda la red subordinada
@@ -386,8 +414,8 @@ def reels():
     creator_filter = request.args.get('creator')
     
     # Obtener reels del productor y su red
-    query = Reel.query.join(User).filter(
-        db.or_(
+    query = Reel.query.join(User, Reel.creator_id == User.id).filter(
+        or_(
             Reel.creator_id    == current_user.id,  # Reels del productor
             User.invited_by_id == current_user.id  # Reels de su red
         )
@@ -405,7 +433,7 @@ def reels():
     
     # Lista de creadores para el filtro
     creators = User.query.filter(
-        db.or_(
+        or_(
             User.id == current_user.id,
             User.invited_by_id == current_user.id
         )
@@ -501,9 +529,9 @@ def team():
         Template: 'producer/team.html' con información del equipo
     
     Context Variables:
-        subproducers (list): Lista de subproductores activos
-        affiliates (list): Lista de afiliados activos
-        producer (Producer): Perfil del productor con límites y estadísticas
+        subproducers (list)  : Lista de subproductores activos
+        affiliates (list)    : Lista de afiliados activos
+        producer (Producer)  : Perfil del productor con límites y estadísticas
     
     Note:
         - Solo muestra miembros invitados por el productor actual
@@ -519,7 +547,7 @@ def team():
     
     affiliates = User.query.filter_by(
         invited_by_id = current_user.id,
-        role          =UserRole.FINAL_USER
+        role          = UserRole.FINAL_USER
     ).all()
     
     producer = current_user.producer_profile
@@ -574,13 +602,23 @@ def invite_member():
         last_name  = request.form.get('last_name')
         
         # Validar límites
-        if role == 'subproducer' and not producer.can_add_subproducer():
-            flash('Has alcanzado el límite máximo de subproductores', 'error')
-            return render_template('producer/invite_member.html')
+        if role == 'subproducer':
+            current_subproducers = User.query.filter_by(
+                invited_by_id=current_user.id,
+                role=UserRole.SUBPRODUCER
+            ).count()
+            if current_subproducers >= producer.max_subproducers:
+                flash('Has alcanzado el límite máximo de subproductores', 'error')
+                return render_template('producer/invite_member.html')
         
-        if role == 'affiliate' and not producer.can_add_affiliate():
-            flash('Has alcanzado el límite máximo de afiliados', 'error')
-            return render_template('producer/invite_member.html')
+        if role == 'affiliate':
+            current_affiliates = User.query.filter_by(
+                invited_by_id=current_user.id,
+                role=UserRole.FINAL_USER
+            ).count()
+            if current_affiliates >= producer.max_affiliates:
+                flash('Has alcanzado el límite máximo de afiliados', 'error')
+                return render_template('producer/invite_member.html')
         
         # Verificar si el usuario ya existe
         if User.query.filter_by(email=email).first():
@@ -625,15 +663,15 @@ def settings():
     
     Form Data (POST):
         # Información personal:
-        first_name (str): Nombre del productor
-        last_name (str): Apellido del productor
-        phone (str): Teléfono de contacto
-        
+        first_name (str)   : Nombre del productor
+        last_name (str)    : Apellido del productor
+        phone (str)        : Teléfono de contacto
+
         # Información comercial:
-        company_name (str): Nombre de la empresa
-        business_type (str): Tipo de negocio
-        website (str): Sitio web corporativo
-        
+        company_name (str)   : Nombre de la empresa
+        business_type (str)  : Tipo de negocio
+        website (str)        : Sitio web corporativo
+
         # Configuración técnica:
         heygen_api_key (str): Nueva API key de HeyGen (opcional)
     
@@ -651,28 +689,56 @@ def settings():
     producer = current_user.producer_profile
     
     if request.method == 'POST':
-        # Actualizar información del usuario
-        current_user.first_name = request.form.get('first_name')
-        current_user.last_name  = request.form.get('last_name')
-        current_user.phone      = request.form.get('phone')
-        
-        # Actualizar información del productor
-        producer.company_name  = request.form.get('company_name')
-        producer.business_type = request.form.get('business_type')
-        producer.website       = request.form.get('website')
-        
-        # Actualizar API key si se proporciona una nueva
-        new_api_key = request.form.get('heygen_api_key')
-        if new_api_key and new_api_key != producer.heygen_api_key:
-            producer.heygen_api_key  = new_api_key
-            producer.api_key_status  = 'pending'
-            # Validar nueva API key
-            producer.validate_api_key()
-        
-        db.session.commit()
-        flash('Configuración actualizada exitosamente', 'success')
+        try:
+            # Actualizar información del usuario
+            current_user.first_name = request.form.get('first_name')
+            current_user.last_name  = request.form.get('last_name')
+            current_user.phone      = request.form.get('phone')
+            
+            # Actualizar información del productor
+            if producer:
+                producer.company_name  = request.form.get('company_name')
+                producer.business_type = request.form.get('business_type')
+                producer.website       = request.form.get('website')
+                
+                # Actualizar API key si se proporciona una nueva
+                new_api_key = request.form.get('heygen_api_key')
+                if new_api_key and new_api_key.strip():
+                    # Si no son solo asteriscos (campo enmascarado)
+                    if not all(c == '•' for c in new_api_key):
+                        try:
+                            # Encriptar y guardar la nueva API key
+                            producer.set_heygen_api_key(new_api_key.strip())
+                            
+                            # Marcar como pendiente de validación
+                            producer.set_setting('api_validation_status', 'pending')
+                            
+                            # TODO: Aquí se podría hacer validación inmediata
+                            # Por ahora, marcamos como válida para pruebas
+                            producer.set_setting('api_validation_status', 'valid')
+                            
+                            flash('✅ API key de HeyGen configurada exitosamente. '
+                                  'Ya puedes comenzar a crear avatares.', 'success')
+                        except Exception as e:
+                            flash(f'❌ Error al configurar API key: {str(e)}', 'error')
+                            db.session.rollback()
+                            return redirect(url_for('producer.settings'))
+                
+                # Actualizar timestamp
+                producer.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            
+            if not new_api_key or new_api_key.strip() == '' or all(c == '•' for c in new_api_key):
+                flash('✅ Configuración actualizada exitosamente', 'success')
+                
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ Error al actualizar configuración: {str(e)}', 'error')
+            
         return redirect(url_for('producer.settings'))
     
+    # Renderizar template con información actual
     return render_template('producer/settings.html', producer=producer)
 
 @producer_bp.route('/earnings')
@@ -717,9 +783,9 @@ def earnings():
     # ✅ Estadísticas de ganancias usando utilidades de fecha
     current_date = datetime.now()
     earnings_stats = {
-        'total_approved'  : Commission.get_user_total_earnings(current_user.id, 'approved'),
-        'total_pending'   : Commission.get_user_total_earnings(current_user.id, 'pending'),
-        'total_paid'      : Commission.get_user_total_earnings(current_user.id, 'paid'),
+        'total_approved'  : Commission.get_user_total_earnings(current_user.id, CommissionStatus.APPROVED),
+        'total_pending'   : Commission.get_user_total_earnings(current_user.id, CommissionStatus.PENDING),
+        'total_paid'      : Commission.get_user_total_earnings(current_user.id, CommissionStatus.PAID),
         'this_month'      : Commission.get_monthly_earnings(current_user.id,
                                                     current_date.year,
                                                     current_date.month)

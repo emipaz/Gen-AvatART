@@ -34,7 +34,7 @@ Variables Jinja utilizadas:
 
 Rutas Flask referenciadas (url_for):
     - producer.dashboard: Volver al dashboard
-    - producer.invite_user: Invitar nuevo miembro
+    - producer.invite_member: Invitar nuevo miembro
     - producer.member_detail: Ver detalle de miembro
     - producer.toggle_member_status: Activar/desactivar miembro
     - producer.remove_member: Remover miembro del equipo
@@ -94,7 +94,7 @@ Funcionalidades de gestión:
         </div>
         
         <!-- Botón para invitar nuevos miembros -->
-        <a href="{{ url_for('producer.invite_user') }}" class="btn btn-primary">
+        <a href="{{ url_for('producer.invite_member') }}" class="btn btn-primary">
             <i class="fas fa-user-plus"></i> Invitar Miembro
         </a>
     </div>
@@ -336,7 +336,7 @@ Funcionalidades de gestión:
                     <i class="fas fa-users fa-4x text-muted mb-3"></i>
                     <h4 class="text-muted">No hay miembros en tu equipo</h4>
                     <p class="text-muted">Comienza invitando subproductores y usuarios finales.</p>
-                    <a href="{{ url_for('producer.invite_user') }}" class="btn btn-primary">
+                    <a href="{{ url_for('producer.invite_member') }}" class="btn btn-primary">
                         <i class="fas fa-user-plus"></i> Invitar Primer Miembro
                     </a>
                 </div>
@@ -414,42 +414,44 @@ function removeMember(memberId, memberName) {
 // Confirmar toggle de estado
 document.getElementById('confirmToggleStatus').addEventListener('click', function() {
     if (currentMemberId) {
-        // Realizar petición para cambiar estado
-        fetch(`{{ url_for('producer.toggle_member_status', member_id=0) }}`.replace('0', currentMemberId), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error al cambiar el estado del miembro');
-            }
-        });
+        // TODO: Implementar ruta producer.toggle_member_status
+        alert('Funcionalidad no implementada aún');
+        // fetch(`/producer/team/toggle-status/${currentMemberId}`, {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     }
+        // })
+        // .then(response => response.json())
+        // .then(data => {
+        //     if (data.success) {
+        //         location.reload();
+        //     } else {
+        //         alert('Error al cambiar el estado del miembro');
+        //     }
+        // });
     }
 });
 
 // Confirmar remoción de miembro
 document.getElementById('confirmRemoveMember').addEventListener('click', function() {
     if (currentMemberId) {
-        // Realizar petición para remover miembro
-        fetch(`{{ url_for('producer.remove_member', member_id=0) }}`.replace('0', currentMemberId), {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error al remover el miembro del equipo');
-            }
-        });
+        // TODO: Implementar ruta producer.remove_member
+        alert('Funcionalidad no implementada aún');
+        // fetch(`/producer/team/remove/${currentMemberId}`, {
+        //     method: 'DELETE',
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     }
+        // })
+        // .then(response => response.json())
+        // .then(data => {
+        //     if (data.success) {
+        //         location.reload();
+        //     } else {
+        //         alert('Error al remover el miembro del equipo');
+        //     }
+        // });
     }
 });
 </script>

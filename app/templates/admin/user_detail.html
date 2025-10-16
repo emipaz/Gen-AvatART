@@ -1,101 +1,294 @@
+{#
+Template de detalle de usuario para panel administrativo de Gem-AvatART.
+
+Este template implementa la vista detallada de un usuario específico con información
+completa, estadísticas de actividad y opciones administrativas. Incluye funcionalidad
+de promoción de usuarios finales a productores con formulario modal completo.
+
+El template incluye:
+    - Breadcrumb de navegación administrativo
+    - Header con información básica del usuario y avatar placeholder
+    - Cards de información general (rol, estado, fechas)
+    - Métricas de actividad (reels, comisiones, estadísticas)
+    - Estadísticas adicionales para productores (avatares, API)
+    - Botones de acciones administrativas contextuales
+    - Modal de promoción a productor con configuración completa
+    - Validaciones de estado para habilitar/deshabilitar acciones
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, g-3, d-flex, align-items-center
+    - Navigation: breadcrumb, breadcrumb-item
+    - Cards: card, card-body, h-100
+    - Components: modal, modal-dialog, modal-content, modal-header, modal-body, modal-footer
+    - Forms: form-label, form-control, btn, btn-sm
+    - Typography: display-6, text-muted, fw-semibold, small
+    - Colors: text-success, btn-success, btn-warning, btn-danger, btn-primary, btn-secondary
+    - Utilities: my-4, mb-3, me-3, gap-2, flex-wrap
+
+Variables Jinja utilizadas:
+    - user: Objeto User con toda la información del usuario
+    - stats: Diccionario con estadísticas calculadas del usuario
+    - user.role.value: Valor del enum de rol
+    - user.status.value: Valor del enum de estado
+    - user.created_at: Fecha de registro
+    - user.last_login: Último acceso
+    - user.full_name: Nombre completo calculado
+    - user.is_producer(): Método para verificar si es productor
+    - user.producer_profile: Perfil de productor si existe
+
+Estadísticas mostradas (stats):
+    - total_reels: Total de reels creados
+    - completed_reels: Reels completados exitosamente
+    - total_commissions: Número total de comisiones
+    - pending_earnings: Ganancias pendientes
+    - avatars_count: Avatares creados (solo productores)
+    - api_calls_this_month: Llamadas API del mes (solo productores)
+    - monthly_api_limit: Límite mensual de API (solo productores)
+
+Rutas Flask referenciadas (url_for):
+    - admin.dashboard: Dashboard administrativo
+    - admin.users: Lista de usuarios
+    - admin.approve_user: Aprobar usuario
+    - admin.suspend_user: Suspender usuario
+    - admin.delete_user: Eliminar usuario
+    - admin.promote_to_producer: Promocionar a productor
+
+Campos del formulario de promoción (name attributes):
+    - company_name: Nombre de la empresa
+    - business_type: Tipo de negocio
+    - website: Sitio web (opcional)
+    - max_subproducers: Límite máximo de subproductores
+    - max_affiliates: Límite máximo de afiliados
+    - monthly_api_limit: Límite mensual de llamadas API
+
+IDs de elementos:
+    - promoteModal: Modal de promoción a productor
+    - promoteModalLabel: Label del modal de promoción
+
+Iconografía Font Awesome:
+    - fas fa-user: Usuario genérico
+    - fas fa-check: Aprobar acción
+    - fas fa-ban: Suspender usuario
+    - fas fa-arrow-up: Promocionar usuario
+    - fas fa-trash-alt: Eliminar usuario
+    - fas fa-info-circle: Información adicional
+    - fas fa-exclamation-triangle: Advertencia importante
+
+Validaciones condicionales:
+    - Botón aprobar: habilitado si estado es 'pending' o 'suspended'
+    - Botón suspender: habilitado solo si estado es 'active'
+    - Botón promocionar: visible solo para 'final_user' activos
+    - Modal promoción: se muestra solo para usuarios elegibles
+    - Métricas de productor: solo para usuarios con rol productor
+
+Métodos Jinja utilizados:
+    - user.created_at.strftime(): Formateo de fecha de registro
+    - user.last_login.strftime(): Formateo de último acceso
+    - user.role.value: Acceso al valor del enum de rol
+    - user.status.value: Acceso al valor del enum de estado
+    - user.is_producer(): Verificación de rol de productor
+    - user.full_name: Nombre completo con fallback a username
+
+Validación de formularios:
+    - type="url": Validación HTML5 para sitio web
+    - type="number": Validación numérica para límites
+    - min/max: Rangos permitidos para valores numéricos
+    - required: Campos obligatorios (implícito en algunos casos)
+    - onsubmit: Confirmación JavaScript para eliminación
+
+Lógica condicional implementada:
+    - Habilitación de botones según estado del usuario
+    - Visibilidad de métricas según rol del usuario
+    - Mostrar modal solo para usuarios elegibles
+    - Valores por defecto inteligentes en formulario de promoción
+
+Seguridad implementada:
+    - Confirmación JavaScript para acción de eliminación
+    - Validación de estado para habilitar acciones
+    - Formularios POST separados para cada acción crítica
+    - Validaciones de rol para mostrar opciones específicas
+#}
+
 {% extends "base.html" %}
 {% block title %}Detalle de Usuario{% endblock %}
 
 {% block content %}
+<!-- Contenedor principal con padding vertical para espaciado -->
+<!-- my-4 aplica margen vertical de 1.5rem arriba y abajo -->
 <div class="container my-4">
+  
+  <!-- Navegación breadcrumb para mostrar jerarquía de páginas -->
+  <!-- aria-label mejora accesibilidad para lectores de pantalla -->
   <nav aria-label="breadcrumb">
+    <!-- Lista ordenada que representa la ruta de navegación -->
     <ol class="breadcrumb">
+      <!-- Enlace al dashboard administrativo -->
       <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+      <!-- Enlace a la lista general de usuarios -->
       <li class="breadcrumb-item"><a href="{{ url_for('admin.users') }}">Usuarios</a></li>
+      <!-- Página actual, marcada como activa y sin enlace -->
       <li class="breadcrumb-item active" aria-current="page">Detalle</li>
     </ol>
   </nav>
 
+  <!-- Header principal con avatar y información básica del usuario -->
+  <!-- d-flex crea layout flexbox horizontal -->
+  <!-- align-items-center alinea verticalmente al centro -->
+  <!-- mb-3 aplica margen inferior de 1rem -->
   <div class="d-flex align-items-center mb-3">
+    
+    <!-- Contenedor del avatar placeholder -->
+    <!-- me-3 aplica margen derecho de 1rem para separación -->
     <div class="me-3">
+      <!-- Avatar circular placeholder con icono de usuario -->
+      <!-- rounded-circle hace el elemento completamente circular -->
+      <!-- bg-light aplica fondo gris claro -->
+      <!-- d-inline-flex permite centrado perfecto del contenido -->
+      <!-- width y height fijos de 56px para consistencia -->
       <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center"
             style="width:56px;height:56px;">
+        <!-- Icono Font Awesome de usuario con tamaño grande -->
+        <!-- text-muted aplica color gris para elemento inactivo -->
         <i class="fas fa-user fa-lg text-muted"></i>
       </span>
     </div>
+    
+    <!-- Información textual del usuario -->
     <div>
+      <!-- Nombre completo del usuario como título principal -->
+      <!-- mb-0 elimina margen inferior por defecto del h3 -->
+      <!-- Lógica Jinja: usa nombre completo si existe, sino username -->
+      <!-- Operador ~ concatena strings, |trim elimina espacios extra -->
       <h3 class="mb-0">
         {{ (user.first_name ~ ' ' ~ user.last_name)|trim if (user.first_name or user.last_name) else user.username }}
       </h3>
+      
+      <!-- Email del usuario como información secundaria -->
+      <!-- text-muted aplica color gris para información menos prominente -->
       <div class="text-muted">{{ user.email }}</div>
     </div>
   </div>
 
+  <!-- Grid de información básica del usuario -->
+  <!-- row con g-3 aplica gap de 1rem entre columnas -->
+  <!-- mb-4 aplica margen inferior de 1.5rem -->
   <div class="row g-3 mb-4">
+    
+    <!-- Card de rol del usuario -->
+    <!-- col-6 en mobile (50% ancho), col-md-3 en desktop (25% ancho) -->
     <div class="col-6 col-md-3">
+      <!-- Card con altura completa para alineación uniforme -->
+      <!-- h-100 hace que todas las cards tengan la misma altura -->
       <div class="card h-100">
         <div class="card-body">
+          <!-- Label descriptivo con estilo muted y tamaño pequeño -->
           <div class="text-muted small">Rol</div>
+          <!-- Valor del rol con peso de fuente semibold -->
+          <!-- Usa valor del enum si existe, sino muestra guión -->
           <div class="fw-semibold">{{ user.role.value if user.role else '—' }}</div>
         </div>
       </div>
     </div>
+    
+    <!-- Card de estado del usuario -->
     <div class="col-6 col-md-3">
       <div class="card h-100">
         <div class="card-body">
+          <!-- Label para estado de la cuenta -->
           <div class="text-muted small">Estado</div>
+          <!-- Valor del estado (active, pending, suspended) -->
           <div class="fw-semibold">{{ user.status.value if user.status else '—' }}</div>
         </div>
       </div>
     </div>
+    
+    <!-- Card de fecha de registro -->
     <div class="col-6 col-md-3">
       <div class="card h-100">
         <div class="card-body">
+          <!-- Label para fecha de creación de cuenta -->
           <div class="text-muted small">Registro</div>
+          <!-- Fecha formateada en formato DD/MM/YYYY HH:MM -->
+          <!-- strftime formatea la fecha según el patrón especificado -->
           <div class="fw-semibold">{{ user.created_at.strftime('%d/%m/%Y %H:%M') if user.created_at else '—' }}</div>
         </div>
       </div>
     </div>
+    
+    <!-- Card de último acceso -->
     <div class="col-6 col-md-3">
       <div class="card h-100">
         <div class="card-body">
+          <!-- Label para último inicio de sesión -->
           <div class="text-muted small">Último acceso</div>
+          <!-- Fecha de último login formateada -->
+          <!-- Muestra guión si nunca ha iniciado sesión -->
           <div class="fw-semibold">{{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else '—' }}</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Métricas -->
+  <!-- Grid de métricas de actividad y estadísticas del usuario -->
+  <!-- Sección centrada con números grandes para visualización rápida -->
   <div class="row g-3 mb-4">
+    
+    <!-- Card de estadísticas de reels -->
     <div class="col-6 col-md-3">
       <div class="card h-100">
+        <!-- text-center centra todo el contenido de la card -->
         <div class="card-body text-center">
+          <!-- Label descriptivo para la métrica -->
           <div class="text-muted small">Reels</div>
+          <!-- Número principal con clase display-6 para tamaño grande -->
+          <!-- stats.total_reels viene del contexto con fallback a 0 -->
           <div class="display-6">{{ stats.total_reels or 0 }}</div>
+          <!-- Información adicional con color de éxito -->
+          <!-- text-success aplica color verde para información positiva -->
           <div class="text-success small">{{ stats.completed_reels or 0 }} completados</div>
         </div>
       </div>
     </div>
+    
+    <!-- Card de estadísticas de comisiones -->
     <div class="col-6 col-md-3">
       <div class="card h-100">
         <div class="card-body text-center">
+          <!-- Label para comisiones generadas -->
           <div class="text-muted small">Comisiones</div>
+          <!-- Total de comisiones con número grande -->
           <div class="display-6">{{ stats.total_commissions or 0 }}</div>
+          <!-- Información adicional de ganancias pendientes -->
           <div class="small">Pendientes: {{ stats.pending_earnings or 0 }}</div>
         </div>
       </div>
     </div>
 
+    <!-- Métricas adicionales solo para productores -->
+    <!-- Condicional que verifica rol de productor Y existencia de perfil -->
     {% if user.is_producer() and user.producer_profile %}
+    
+    <!-- Card de avatares creados -->
     <div class="col-6 col-md-3">
       <div class="card h-100">
         <div class="card-body text-center">
+          <!-- Label para avatares/clones digitales -->
           <div class="text-muted small">Avatares</div>
+          <!-- Número de avatares creados por el productor -->
           <div class="display-6">{{ stats.avatars_count or 0 }}</div>
         </div>
       </div>
     </div>
+    
+    <!-- Card de uso de API mensual -->
     <div class="col-6 col-md-3">
       <div class="card h-100">
         <div class="card-body text-center">
+          <!-- Label para llamadas API del mes actual -->
           <div class="text-muted small">API (mes)</div>
+          <!-- Número de llamadas realizadas este mes -->
           <div class="display-6">{{ stats.api_calls_this_month or 0 }}</div>
+          <!-- Información del límite mensual configurado -->
           <div class="small">Límite: {{ stats.monthly_api_limit or '—' }}</div>
         </div>
       </div>
@@ -103,33 +296,144 @@
     {% endif %}
   </div>
 
-  <!-- Acciones rápidas -->
-  <div class="d-flex gap-2">
+  <!-- Sección de acciones administrativas rápidas -->
+  <!-- d-flex crea layout flexbox horizontal -->
+  <!-- gap-2 aplica espacio de 0.5rem entre elementos -->
+  <!-- flex-wrap permite que los botones se envuelvan en pantallas pequeñas -->
+  <div class="d-flex gap-2 flex-wrap">
 
-    <!-- Formulario para aprobar usuario -->
+    <!-- Formulario independiente para aprobar usuario -->
+    <!-- method="post" para seguridad en acciones críticas -->
     <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
-      <!-- Aprobar: habilitado si el estado es 'pending' o 'suspended' -->
+      <!-- Botón de aprobación con lógica condicional -->
+      <!-- Habilitado solo si el estado es 'pending' o 'suspended' -->
+      <!-- user.status.value|lower convierte a minúsculas para comparación -->
+      <!-- btn-success (verde) si está habilitado, btn-secondary (gris) si no -->
       <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm"
               {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
+        <!-- Icono de check con margen derecho -->
         <i class="fas fa-check me-1"></i> Aprobar
       </button>
     </form>
 
-    <!-- Formulario para suspender usuario -->
+    <!-- Formulario independiente para suspender usuario -->
     <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
-      <!-- Suspender: habilitado solo si el estado es 'active' -->
+      <!-- Botón de suspensión con validación de estado -->
+      <!-- Habilitado solo si el estado actual es 'active' -->
+      <!-- btn-warning (amarillo) para acción de advertencia -->
       <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm"
               {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
+        <!-- Icono de prohibición con margen derecho -->
         <i class="fas fa-ban me-1"></i> Suspender
       </button>
     </form>
 
-    <!-- Formulario para eliminar usuario -->
+    <!-- Botón de promoción a productor con doble validación -->
+    <!-- Solo visible para usuarios finales (final_user) que estén activos -->
+    <!-- Doble condicional asegura que cumple ambos requisitos -->
+    {% if user.role.value == 'final_user' and user.status.value == 'active' %}
+    <!-- Botón que activa modal Bootstrap -->
+    <!-- data-bs-toggle y data-bs-target controlan el modal -->
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#promoteModal">
+      <!-- Icono de flecha hacia arriba para indicar promoción -->
+      <i class="fas fa-arrow-up me-1"></i> Promocionar a Productor
+    </button>
+    {% endif %}
+
+    <!-- Formulario para eliminación con confirmación JavaScript -->
+    <!-- onsubmit ejecuta confirmación antes de enviar el formulario -->
     <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
+      <!-- Botón de eliminación con color de peligro -->
+      <!-- btn-danger (rojo) indica acción destructiva -->
       <button class="btn btn-danger btn-sm">
+        <!-- Icono de papelera para indicar eliminación -->
         <i class="fas fa-trash-alt me-1"></i> Eliminar
       </button>
     </form>
   </div>
+
+  <!-- Modal para promocionar a productor -->
+  {% if user.role.value == 'final_user' and user.status.value == 'active' %}
+  <div class="modal fade" id="promoteModal" tabindex="-1" aria-labelledby="promoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="{{ url_for('admin.promote_to_producer', user_id=user.id) }}">
+          <div class="modal-header">
+            <h5 class="modal-title" id="promoteModalLabel">
+              <i class="fas fa-arrow-up me-2"></i>Promocionar a Productor
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>{{ user.full_name }}</strong> será promocionado a Productor y podrá:
+              <ul class="mb-0 mt-2">
+                <li>Crear avatares digitales</li>
+                <li>Gestionar equipos de subproductores</li>
+                <li>Configurar su API key de HeyGen</li>
+                <li>Acceder a funciones avanzadas de producción</li>
+              </ul>
+            </div>
+
+            <!-- Configuración del perfil de productor -->
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Nombre de la empresa</label>
+                <input type="text" name="company_name" class="form-control" 
+                       value="{{ user.full_name }} Productions" 
+                       placeholder="Ej: {{ user.full_name }} Productions">
+                <small class="text-muted">Se puede cambiar después en configuración</small>
+              </div>
+              
+              <div class="col-md-6">
+                <label class="form-label">Tipo de negocio</label>
+                <input type="text" name="business_type" class="form-control" 
+                       value="Creador de Contenido" 
+                       placeholder="Ej: Agencia Digital, Creador de Contenido">
+              </div>
+              
+              <div class="col-md-6">
+                <label class="form-label">Sitio web (opcional)</label>
+                <input type="url" name="website" class="form-control" 
+                       placeholder="https://ejemplo.com">
+              </div>
+              
+              <div class="col-md-4">
+                <label class="form-label">Máx. subproductores</label>
+                <input type="number" name="max_subproducers" class="form-control" 
+                       value="10" min="1" max="100">
+              </div>
+              
+              <div class="col-md-4">
+                <label class="form-label">Máx. afiliados</label>
+                <input type="number" name="max_affiliates" class="form-control" 
+                       value="100" min="1" max="1000">
+              </div>
+              
+              <div class="col-md-4">
+                <label class="form-label">Límite API mensual</label>
+                <input type="number" name="monthly_api_limit" class="form-control" 
+                       value="1000" min="100" max="10000">
+              </div>
+            </div>
+
+            <div class="alert alert-warning mt-3">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              <strong>Importante:</strong> Después de la promoción, el usuario deberá configurar 
+              su API key de HeyGen para poder crear avatares.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-arrow-up me-1"></i> Promocionar a Productor
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

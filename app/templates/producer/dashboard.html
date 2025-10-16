@@ -36,10 +36,10 @@ Variables Jinja utilizadas:
 
 Rutas Flask referenciadas (url_for):
     - producer.team: Gestión de equipo
-    - producer.commissions: Ver todas las comisiones
+    - producer.earnings: Ver todas las comisiones
     - producer.avatars: Gestión de avatars
     - producer.reels: Ver todos los reels
-    - producer.invite_user: Invitar nuevo miembro
+    - producer.invite_member: Invitar nuevo miembro
     - producer.settings: Configuración del productor
 
 Estadísticas mostradas:
@@ -103,7 +103,7 @@ Elementos interactivos:
         
         <!-- Botón de acción rápida para invitar miembros -->
         <!-- btn-primary aplica el color principal del tema -->
-        <a href="{{ url_for('producer.invite_user') }}" class="btn btn-primary">
+        <a href="{{ url_for('producer.invite_member') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Invitar Miembro
         </a>
     </div>
@@ -338,7 +338,7 @@ Elementos interactivos:
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Comisiones</h5>
-                    <a href="{{ url_for('producer.commissions') }}" class="btn btn-outline-primary btn-sm">
+                    <a href="{{ url_for('producer.earnings') }}" class="btn btn-outline-primary btn-sm">
                         Ver Todas
                     </a>
                 </div>
@@ -402,7 +402,7 @@ Elementos interactivos:
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('producer.invite_user') }}" class="btn btn-primary">
+                        <a href="{{ url_for('producer.invite_member') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Invitar Miembro
                         </a>
                         <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary">

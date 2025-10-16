@@ -1,0 +1,458 @@
+{#
+Template de perfil de usuario para Gem-AvatART.
+
+Este template implementa la página completa de gestión de perfil personal donde
+los usuarios pueden editar su información personal, cambiar avatar y visualizar
+datos del sistema. Incluye formularios diferenciados por rol y previsualización
+de avatar en tiempo real.
+
+El template incluye:
+    - Formulario completo de edición de perfil con campos HTML estándar
+    - Sistema de subida y previsualización de avatar con JavaScript
+    - Sección de información comercial para productores
+    - Enlace directo a cambio de contraseña separado
+    - Información del sistema (fechas, invitaciones, verificación)
+    - Badges de estado y rol con colores dinámicos
+    - Layout responsive con diseño centrado
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, mx-auto, d-flex, justify-content-between
+    - Cards: card, card-body, card-header
+    - Forms: form-label, form-control, btn
+    - Images: img-fluid, rounded-circle
+    - Badges: badge, bg-primary, bg-success, bg-warning
+    - Typography: text-muted, text-center, h4, h5, h6
+    - Spacing: mb-*, mt-*, py-*
+
+Variables Jinja utilizadas:
+    - current_user: Usuario autenticado con todos sus campos y relaciones
+    - current_user.full_name: Nombre completo del usuario
+    - current_user.avatar_url: URL del avatar actual
+    - current_user.role.value.title(): Rol capitalizado
+    - current_user.status.value.title(): Estado capitalizado
+    - current_user.is_verified: Estado de verificación
+    - current_user.is_producer(): Método para verificar rol
+    - current_user.producer_profile: Perfil de productor si existe
+
+Campos del formulario (name attributes):
+    - avatar: Campo de archivo para subir imagen de avatar
+    - first_name: Nombre del usuario
+    - last_name: Apellido del usuario
+    - email: Dirección de correo (solo lectura)
+    - phone: Número de teléfono
+    - company_name: Nombre de empresa (solo productores)
+    - business_type: Tipo de negocio (solo productores)
+    - website: Sitio web (solo productores)
+
+IDs de elementos:
+    - avatar: Input file para subir avatar
+    - first_name: Campo de nombre
+    - last_name: Campo de apellido
+    - email: Campo de email
+    - phone: Campo de teléfono
+    - company_name: Campo de empresa
+    - business_type: Campo de tipo de negocio
+    - website: Campo de sitio web
+
+Rutas Flask referenciadas (url_for):
+    - auth.change_password: Enlace para cambiar contraseña
+    - main.index: Volver a página principal
+
+Iconografía Font Awesome:
+    - fas fa-user-edit: Edición de perfil
+    - fas fa-user-circle: Avatar placeholder
+    - fas fa-camera: Cambiar avatar
+    - fas fa-check-circle: Usuario verificado
+    - fas fa-lock: Cambiar contraseña
+    - fas fa-building: Información comercial
+    - fas fa-info-circle: Información del sistema
+    - fas fa-arrow-left: Volver
+    - fas fa-save: Guardar cambios
+
+Propiedades del usuario mostradas:
+    - full_name: Nombre completo del usuario
+    - username: Nombre de usuario único con prefijo @
+    - role: Rol del usuario (con capitalización)
+    - status: Estado de la cuenta con colores condicionales
+    - is_verified: Estado de verificación con badge
+    - avatar_url: URL del avatar actual o placeholder
+    - created_at: Fecha de registro formateada
+    - last_login: Último acceso formateado
+    - invited_by: Usuario que lo invitó (si aplica)
+
+Información condicional mostrada:
+    - Badge de verificación solo si está verificado
+    - Información comercial solo para productores
+    - Último acceso solo si existe
+    - Información de invitador solo si fue invitado
+
+Métodos Jinja utilizados:
+    - current_user.role.value.title(): Capitalización del rol
+    - current_user.status.value.title(): Capitalización del estado
+    - current_user.created_at.strftime(): Formateo de fecha de registro
+    - current_user.last_login.strftime(): Formateo de última conexión
+    - current_user.is_producer(): Verificación de rol de productor
+
+Estilos inline utilizados:
+    - display: none: Campo de archivo oculto
+    - max-width: 150px: Tamaño máximo del avatar
+
+Funcionalidades JavaScript:
+    - addEventListener('change'): Detección de cambio en input de archivo
+    - FileReader API: Lectura de archivo para previsualización
+    - DOM manipulation: Reemplazo de icono por imagen previsualizada
+    - readAsDataURL(): Conversión de archivo a URL de datos
+    - Creación dinámica de elementos img para preview
+
+Validación de entrada:
+    - type="email": Validación HTML5 para formato de email
+    - type="tel": Validación para número de teléfono
+    - type="url": Validación para sitio web
+    - accept="image/*": Solo acepta archivos de imagen
+    - readonly: Campo de email no editable
+    - value="{{ ... or '' }}": Valores por defecto seguros
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Mi Perfil - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal del perfil con layout Bootstrap responsivo -->
+<!-- Utiliza container para centralizar el contenido con márgenes automáticos -->
+<div class="container">
+    <!-- Fila responsive que se adapta a diferentes tamaños de pantalla -->
+    <div class="row">
+        <!-- Columna centrada que ocupa 8/12 del ancho en pantallas medianas o mayores -->
+        <!-- mx-auto centra la columna horizontalmente cuando no ocupa el ancho completo -->
+        <div class="col-md-8 mx-auto">
+            <!-- Card principal que contiene todo el formulario de perfil -->
+            <!-- Utiliza el sistema de cards de Bootstrap para estructura y sombreado -->
+            <div class="card">
+                <!-- Header del card con título e icono descriptivo -->
+                <!-- card-header proporciona background diferenciado y padding -->
+                <div class="card-header">
+                    <!-- Título con icono Font Awesome de edición de usuario -->
+                    <h4><i class="fas fa-user-edit"></i> Mi Perfil</h4>
+                </div>
+                
+                <!-- Cuerpo del card que contiene el formulario completo -->
+                <!-- card-body proporciona padding consistente para el contenido -->
+                <div class="card-body">
+                    <!-- Formulario principal con método POST y encoding para archivos -->
+                    <!-- enctype="multipart/form-data" es necesario para subida de archivos -->
+                    <form method="POST" enctype="multipart/form-data">
+                        <!-- Sección de gestión de avatar del usuario -->
+                        <!-- Utiliza row y columnas para layout responsivo del avatar -->
+                        <div class="row mb-4">
+                            <!-- Columna de 3/12 del ancho en pantallas medianas, centrada -->
+                            <!-- text-center alinea todo el contenido al centro -->
+                            <div class="col-md-3 text-center">
+                                <!-- Condicional Jinja para mostrar avatar existente o placeholder -->
+                                {% if current_user.avatar_url %}
+                                    <!-- Imagen del avatar actual del usuario -->
+                                    <!-- img-fluid hace la imagen responsiva -->
+                                    <!-- rounded-circle aplica border-radius: 50% para forma circular -->
+                                    <!-- max-width: 150px limita el tamaño máximo del avatar -->
+                                    <img src="{{ current_user.avatar_url }}" class="img-fluid rounded-circle" style="max-width: 150px;" alt="Avatar">
+                                {% else %}
+                                    <!-- Placeholder de avatar cuando el usuario no tiene imagen -->
+                                    <!-- fa-8x hace el icono 8 veces más grande que el tamaño base -->
+                                    <!-- text-muted aplica color gris para indicar elemento inactivo -->
+                                    <i class="fas fa-user-circle fa-8x text-muted"></i>
+                                {% endif %}
+                                
+                                <!-- Sección de botón para cambiar avatar -->
+                                <!-- mt-2 aplica margen superior de 0.5rem -->
+                                <div class="mt-2">
+                                    <!-- Label que actúa como botón personalizado para el input file -->
+                                    <!-- btn-sm reduce el tamaño del botón -->
+                                    <!-- btn-outline-primary usa borde azul sin fondo -->
+                                    <label for="avatar" class="btn btn-sm btn-outline-primary">
+                                        <!-- Icono de cámara para indicar función de subir imagen -->
+                                        <i class="fas fa-camera"></i> Cambiar Avatar
+                                    </label>
+                                    
+                                    <!-- Campo de archivo HTML normal oculto -->
+                                    <!-- style="display: none;" oculta el input file nativo -->
+                                    <!-- Se activa al hacer clic en el label asociado -->
+                                    <input type="file" id="avatar" name="avatar" style="display: none;" accept="image/*">
+                                </div>
+                            </div>
+                            
+                            <!-- Columna principal con información del usuario -->
+                            <!-- col-md-9 ocupa 9/12 del ancho en pantallas medianas o mayores -->
+                            <div class="col-md-9">
+                                <!-- Nombre completo del usuario como título principal -->
+                                <!-- Utiliza método full_name del modelo User -->
+                                <h5>{{ current_user.full_name }}</h5>
+                                
+                                <!-- Username con estilo de texto secundario -->
+                                <!-- text-muted aplica color gris para información secundaria -->
+                                <!-- Prefijo @ indica que es un nombre de usuario -->
+                                <p class="text-muted">@{{ current_user.username }}</p>
+                                
+                                <!-- Badge del rol del usuario -->
+                                <!-- bg-primary aplica fondo azul para indicar información importante -->
+                                <!-- current_user.role.value.title() capitaliza el valor del enum -->
+                                <span class="badge bg-primary">{{ current_user.role.value.title() }}</span>
+                                
+                                <!-- Badge del estado del usuario con color condicional -->
+                                <!-- Utiliza operador ternario de Jinja para color dinámico -->
+                                <!-- bg-success para activo, bg-warning para otros estados -->
+                                <span class="badge bg-{{ 'success' if current_user.status.value == 'active' else 'warning' }}">
+                                    {{ current_user.status.value.title() }}
+                                </span>
+                                
+                                <!-- Badge de verificación condicional -->
+                                <!-- Solo se muestra si current_user.is_verified es True -->
+                                {% if current_user.is_verified %}
+                                    <!-- bg-success indica estado positivo con icono de verificación -->
+                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Verificado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Sección de información personal editable -->
+                        <!-- Utiliza row para layout de formulario en dos columnas -->
+                        <div class="row mb-3">
+                            <!-- Columna para el campo de nombre -->
+                            <!-- col-md-6 ocupa la mitad del ancho en pantallas medianas -->
+                            <div class="col-md-6">
+                                <!-- Label del campo con clase Bootstrap -->
+                                <!-- form-label aplica estilos consistentes para etiquetas -->
+                                <label for="first_name" class="form-label">Nombre</label>
+                                
+                                <!-- Campo de entrada HTML normal -->
+                                <!-- form-control aplica estilos de Bootstrap para inputs -->
+                                <input type="text" id="first_name" name="first_name" class="form-control" value="{{ current_user.first_name or '' }}">
+                            </div>
+                            
+                            <!-- Columna para el campo de apellido -->
+                            <!-- Sigue el mismo patrón de estructura que el nombre -->
+                            <div class="col-md-6">
+                                <!-- Label del apellido con estilos Bootstrap -->
+                                <label for="last_name" class="form-label">Apellido</label>
+                                
+                                <!-- Campo de entrada para apellido -->
+                                <input type="text" id="last_name" name="last_name" class="form-control" value="{{ current_user.last_name or '' }}">
+                            </div>
+                        </div>
+
+                        <!-- Segunda fila de campos del formulario -->
+                        <!-- Contiene email y teléfono en layout de dos columnas -->
+                        <div class="row mb-3">
+                            <!-- Columna para el campo de email -->
+                            <div class="col-md-6">
+                                <!-- Label del email con validación de formato -->
+                                <label for="email" class="form-label">Email</label>
+                                
+                                <!-- Campo de entrada para email con validación HTML5 -->
+                                <input type="email" id="email" name="email" class="form-control" value="{{ current_user.email or '' }}" readonly>
+                                <small class="text-muted">El email no se puede cambiar</small>
+                            </div>
+                            
+                            <!-- Columna para el campo de teléfono -->
+                            <div class="col-md-6">
+                                <!-- Label del teléfono con formato internacional -->
+                                <label for="phone" class="form-label">Teléfono</label>
+                                
+                                <!-- Campo de entrada para número de teléfono -->
+                                <input type="tel" id="phone" name="phone" class="form-control" value="{{ current_user.phone or '' }}">
+                            </div>
+                        </div>
+
+                        <!-- Sección de información comercial exclusiva para productores -->
+                        <!-- Solo se muestra si el usuario es productor Y tiene perfil de productor -->
+                        {% if current_user.is_producer() and current_user.producer_profile %}
+                        <!-- Card anidado para separar información comercial -->
+                        <!-- mt-4 aplica margen superior para separación visual -->
+                        <div class="card mt-4">
+                            <!-- Header del card comercial con icono de edificio -->
+                            <div class="card-header">
+                                <!-- Título con icono Font Awesome de edificio corporativo -->
+                                <h6><i class="fas fa-building"></i> Información Comercial</h6>
+                            </div>
+                            
+                            <!-- Cuerpo con campos específicos del perfil comercial -->
+                            <div class="card-body">
+                                <!-- Primera fila de campos comerciales en dos columnas -->
+                                <div class="row mb-3">
+                                    <!-- Columna para nombre de empresa -->
+                                    <div class="col-md-6">
+                                        <!-- Label para nombre de empresa o marca -->
+                                        <label for="company_name" class="form-label">Nombre de Empresa</label>
+                                        
+                                        <!-- Campo de texto para empresa con valor del perfil -->
+                                        <!-- Utiliza or '' para evitar None en el input -->
+                                        <input type="text" id="company_name" name="company_name" class="form-control" value="{{ current_user.producer_profile.company_name or '' }}">
+                                    </div>
+                                    
+                                    <!-- Columna para tipo de negocio -->
+                                    <div class="col-md-6">
+                                        <!-- Label para categorización del negocio -->
+                                        <label for="business_type" class="form-label">Tipo de Negocio</label>
+                                        
+                                        <!-- Campo de texto para categoría de negocio -->
+                                        <input type="text" id="business_type" name="business_type" class="form-control" value="{{ current_user.producer_profile.business_type or '' }}">
+                                    </div>
+                                </div>
+                                
+                                <!-- Segunda fila para sitio web en ancho completo -->
+                                <div class="row mb-3">
+                                    <!-- Columna completa para URL del sitio web -->
+                                    <div class="col-md-12">
+                                        <!-- Label para sitio web corporativo -->
+                                        <label for="website" class="form-label">Sitio Web</label>
+                                        
+                                        <!-- Campo URL con validación HTML5 automática -->
+                                        <!-- type="url" valida formato de URL automáticamente -->
+                                        <input type="url" id="website" name="website" class="form-control" value="{{ current_user.producer_profile.website or '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Sección de enlace para cambio de contraseña -->
+                        <!-- Separado del formulario principal por seguridad -->
+                        <!-- mt-4 aplica margen superior para separación -->
+                        <!-- text-center centra el botón horizontalmente -->
+                        <div class="mt-4 text-center">
+                            <!-- Enlace a página dedicada de cambio de contraseña -->
+                            <!-- btn-outline-secondary usa borde gris sin fondo -->
+                            <!-- Separado por seguridad para requerir validación adicional -->
+                            <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-secondary">
+                                <!-- Icono de candado para indicar función de seguridad -->
+                                <i class="fas fa-lock"></i> Cambiar Contraseña
+                            </a>
+                        </div>
+
+                        <!-- Sección de información del sistema -->
+                        <!-- Card separado para mostrar datos no editables del usuario -->
+                        <div class="card mt-4">
+                            <!-- Header con icono informativo -->
+                            <div class="card-header">
+                                <!-- Título con icono de información para datos del sistema -->
+                                <h6><i class="fas fa-info-circle"></i> Información del Sistema</h6>
+                            </div>
+                            
+                            <!-- Cuerpo con información de fechas y sistema -->
+                            <div class="card-body">
+                                <!-- Fila con información de fechas en dos columnas -->
+                                <div class="row">
+                                    <!-- Columna para fecha de registro -->
+                                    <div class="col-md-6">
+                                        <!-- Etiqueta en negrita para fecha de registro -->
+                                        <strong>Miembro desde:</strong><br>
+                                        
+                                        <!-- Fecha formateada en español con texto secundario -->
+                                        <!-- strftime formatea la fecha en formato legible -->
+                                        <span class="text-muted">{{ current_user.created_at.strftime('%d de %B de %Y') }}</span>
+                                    </div>
+                                    
+                                    <!-- Columna para último acceso -->
+                                    <div class="col-md-6">
+                                        <!-- Condicional para mostrar último acceso solo si existe -->
+                                        {% if current_user.last_login %}
+                                            <!-- Etiqueta para último acceso -->
+                                            <strong>Último acceso:</strong><br>
+                                            
+                                            <!-- Fecha y hora del último acceso formateadas -->
+                                            <span class="text-muted">{{ current_user.last_login.strftime('%d/%m/%Y %H:%M') }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Sección condicional para usuario que invitó -->
+                                <!-- Solo se muestra si el usuario fue invitado por alguien -->
+                                {% if current_user.invited_by %}
+                                    <!-- Fila adicional para información de invitación -->
+                                    <!-- mt-3 aplica margen superior para separación -->
+                                    <div class="row mt-3">
+                                        <div class="col-md-12">
+                                            <!-- Etiqueta para usuario invitador -->
+                                            <strong>Invitado por:</strong><br>
+                                            
+                                            <!-- Nombre completo del usuario que invitó -->
+                                            <!-- Accede a la relación invited_by del modelo -->
+                                            <span class="text-muted">{{ current_user.invited_by.full_name }}</span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+
+
+                        <!-- Sección de botones de acción del formulario -->
+                        <!-- d-flex crea un contenedor flexbox -->
+                        <!-- justify-content-between distribuye los elementos en extremos opuestos -->
+                        <!-- mt-4 aplica margen superior de 1.5rem -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <!-- Botón de navegación de retorno -->
+                            <!-- btn-secondary usa colores grises para acción secundaria -->
+                            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                                <!-- Icono de flecha hacia la izquierda -->
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                            
+                            <!-- Botón de envío del formulario -->
+                            <!-- type="submit" hace que envíe el formulario -->
+                            <!-- btn-primary usa el color principal de la aplicación -->
+                            <button type="submit" class="btn btn-primary">
+                                <!-- Icono de guardar para indicar acción de guardado -->
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script JavaScript para previsualización de avatar en tiempo real -->
+<!-- Permite ver la imagen seleccionada antes de enviar el formulario -->
+<script>
+// Event listener para el campo de archivo de avatar
+// Se activa cuando el usuario selecciona un archivo
+document.getElementById('avatar').addEventListener('change', function(e) {
+    // Obtiene el primer archivo seleccionado
+    const file = e.target.files[0];
+    
+    // Verifica que se haya seleccionado un archivo
+    if (file) {
+        // Crea un FileReader para leer el archivo como URL de datos
+        const reader = new FileReader();
+        
+        // Define función que se ejecuta cuando la lectura se completa
+        reader.onload = function(e) {
+            // Busca si ya existe una imagen de avatar
+            const img = document.querySelector('img');
+            
+            if (img) {
+                // Si existe imagen, actualiza su source con la nueva imagen
+                img.src = e.target.result;
+            } else {
+                // Si no hay imagen (solo icono placeholder), crea elemento imagen
+                const icon = document.querySelector('.fa-user-circle');
+                
+                // Crea nuevo elemento img con la imagen seleccionada
+                const imgElement = document.createElement('img');
+                imgElement.src = e.target.result;
+                imgElement.className = 'img-fluid rounded-circle';
+                imgElement.style.maxWidth = '150px';
+                imgElement.alt = 'Avatar';
+                
+                // Reemplaza el icono placeholder con la nueva imagen
+                icon.parentNode.replaceChild(imgElement, icon);
+            }
+        };
+        
+        // Inicia la lectura del archivo como URL de datos (base64)
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}
