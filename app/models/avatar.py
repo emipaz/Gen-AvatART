@@ -116,14 +116,14 @@ class Avatar(db.Model):
     
     # Metadatos y etiquetas
     # se usa meta_data por que metadata es palabra reservada en SQLAlchemy
-    meta_data = db.Column(db.JSON)         # Información adicional del avatar
-    tags      = db.Column(db.String(500))  # Tags separados por comas
+    meta_data = db.Column(db.JSON, nullable=True)         # Información adicional del avatar
+    tags      = db.Column(db.String(500))                 # Tags separados por comas
     
     # Campos de auditoría y timestamps
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at  = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # approved_at = db.Column(db.DateTime)
-    last_used   = db.Column(db.DateTime)
+    last_used   = db.Column(db.DateTime) 
     
     # Definición de relaciones con otros modelos
     created_by  = db.relationship('User', foreign_keys = [created_by_id] , backref = 'created_avatars')
@@ -370,3 +370,55 @@ class Avatar(db.Model):
             # 'heygen_avatar_url' : self.heygen_avatar_url,   # Removido - redundante
             # 'approved_at'       : self.approved_at.isoformat() if self.approved_at else None,  # Sin aprobación
         }
+    
+class AvatarSnapshotStatus(Enum):
+    STORED      = "stored"       # guardado, listo para recrear
+    ORPHANED    = "orphaned"     # quedó huérfano (productor dado de baja)
+    RECREATED   = "recreated"    # ya se recreó con otra API key
+    TRANSFERRED = "transferred"  # marcado como transferido a custodio
+
+class AvatarSnapshot(db.Model):
+    __tablename__ = "avatar_snapshots"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # vínculo opcional al avatar original (si aún existe en nuestro sistema)
+    avatar_id = db.Column(db.Integer, db.ForeignKey('avatars.id'), nullable=True)
+
+    # dueños y actores
+    producer_id       = db.Column(db.Integer, db.ForeignKey('producers.id'), nullable=False)   # productor original
+    created_by_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)        # subproductor/usuario que lo creó
+    target_producer_id = db.Column(db.Integer, db.ForeignKey('producers.id'), nullable=True)   # productor custodio (si ya se asignó)
+
+    # metadatos funcionales
+    origin_heygen_avatar_id      = db.Column(db.String(100), index=True)   # ID en HeyGen del productor original
+    recreated_heygen_avatar_id   = db.Column(db.String(100), index=True)   # ID en HeyGen del custodio (cuando se recrea)
+    name                         = db.Column(db.String(120))
+    prompt                       = db.Column(db.Text)
+
+    # configuración completa para poder recrear (voz, idioma, modelo, etc.)
+    config_json = db.Column(db.JSON)   # dict serializable
+
+    # “punteros” a los assets usados en la creación (rutas/URLs internas)
+    image_url = db.Column(db.String(255))
+    audio_url = db.Column(db.String(255))
+    video_url = db.Column(db.String(255))  # si hubo video base o preview
+
+    # estado & auditoría
+    status       = db.Column(db.Enum(AvatarSnapshotStatus), nullable=False, default=AvatarSnapshotStatus.STORED)
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    recreated_at = db.Column(db.DateTime)
+
+    # relaciones convenientes (no obligatorias pero útiles en vistas)
+    avatar    = db.relationship('Avatar', backref='snapshots', lazy='joined', foreign_keys=[avatar_id])
+    producer  = db.relationship('Producer', foreign_keys=[producer_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+    target_producer = db.relationship('Producer', foreign_keys=[target_producer_id])
+
+    # ayudante simple para marcar recreación
+    def mark_recreated(self, new_heygen_id: str, target_producer_id: int):
+        self.recreated_heygen_avatar_id = new_heygen_id
+        self.target_producer_id = target_producer_id
+        self.status = AvatarSnapshotStatus.RECREATED
+        self.recreated_at = datetime.utcnow()

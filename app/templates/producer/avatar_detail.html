@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Detalle del Avatar - {{ avatar.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <a href="{{ url_for('producer.avatars') }}" class="btn btn-light mb-3">
+    ← Volver a mis Avatars
+  </a>
+
+  <div class="card">
+    <div class="card-body">
+      <h3 class="mb-1">{{ avatar.name }}</h3>
+      <div class="mb-2">
+        <span class="badge bg-dark">Estado: {{ (avatar.status or '—') }}</span>
+      </div>
+
+      {% if avatar.thumbnail_url %}
+        <img src="{{ avatar.thumbnail_url }}" class="img-fluid mb-3" alt="{{ avatar.name }}">
+      {% endif %}
+
+      {% if avatar.description %}
+        <p class="text-muted">{{ avatar.description }}</p>
+      {% endif %}
+
+      <ul class="list-unstyled">
+        <li><strong>Tipo:</strong> {{ avatar.avatar_type or '—' }}</li>
+        <li><strong>Idioma:</strong> {{ avatar.language or '—' }}</li>
+        <li><strong>HeyGen ID:</strong> {{ avatar.heygen_avatar_id or '—' }}</li>
+        <li><strong>Creado:</strong> {{ avatar.created_at.strftime('%d/%m/%Y %H:%M') if avatar.created_at else '—' }}</li>
+        <li><strong>Última actualización:</strong> {{ avatar.updated_at.strftime('%d/%m/%Y %H:%M') if avatar.updated_at else '—' }}</li>
+      </ul>
+
+      {% if parent_avatar %}
+        <div class="mt-2">
+            <span class="badge bg-info">
+                Recreado desde
+                <a class="text-white text-decoration-underline"
+                    href="{{ url_for('producer.avatar_detail', avatar_id=parent_avatar.id) }}">
+                    {{ parent_avatar.name }} (#{{ parent_avatar.id }})
+                </a>
+            </span>
+        </div>
+      {% endif %}
+
+      {% if derived_avatars and derived_avatars|length > 0 %}
+        <hr>
+        <h5 class="mt-3">Avatares derivados ({{ derived_avatars|length }})</h5>
+        <ul class="list-unstyled">
+            {% for a in derived_avatars %}
+                <li class="mb-1">
+                    <a href="{{ url_for('producer.avatar_detail', avatar_id=a.id) }}">
+                        #{{ a.id }} — {{ a.name }}
+                    </a>
+                    <span class="badge bg-secondary ms-2">Recreado</span>
+                </li>
+            {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if snapshot %}
+        <hr>
+        <h5 class="mt-3">Snapshot para custodio</h5>
+        <pre class="small bg-light p-3 rounded" style="white-space: pre-wrap;">{{ snapshot | tojson(indent=2) }}</pre>
+
+        <!-- 🔽 Nuevo bloque para recrear avatar desde snapshot -->
+        <div class="mt-4">
+            <form action="{{ url_for('producer.recreate_avatar', avatar_id=avatar.id) }}" method="post">
+                <button type="submit" class="btn btn-outline-success">
+                    <i class="fas fa-clone"></i> Recrear avatar desde snapshot
+                </button>
+            </form>
+        </div>
+      {% else %}
+        <p class="text-muted mt-3">No hay snapshot disponible para este avatar.</p>
+      {% endif %}
+
+      {% if derived_avatars %}
+        <hr>
+        <h5 class="mt-3">Avatares derivados</h5>
+        <ul class="list-unstyled">
+            {% for av in derived_avatars %}
+                <li class="mb-1">
+                    <a href="{{ url_for('producer.avatar_detail', avatar_id=av.id) }}">
+                        #{{ av.id }} — {{ av.name }}
+                    </a>
+                    <span class="badge bg-secondary ms-2">{{ av.status }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

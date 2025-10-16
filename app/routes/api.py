@@ -63,6 +63,7 @@ from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission, CommissionStatus
 from app.models.clone_permission import ClonePermission, PermissionStatus, PermissionSubjectType
 from app.services.heygen_service import HeyGenService, HeyGenVideoProcessor
+from app.services.snapshot_service import save_avatar_snapshot
 
 # Creación del blueprint para rutas de API REST
 api_bp = Blueprint('api', __name__)
@@ -505,6 +506,16 @@ def create_avatar():
     # Guardar en base de datos
     db.session.add(avatar)
     db.session.commit()
+
+    # Guardar snapshot para recreación futura (por productor custodio)
+    save_avatar_snapshot(
+        avatar_id=avatar.id,
+        producer_id=producer.id,
+        created_by_id=user.id,
+        source="api",
+        inputs=data,
+        heygen_owner_hint=producer.company_name,
+    )
     
     return jsonify(avatar.to_dict()), 201
 

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Solicitar Avatar</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="name" class="form-label">Nombre del Avatar</label>
+            <input type="text" name="name" id="name" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="description" class="form-label">Descripción</label>
+            <textarea name="description" id="description" class="form-control" rows="3"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="avatar_type" class="form-label">Tipo de Avatar</label>
+            <select name="avatar_type" id="avatar_type" class="form-select" required>
+                <option value="video">Video</option>
+                <option value="imagen">Imagen</option>
+                <option value="voz">Voz</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="language" class="form-label">Idioma</label>
+            <select name="language" id="language" class="form-select">
+                <option value="es">Español</option>
+                <option value="en">Inglés</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="tags" class="form-label">Etiquetas (separadas por coma)</label>
+            <input type="text" name="tags" id="tags" class="form-control">
+        </div>
+
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="is_public" id="is_public">
+            <label class="form-check-label" for="is_public">Hacer público</label>
+        </div>
+
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="is_premium" id="is_premium">
+            <label class="form-check-label" for="is_premium">Marcar como premium</label>
+        </div>
+
+        <div class="mb-3">
+            <label for="price_per_use" class="form-label">Precio por uso (opcional)</label>
+            <input type="number" name="price_per_use" id="price_per_use" step="0.01" class="form-control">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Crear Avatar</button>
+        <a href="{{ url_for('producer.avatars') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

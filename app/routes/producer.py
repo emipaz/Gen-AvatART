@@ -45,8 +45,11 @@ from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission, CommissionStatus
 from app.services.heygen_service import HeyGenService
+from app.services.snapshot_service import save_avatar_snapshot, load_avatar_snapshot
 from app.utils.date_utils import get_current_month_range
 from datetime import datetime
+from uuid import uuid4
+import uuid
 
 producer_bp = Blueprint('producer', __name__)
 
@@ -158,7 +161,14 @@ def dashboard():
     }
     
     # Actividad reciente
-    recent_reels   = current_user.reels.order_by(Reel.created_at.desc()).limit(5).all()
+    # recent_reels   = current_user.reels.order_by(Reel.created_at.desc()).limit(5).all()
+    recent_reels = (
+        Reel.query
+            .filter_by(creator_id=current_user.id)
+            .order_by(Reel.created_at.desc())
+            .limit(5)
+            .all()
+    )
     recent_avatars = producer.avatars.order_by(Avatar.created_at.desc()).limit(5).all()
     
     # Elementos pendientes de aprobación
@@ -203,19 +213,176 @@ def avatars():
         - Paginación de 12 elementos por página (optimizado para grids)
         - Ordenamiento por fecha de creación (más recientes primero)
     """
-    page          = request.args.get('page', 1, type=int)
-    status_filter = request.args.get('status')
-    
-    query = current_user.producer_profile.avatars
-    
-    if status_filter:
-        query = query.filter_by(status = AvatarStatus(status_filter))
-    
+    producer = current_user.producer_profile
+
+    page = request.args.get('page', 1, type=int)
+    status_param = (request.args.get('status') or '').strip().upper()
+
+    query = Avatar.query.filter_by(producer_id=producer.id)
+
+    # Mapeo seguro desde el string del query a tu Enum
+    valid_statuses = {'ACTIVE', 'INACTIVE', 'PROCESSING'}
+
+    if status_param in valid_statuses:
+        # ✅ Columna Enum: comparo contra el Enum, NO contra string
+        query = query.filter(Avatar.status == AvatarStatus[status_param])
+        selected_status = status_param
+    else:
+        # query = query.filter(Avatar.status != AvatarStatus.INACTIVE)      # Por defecto ocultamos los INACTIVE
+        selected_status = 'ALL'         # ALL: no filtramos nada
+
     avatars = query.order_by(Avatar.created_at.desc()).paginate(
-        page = page, per_page = 12, error_out = False
+        page=page, per_page=12, error_out=False
     )
-    
-    return render_template('producer/avatars.html', avatars=avatars)
+
+    return render_template(
+        'producer/avatars.html',
+        avatars=avatars,
+        selected_status=selected_status,
+    )
+
+@producer_bp.route('/avatar/<int:avatar_id>')
+@login_required
+@producer_required
+def avatar_detail(avatar_id):
+    """Detalle de un avatar del productor actual."""
+    producer = current_user.producer_profile
+
+    # Buscar el avatar y verificar pertenencia
+    avatar = Avatar.query.get_or_404(avatar_id)
+    if avatar.producer_id != producer.id:
+        flash("No tenés acceso a este avatar.", "error")
+        return redirect(url_for('producer.avatars'))
+
+    # (Opcional) Cargar snapshot si existe para recreación/custodia
+    snapshot = None
+    try:
+        from app.services.snapshot_service import load_avatar_snapshot
+        snapshot = load_avatar_snapshot(avatar_id)
+    except Exception:
+        snapshot = None
+
+    # Avatares recreados que derivan de este (trazabilidad inversa)
+    siblings = (
+        Avatar.query
+        .filter(Avatar.producer_id == avatar.producer_id, Avatar.id != avatar.id)
+        .all()
+    )
+
+    derived_avatars = [
+        a for a in siblings
+        if (getattr(a, "meta_data", {}) or {}).get("recreated_from") == avatar.id
+    ]
+
+    # Avatar original (si este fue recreado desde otro)
+    parent_avatar = None
+    meta = avatar.meta_data or {}
+    parent_id = meta.get("recreated_from")
+    if parent_id:
+        parent_avatar = Avatar.query.get(parent_id)
+
+    return render_template(       
+        'producer/avatar_detail.html',
+        avatar=avatar,
+        snapshot=snapshot,
+        derived_avatars=derived_avatars,
+        parent_avatar=parent_avatar
+    )
+
+@producer_bp.route('/avatar/<int:avatar_id>/recreate', methods=['POST'])
+@login_required
+@producer_required
+def recreate_avatar(avatar_id):
+    # Dueño actual (productor)
+    producer = current_user.producer_profile
+
+    # Verificamos que el avatar exista y sea del productor logueado
+    avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
+
+    # Cargamos el snapshot guardado
+    snapshot = load_avatar_snapshot(avatar_id)
+    if not snapshot:
+        flash('No hay snapshot disponible para este avatar.', 'warning')
+        return redirect(url_for('producer.avatar_detail', avatar_id=avatar_id))
+
+    inputs = snapshot.get('inputs', {}) or {}
+
+    # Tomamos campos del snapshot con fallback a los del avatar original
+    name        = inputs.get('name') or f"Recreado de {avatar.name}"
+    description = inputs.get('description') or (avatar.description or '')
+    avatar_type = inputs.get('avatar_type') or (avatar.avatar_type or 'video')
+    language    = inputs.get('language') or (avatar.language or 'es')
+    tags        = inputs.get('tags') or []
+
+    # IMPORTANTE: avatar_ref es NOT NULL → generamos uno local
+    new_avatar = Avatar(
+        producer_id   = producer.id,
+        created_by_id = current_user.id,
+        name          = name,
+        description   = description,
+        avatar_type   = avatar_type,
+        language      = language,
+        avatar_ref    = f"local_{uuid.uuid4().hex}",
+        status        = AvatarStatus.PROCESSING
+    )
+
+    db.session.add(new_avatar)
+    db.session.flush()          # asegura que el ID se genere antes del snapshot
+
+    # Guardamos el meta_data con el ID de origen
+    new_avatar.meta_data = {"recreated_from": avatar.id}
+
+    db.session.commit()
+
+    if tags:
+        # acepta lista o string; si es lista, la mandamos directa
+        new_avatar.set_tags(
+            tags if isinstance(tags, list) 
+            else [t.strip() for t in str(tags).split(',') if t.strip()]
+        )
+        db.session.commit()
+
+    # Renombrar el avatar para indicar que es recreado
+    # new_avatar.name = f"{avatar.name} (recreado)"
+
+    # Guardar snapshot para el nuevo avatar
+    save_avatar_snapshot(
+        avatar_id=new_avatar.id,
+        producer_id=new_avatar.producer_id,
+        created_by_id=current_user.id,
+        source="recreated_from",
+        inputs=(snapshot or {}).get("inputs", {}),
+        heygen_owner_hint=(snapshot or {}).get("heygen_owner_hint"),
+        extra={
+            "recreated_from_avatar_id": avatar.id,
+            "original_snapshot_created_at": (snapshot or {}).get("created_at"),
+        },
+    )
+
+    # Simulación de aprobación inmediata (hasta integrar HeyGen real)
+    new_avatar.status = AvatarStatus.ACTIVE
+    new_avatar.heygen_avatar_id = f"heygen_{new_avatar.id}"
+    db.session.commit()
+
+    flash('Avatar recreado desde snapshot.', 'success')
+    return redirect(url_for('producer.avatar_detail', avatar_id=new_avatar.id))
+
+@producer_bp.route('/avatar/<int:avatar_id>/archive', methods=['POST'])
+@login_required
+@producer_required
+def archive_avatar(avatar_id):
+    """Archiva (INACTIVE) un avatar del productor actual."""
+    producer = current_user.producer_profile
+    avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
+
+    if avatar.status == AvatarStatus.INACTIVE:
+        flash('El avatar ya estaba archivado.', 'info')
+        return redirect(url_for('producer.avatars'))
+
+    avatar.status = AvatarStatus.INACTIVE
+    db.session.commit()
+    flash('Avatar archivado.', 'success')
+    return redirect(url_for('producer.avatars'))
 
 @producer_bp.route('/avatars/create', methods=['GET', 'POST'])
 @login_required
@@ -261,6 +428,7 @@ def create_avatar():
     if producer.monthly_api_limit and api_calls_used >= producer.monthly_api_limit:
         flash('Has alcanzado tu límite mensual de API calls', 'error')
         return redirect(url_for('producer.avatars'))
+
     
     if request.method == 'POST':
         name          = request.form.get('name')
@@ -270,7 +438,13 @@ def create_avatar():
         tags          = request.form.get('tags', '')
         is_public     = bool(request.form.get('is_public'))
         is_premium    = bool(request.form.get('is_premium'))
-        price_per_use = float(request.form.get('price_per_use', 0))
+        # Precio: convertir seguro (acepta vacío y coma decimal)
+        price_raw = (request.form.get('price_per_use') or "").strip()
+        if price_raw == "":
+            price_per_use = 0.0
+        else:
+            price_per_use = float(price_raw.replace(",", "."))  # soporta "12,5"
+
         
         # Crear avatar en la base de datos
         avatar = Avatar(
@@ -280,17 +454,36 @@ def create_avatar():
             description    = description,
             avatar_type    = avatar_type,
             language       = language,
-            is_public      = is_public,
-            is_premium     = is_premium,
-            price_per_use  = price_per_use,
-            status         = AvatarStatus.PROCESSING
+            # is_public      = is_public,
+            # is_premium     = is_premium,
+            # price_per_use  = price_per_use,
+            status         = AvatarStatus.PROCESSING,
+            avatar_ref    = f"local_{uuid4().hex}"   # <- evita el NOT NULL
         )
         avatar.set_tags(tags.split(','))
         
         db.session.add(avatar)
         db.session.commit()
+
+        # Guardar snapshot para poder recrear este avatar luego (p. ej., por productor custodio)
+        save_avatar_snapshot(
+            avatar_id=avatar.id,
+            producer_id=producer.id,
+            created_by_id=current_user.id,
+            source="producer_ui",
+            inputs={
+                "name": name,
+                "description": description,
+                "avatar_type": avatar_type,
+                "language": language,
+                "tags": [t.strip() for t in tags.split(",") if t.strip()],
+                "is_public": is_public,
+                "is_premium": is_premium,
+                "price_per_use": price_per_use,
+            },
+            heygen_owner_hint=producer.company_name,
+        )
         
-        # TODO: Integrar con HeyGen para crear el avatar
         # Por ahora, simplemente marcarlo como aprobado
         avatar.status           = AvatarStatus.APPROVED
         avatar.heygen_avatar_id = f"heygen_{avatar.id}"

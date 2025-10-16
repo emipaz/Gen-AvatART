@@ -6,8 +6,8 @@ proporcionando un panel de control intermedio que permite la creación de avatar
 y reels bajo la supervisión de un productor. Incluye gestión de permisos jerárquicos.
 
 El módulo incluye:
-    - Dashboard de subproductor   : Estadísticas y resumen de actividad propia
-    - Gestión de avatares         : Creación con aprobación del productor
+    - Dashboard de subproductor  : Estadísticas y resumen de actividad propia
+    - Gestión de avatares        : Creación con aprobación del productor
     - Gestión de reels           : Creación usando avatares del productor
     - Panel de ganancias         : Control de comisiones personales
     - Validación jerárquica      : Verificación de permisos del productor padre
@@ -40,6 +40,7 @@ from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission
 from app.utils.date_utils import get_current_month_range
+from app.services.snapshot_service import save_avatar_snapshot
 from datetime import datetime
 subproducer_bp = Blueprint('subproducer', __name__)
 
@@ -240,6 +241,22 @@ def create_avatar():
         # Guardar en base de datos
         db.session.add(avatar)
         db.session.commit()
+
+        # Guardar snapshot para poder recrear este avatar luego (p. ej., por productor custodio)
+        save_avatar_snapshot(
+            avatar_id=avatar.id,
+            producer_id=producer.id,
+            created_by_id=current_user.id,
+            source="subproducer_ui",
+            inputs={
+                "name": name,
+                "description": description,
+                "avatar_type": avatar_type,
+                "language": language,
+                "tags": [t.strip() for t in tags.split(",") if t.strip()],
+            },
+            heygen_owner_hint=producer.company_name,
+        )
         
         flash('Avatar creado y enviado para aprobación', 'success')
         return redirect(url_for('subproducer.avatars'))
