@@ -170,7 +170,8 @@ Acciones disponibles:
     <!-- Sección de filtros y búsqueda -->
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" class="row g-3">
+            <form action="{{ url_for('producer.avatars') }}" method="get" class="row g-3">
+                
                 <!-- Filtro por idioma -->
                 <div class="col-md-3">
                     <label class="form-label">Idioma</label>
@@ -178,10 +179,10 @@ Acciones disponibles:
                         <option value="">Todos los idiomas</option>
                         {% if supported_languages %}
                             {% for language in supported_languages %}
-                                <option value="{{ language.code }}" 
-                                        {{ 'selected' if request.args.get('language') == language.code }}>
-                                    {{ language.name }}
-                                </option>
+                            <option value="{{ language.code }}"
+                                    {% if request.args.get('language') == language.code %}selected{% endif %}>
+                                {{ language.name }}
+                            </option>
                             {% endfor %}
                         {% endif %}
                     </select>
@@ -192,12 +193,8 @@ Acciones disponibles:
                     <label class="form-label">Género</label>
                     <select name="gender" class="form-select">
                         <option value="">Todos los géneros</option>
-                        <option value="male" {{ 'selected' if request.args.get('gender') == 'male' }}>
-                            Masculino
-                        </option>
-                        <option value="female" {{ 'selected' if request.args.get('gender') == 'female' }}>
-                            Femenino
-                        </option>
+                        <option value="male"   {% if request.args.get('gender') == 'male' %}selected{% endif %}>Masculino</option>
+                        <option value="female" {% if request.args.get('gender') == 'female' %}selected{% endif %}>Femenino</option>
                     </select>
                 </div>
 
@@ -205,29 +202,24 @@ Acciones disponibles:
                 <div class="col-md-3">
                     <label class="form-label">Estado</label>
                     <select name="status" class="form-select">
-                        <option value="">Todos los estados</option>
-                        <option value="active" {{ 'selected' if request.args.get('status') == 'active' }}>
-                            Activo
-                        </option>
-                        <option value="inactive" {{ 'selected' if request.args.get('status') == 'inactive' }}>
-                            Inactivo
-                        </option>
+                        <option value="ALL"        {% if selected_status == 'ALL' %}selected{% endif %}>Todos los estados</option>
+                        <option value="ACTIVE"     {% if selected_status == 'ACTIVE' %}selected{% endif %}>Activos</option>
+                        <option value="INACTIVE"   {% if selected_status == 'INACTIVE' %}selected{% endif %}>Inactivos</option>
+                        <option value="PROCESSING" {% if selected_status == 'PROCESSING' %}selected{% endif %}>Procesando</option>
                     </select>
                 </div>
 
                 <!-- Botón de filtro -->
-                <div class="col-md-3">
-                    <label class="form-label">&nbsp;</label>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-filter"></i> Filtrar
-                        </button>
-                    </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
+    
     <!-- Galería de avatars -->
     {% if avatars and avatars.total > 0 %}
         <!-- Grid de avatars en tarjetas -->
@@ -276,9 +268,18 @@ Acciones disponibles:
                     <!-- Información del avatar -->
                     <div class="card-body d-flex flex-column">
                         <!-- Nombre y descripción -->
-                        <h5 class="card-title">{{ avatar.name }}</h5>
+                        <h5 class="card-title">
+                            {{ avatar.name }}
+                            {% if avatar.meta_data and avatar.meta_data.get('recreated_from') %}
+                                <span class="badge bg-secondary ms-2">Recreado</span>
+                            {% endif %}
+                        </h5>
+
                         {% if avatar.description %}
-                            <p class="card-text text-muted">{{ avatar.description[:100] }}{% if avatar.description|length > 100 %}...{% endif %}</p>
+                            <p class="card-text text-muted">
+                                {{ avatar.description[:100] }}
+                                {% if avatar.description|length > 100 %}...{% endif %}
+                            </p>
                         {% endif %}
 
                         <!-- Características del avatar -->
@@ -321,8 +322,8 @@ Acciones disponibles:
                         <div class="mt-auto">
                             <div class="d-grid gap-2">
                                 <!-- Ver detalles del avatar -->
-                                <a href="{{ url_for('producer.avatars') }}" 
-                                   class="btn btn-primary">
+                                <a href="{{ url_for('producer.avatar_detail', avatar_id=avatar.id) }}" 
+                                    class="btn btn-primary">
                                     <i class="fas fa-eye"></i> Ver Detalles
                                 </a>
                                 
@@ -337,6 +338,19 @@ Acciones disponibles:
                                         <i class="fas fa-users"></i> Acceso
                                     </button>
                                 </div>
+
+                                {# Si no tenés st definido en la card, añadí esta línea arriba de los badges: #}
+                                {# {% set st = (avatar.status or '')|lower %} #}
+
+                                {% if (avatar.status or '')|lower != 'inactive' %}
+                                    <form class="mt-2" method="post"
+                                        action="{{ url_for('producer.archive_avatar', avatar_id=avatar.id) }}"
+                                        onsubmit="return confirm('¿Archivar este avatar? Podrás verlo filtrando por estado INACTIVE.');">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                            <i class="fas fa-box-archive"></i> Archivar
+                                        </button>
+                                    </form>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

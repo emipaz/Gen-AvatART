@@ -116,14 +116,14 @@ class Avatar(db.Model):
     
     # Metadatos y etiquetas
     # se usa meta_data por que metadata es palabra reservada en SQLAlchemy
-    meta_data = db.Column(db.JSON)         # Información adicional del avatar
-    tags      = db.Column(db.String(500))  # Tags separados por comas
+    meta_data = db.Column(db.JSON, nullable=True)         # Información adicional del avatar
+    tags      = db.Column(db.String(500))                 # Tags separados por comas
     
     # Campos de auditoría y timestamps
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at  = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # approved_at = db.Column(db.DateTime)
-    last_used   = db.Column(db.DateTime)
+    last_used   = db.Column(db.DateTime) 
     
     # Definición de relaciones con otros modelos
     created_by  = db.relationship('User', foreign_keys = [created_by_id] , backref = 'created_avatars')
