@@ -99,8 +99,8 @@ Acciones disponibles:
         </div>
         
         <!-- Botón para solicitar nuevo avatar -->
-        <a href="{{ url_for('producer.request_avatar') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Solicitar Avatar
+        <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Crear Avatar
         </a>
     </div>
 
@@ -364,8 +364,8 @@ Acciones disponibles:
             <i class="fas fa-user-circle fa-5x text-muted mb-4"></i>
             <h3 class="text-muted">No hay avatars disponibles</h3>
             <p class="text-muted mb-4">Solicita tu primer avatar para comenzar a crear contenido.</p>
-            <a href="{{ url_for('producer.request_avatar') }}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Solicitar Primer Avatar
+            <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Crear Primer Avatar
             </a>
         </div>
     {% endif %}
