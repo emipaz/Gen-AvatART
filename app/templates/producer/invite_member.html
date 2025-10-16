@@ -28,28 +28,25 @@ Clases Bootstrap utilizadas:
 
 Variables Jinja utilizadas:
     - current_user: Usuario productor que invita
-    - form: Formulario WTForms de invitación
-    - pending_invitations: Lista de invitaciones pendientes
     - available_roles: Roles disponibles para asignar
 
 Campos del formulario:
     - email: Email del usuario a invitar (required, email validation)
     - first_name: Nombre del invitado (required)
     - last_name: Apellido del invitado (required)
-    - role: Rol a asignar (subproducer/final_user)
-    - permissions: Permisos específicos según rol
+    - role: Rol a asignar (subproducer/affiliate)
+    - username: Nombre de usuario para la nueva cuenta
+    - password: Contraseña para la nueva cuenta
     - welcome_message: Mensaje personalizado de bienvenida
 
 Rutas Flask referenciadas (url_for):
     - producer.team: Volver a gestión de equipo
     - producer.dashboard: Volver al dashboard
-    - producer.send_invitation: Procesar envío de invitación
-    - producer.resend_invitation: Reenviar invitación
-    - producer.cancel_invitation: Cancelar invitación pendiente
+    - producer.invite_member: Procesar creación de nuevo miembro
 
 Roles disponibles para invitación:
-    - subproducer: Puede gestionar usuarios finales
-    - final_user: Usuario final que crea contenido
+    - subproducer: Puede gestionar usuarios finales y crear contenido
+    - affiliate: Usuario final que crea contenido
 
 Permisos configurables:
     - can_create_reels: Puede crear reels
@@ -57,21 +54,10 @@ Permisos configurables:
     - can_invite_users: Puede invitar otros usuarios (solo subproductores)
     - can_view_analytics: Puede ver analíticas del equipo
 
-Estados de invitación:
-    - pending: Enviada pero no aceptada
-    - accepted: Aceptada por el usuario
-    - expired: Invitación caducada
-    - cancelled: Cancelada por el productor
-
 Iconografía Font Awesome:
     - fas fa-user-plus: Invitar usuarios
-    - fas fa-envelope: Email e invitaciones
+    - fas fa-envelope: Email y mensajes
     - fas fa-users: Gestión de equipo
-    - fas fa-check-circle: Invitación aceptada
-    - fas fa-clock: Invitación pendiente
-    - fas fa-times-circle: Invitación cancelada
-    - fas fa-redo: Reenviar invitación
-    - fas fa-trash: Cancelar invitación
     - fas fa-cog: Configuración de permisos
 
 Validaciones del formulario:
@@ -84,8 +70,7 @@ Validaciones del formulario:
 Funcionalidades JavaScript:
     - Actualización dinámica de permisos según rol
     - Validación en tiempo real del formulario
-    - Confirmación antes de cancelar invitaciones
-    - Preview del email de invitación
+    - Preview del formulario de invitación
 #}
 
 {% extends "base.html" %}
@@ -125,10 +110,8 @@ Funcionalidades JavaScript:
                     </h5>
                 </div>
                 <div class="card-body">
-                    <!-- Formulario de invitación -->
+                    <!-- Formulario de invitación con campos HTML estándar -->
                     <form method="POST" id="invitationForm">
-                        {{ form.hidden_tag() }}
-                        
                         <!-- Información básica del invitado -->
                         <div class="row mb-4">
                             <div class="col-12">
@@ -139,40 +122,30 @@ Funcionalidades JavaScript:
                             
                             <!-- Campo de email -->
                             <div class="col-md-12 mb-3">
-                                {{ form.email.label(class="form-label") }}
-                                {{ form.email(class="form-control", placeholder="usuario@email.com") }}
-                                {% if form.email.errors %}
-                                    <div class="text-danger">
-                                        {% for error in form.email.errors %}
-                                            <small>{{ error }}</small>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" id="email" name="email" class="form-control" placeholder="usuario@email.com" required>
                             </div>
                             
                             <!-- Campos de nombre y apellido -->
                             <div class="col-md-6 mb-3">
-                                {{ form.first_name.label(class="form-label") }}
-                                {{ form.first_name(class="form-control", placeholder="Nombre") }}
-                                {% if form.first_name.errors %}
-                                    <div class="text-danger">
-                                        {% for error in form.first_name.errors %}
-                                            <small>{{ error }}</small>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+                                <label for="first_name" class="form-label">Nombre</label>
+                                <input type="text" id="first_name" name="first_name" class="form-control" placeholder="Nombre" required>
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                {{ form.last_name.label(class="form-label") }}
-                                {{ form.last_name(class="form-control", placeholder="Apellido") }}
-                                {% if form.last_name.errors %}
-                                    <div class="text-danger">
-                                        {% for error in form.last_name.errors %}
-                                            <small>{{ error }}</small>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+                                <label for="last_name" class="form-label">Apellido</label>
+                                <input type="text" id="last_name" name="last_name" class="form-control" placeholder="Apellido" required>
+                            </div>
+                            
+                            <!-- Campos de credenciales -->
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Nombre de Usuario</label>
+                                <input type="text" id="username" name="username" class="form-control" placeholder="username" required>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Contraseña</label>
+                                <input type="password" id="password" name="password" class="form-control" placeholder="Contraseña" required>
                             </div>
                         </div>
 
@@ -186,15 +159,12 @@ Funcionalidades JavaScript:
                             
                             <!-- Selector de rol -->
                             <div class="col-md-6 mb-3">
-                                {{ form.role.label(class="form-label") }}
-                                {{ form.role(class="form-select", id="roleSelect") }}
-                                {% if form.role.errors %}
-                                    <div class="text-danger">
-                                        {% for error in form.role.errors %}
-                                            <small>{{ error }}</small>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+                                <label for="role" class="form-label">Rol</label>
+                                <select id="roleSelect" name="role" class="form-select" required>
+                                    <option value="">Seleccionar rol...</option>
+                                    <option value="subproducer">Subproductor</option>
+                                    <option value="affiliate">Usuario Final</option>
+                                </select>
                                 
                                 <!-- Descripción del rol seleccionado -->
                                 <div id="roleDescription" class="mt-2">
@@ -219,9 +189,9 @@ Funcionalidades JavaScript:
                                     <i class="fas fa-message"></i> Mensaje de Bienvenida (Opcional)
                                 </h6>
                                 
-                                {{ form.welcome_message.label(class="form-label") }}
-                                {{ form.welcome_message(class="form-control", rows="4", 
-                                    placeholder="Escribe un mensaje personalizado de bienvenida...") }}
+                                <label for="welcome_message" class="form-label">Mensaje de Bienvenida</label>
+                                <textarea name="welcome_message" id="welcome_message" class="form-control" rows="4" 
+                                    placeholder="Escribe un mensaje personalizado de bienvenida..."></textarea>
                                 <small class="form-text text-muted">
                                     Este mensaje se incluirá en el email de invitación
                                 </small>
@@ -247,69 +217,7 @@ Funcionalidades JavaScript:
                 </div>
             </div>
 
-            <!-- Card con invitaciones pendientes -->
-            {% if pending_invitations %}
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-clock"></i> Invitaciones Pendientes
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Invitado</th>
-                                    <th>Rol</th>
-                                    <th>Fecha Enviada</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for invitation in pending_invitations %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ invitation.first_name }} {{ invitation.last_name }}</strong>
-                                        <br><small class="text-muted">{{ invitation.email }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-light text-dark">
-                                            {{ invitation.role.title() }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {{ invitation.created_at.strftime('%d/%m/%Y') }}
-                                        <br><small class="text-muted">{{ invitation.created_at.strftime('%H:%M') }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{{ 'warning' if invitation.status == 'pending' else 'success' if invitation.status == 'accepted' else 'danger' }}">
-                                            {{ invitation.status.title() }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if invitation.status == 'pending' %}
-                                            <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                        onclick="resendInvitation({{ invitation.id }})">
-                                                    <i class="fas fa-redo"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        onclick="cancelInvitation({{ invitation.id }})">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
+
         </div>
     </div>
 </div>
@@ -350,7 +258,7 @@ const rolePermissions = {
             { id: 'can_view_analytics', label: 'Ver analíticas del equipo', default: true }
         ]
     },
-    'final_user': {
+    'affiliate': {
         description: 'Usuario final que puede crear contenido usando los avatars disponibles',
         permissions: [
             { id: 'can_create_reels', label: 'Crear reels', default: true },
@@ -438,44 +346,6 @@ function sendInvitation() {
     document.getElementById('invitationForm').submit();
 }
 
-// Reenviar invitación
-function resendInvitation(invitationId) {
-    if (confirm('¿Reenviar la invitación?')) {
-        fetch(`{{ url_for('producer.resend_invitation', invitation_id=0) }}`.replace('0', invitationId), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Invitación reenviada correctamente');
-            } else {
-                alert('Error al reenviar la invitación');
-            }
-        });
-    }
-}
 
-// Cancelar invitación
-function cancelInvitation(invitationId) {
-    if (confirm('¿Cancelar esta invitación? Esta acción no se puede deshacer.')) {
-        fetch(`{{ url_for('producer.cancel_invitation', invitation_id=0) }}`.replace('0', invitationId), {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error al cancelar la invitación');
-            }
-        });
-    }
-}
 </script>
 {% endblock %}
