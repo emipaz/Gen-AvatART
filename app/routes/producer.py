@@ -845,7 +845,41 @@ def invite_member():
 def settings():
     """
     Panel de configuración del productor.
-    
+    # Vista de configuración del productor
+    # Obtiene el perfil del productor actual
+    producer = current_user.producer_profile
+
+    # Si el método es POST, procesar el formulario
+    if request.method == 'POST':
+        # Procesar solo si el formulario enviado es el de la API key de HeyGen
+        form_type = request.form.get('form_type')
+        if form_type == 'heygen_api_key':
+            heygen_api_key = request.form.get('heygen_api_key')
+            if heygen_api_key:
+                # Guardar la API key encriptada usando el método del modelo
+                # Esto sobrescribe la clave anterior
+                try:
+                    producer.set_heygen_api_key(heygen_api_key)
+                    db.session.commit()
+                    flash('API key de HeyGen actualizada correctamente.', 'success')
+                except Exception as e:
+                    flash(f'Error al guardar la API key: {str(e)}', 'danger')
+            # Redirigir para evitar reenvío del formulario
+            return redirect(url_for('producer.settings'))
+        # ...aquí puedes procesar otros formularios si lo necesitas...
+
+    # Obtiene la API key de HeyGen enmascarada (solo primeros y últimos caracteres)
+    # Usamos el método get_masked_heygen_api_key() del modelo Producer
+    masked_api_key = producer.get_masked_heygen_api_key() if producer else None
+
+    # Renderiza el template de configuración, pasando la API key enmascarada
+    # La variable 'masked_api_key' estará disponible en settings.html
+    return render_template(
+        'producer/settings.html',
+        masked_api_key=masked_api_key,
+        producer=producer
+        # ...otras variables de contexto si las necesitas
+    )
     Permite al productor actualizar su información personal,
     datos comerciales y configuraciones técnicas como la API key
     de HeyGen. Incluye validación automática de nuevas API keys.
@@ -882,53 +916,57 @@ def settings():
     producer = current_user.producer_profile
     
     if request.method == 'POST':
+        form_type = request.form.get('form_type')
         try:
-            # Actualizar información del usuario
-            current_user.first_name = request.form.get('first_name')
-            current_user.last_name  = request.form.get('last_name')
-            current_user.phone      = request.form.get('phone')
-            
-            # Actualizar información del productor
-            if producer:
-                producer.company_name  = request.form.get('company_name')
-                producer.business_type = request.form.get('business_type')
-                producer.website       = request.form.get('website')
-                
-                # Actualizar API key si se proporciona una nueva
+            if form_type == 'heygen_api_key':
+                # Solo actualizar la API key, no tocar otros campos
                 new_api_key = request.form.get('heygen_api_key')
                 if new_api_key and new_api_key.strip():
-                    # Si no son solo asteriscos (campo enmascarado)
                     if not all(c == '•' for c in new_api_key):
                         try:
-                            # Encriptar y guardar la nueva API key
                             producer.set_heygen_api_key(new_api_key.strip())
-                            
-                            # Marcar como pendiente de validación
                             producer.set_setting('api_validation_status', 'pending')
-                            
-                            # TODO: Aquí se podría hacer validación inmediata
-                            # Por ahora, marcamos como válida para pruebas
                             producer.set_setting('api_validation_status', 'valid')
-                            
                             flash('✅ API key de HeyGen configurada exitosamente. '
                                   'Ya puedes comenzar a crear avatares.', 'success')
                         except Exception as e:
                             flash(f'❌ Error al configurar API key: {str(e)}', 'error')
                             db.session.rollback()
                             return redirect(url_for('producer.settings'))
-                
-                # Actualizar timestamp
                 producer.updated_at = datetime.utcnow()
-            
+                db.session.commit()
+                return redirect(url_for('producer.settings'))
+            # Si no es solo API key, procesar el resto del formulario normal
+            # Actualizar información del usuario
+            current_user.first_name = request.form.get('first_name')
+            current_user.last_name  = request.form.get('last_name')
+            current_user.phone      = request.form.get('phone')
+            # Actualizar información del productor
+            if producer:
+                producer.company_name  = request.form.get('company_name')
+                producer.business_type = request.form.get('business_type')
+                producer.website       = request.form.get('website')
+                # Actualizar API key si se proporciona una nueva
+                new_api_key = request.form.get('heygen_api_key')
+                if new_api_key and new_api_key.strip():
+                    if not all(c == '•' for c in new_api_key):
+                        try:
+                            producer.set_heygen_api_key(new_api_key.strip())
+                            producer.set_setting('api_validation_status', 'pending')
+                            producer.set_setting('api_validation_status', 'valid')
+                            flash('✅ API key de HeyGen configurada exitosamente. '
+                                  'Ya puedes comenzar a crear avatares.', 'success')
+                        except Exception as e:
+                            flash(f'❌ Error al configurar API key: {str(e)}', 'error')
+                            db.session.rollback()
+                            return redirect(url_for('producer.settings'))
+                producer.updated_at = datetime.utcnow()
             db.session.commit()
-            
             if not new_api_key or new_api_key.strip() == '' or all(c == '•' for c in new_api_key):
                 flash('✅ Configuración actualizada exitosamente', 'success')
-                
         except Exception as e:
             db.session.rollback()
             flash(f'❌ Error al actualizar configuración: {str(e)}', 'error')
-            
         return redirect(url_for('producer.settings'))
     
     # Renderizar template con información actual
@@ -1054,3 +1092,10 @@ def api_heygen_status():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
+@producer_bp.route('/api/masked-heygen-key')
+@login_required
+@producer_required
+def api_masked_heygen_key():
+    producer = current_user.producer_profile
+    masked_api_key = producer.get_masked_heygen_api_key() if producer else None
+    return jsonify({'masked_api_key': masked_api_key})
