@@ -130,6 +130,24 @@ class Avatar(db.Model):
     # approved_by = db.relationship('User', foreign_keys = [approved_by_id], backref = 'approved_avatars')
     reels       = db.relationship('Reel', back_populates = 'avatar', lazy = 'dynamic')
     
+    # cambos para habilitar/deshabilitar por admin o productor
+    enabled_by_admin       = db.Column(db.Boolean, default = False)
+    enabled_by_producer    = db.Column(db.Boolean, default = False)
+    enabled_by_subproducer = db.Column(db.Boolean, default = False)  # si el subproductor lo habilitó
+
+    def is_available(self):
+        """
+        Verifica si el avatar está disponible para uso.
+        
+        Returns:
+            bool: True si el avatar está activo y habilitado, False en caso contrario
+        """
+        return (self.status == AvatarStatus.ACTIVE and 
+                self.enabled_by_admin and 
+                self.enabled_by_producer and
+                self.enabled_by_subproducer
+            )
+
     def __repr__(self):
         """
         Representación en string del objeto Avatar.

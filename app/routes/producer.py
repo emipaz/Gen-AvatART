@@ -847,39 +847,7 @@ def settings():
     Panel de configuración del productor.
     # Vista de configuración del productor
     # Obtiene el perfil del productor actual
-    producer = current_user.producer_profile
 
-    # Si el método es POST, procesar el formulario
-    if request.method == 'POST':
-        # Procesar solo si el formulario enviado es el de la API key de HeyGen
-        form_type = request.form.get('form_type')
-        if form_type == 'heygen_api_key':
-            heygen_api_key = request.form.get('heygen_api_key')
-            if heygen_api_key:
-                # Guardar la API key encriptada usando el método del modelo
-                # Esto sobrescribe la clave anterior
-                try:
-                    producer.set_heygen_api_key(heygen_api_key)
-                    db.session.commit()
-                    flash('API key de HeyGen actualizada correctamente.', 'success')
-                except Exception as e:
-                    flash(f'Error al guardar la API key: {str(e)}', 'danger')
-            # Redirigir para evitar reenvío del formulario
-            return redirect(url_for('producer.settings'))
-        # ...aquí puedes procesar otros formularios si lo necesitas...
-
-    # Obtiene la API key de HeyGen enmascarada (solo primeros y últimos caracteres)
-    # Usamos el método get_masked_heygen_api_key() del modelo Producer
-    masked_api_key = producer.get_masked_heygen_api_key() if producer else None
-
-    # Renderiza el template de configuración, pasando la API key enmascarada
-    # La variable 'masked_api_key' estará disponible en settings.html
-    return render_template(
-        'producer/settings.html',
-        masked_api_key=masked_api_key,
-        producer=producer
-        # ...otras variables de contexto si las necesitas
-    )
     Permite al productor actualizar su información personal,
     datos comerciales y configuraciones técnicas como la API key
     de HeyGen. Incluye validación automática de nuevas API keys.

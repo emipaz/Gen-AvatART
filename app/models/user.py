@@ -100,6 +100,8 @@ class User(UserMixin, db.Model):
     
     # Clave primaria
     id            = db.Column(db.Integer, primary_key = True)
+    is_owner      = db.Column(db.Boolean, default=False)  # Solo uno puede ser True
+    is_admin      = db.Column(db.Boolean, default=False)  # Puede haber varios
     email         = db.Column(db.String(120), unique = True, nullable = False, index = True)
     username      = db.Column(db.String(80),  unique = True, nullable = False, index = True)
     password_hash = db.Column(db.String(128), nullable = False)
