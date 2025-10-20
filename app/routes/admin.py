@@ -1,3 +1,4 @@
+
 """
 Módulo de rutas de administración para la aplicación Gen-AvatART.
 
@@ -77,6 +78,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required
@@ -154,6 +156,40 @@ def dashboard():
                          recent_reels    = recent_reels,
                          pending_avatars = pending_avatars,
                          pending_reels   = pending_reels)
+
+@admin_bp.route('/users/create_admin', methods=['POST'])
+@login_required
+def create_admin():
+    """
+    Endpoint para crear un nuevo administrador. Solo el dueño puede acceder.
+    Espera: email, nombre, apellido, username, password.
+    """
+    if not current_user.is_owner:
+        return jsonify({'error': 'Solo el dueño puede crear administradores.'}), 403
+    data = request.form
+    email = data.get('email')
+    username = data.get('username')
+    first_name = data.get('first_name')
+    last_name = data.get('last_name')
+    password = data.get('password')
+    if not all([email, username, first_name, last_name, password]):
+        return jsonify({'error': 'Todos los campos son obligatorios.'}), 400
+    if User.query.filter_by(email=email).first() or User.query.filter_by(username=username).first():
+        return jsonify({'error': 'El email o username ya existe.'}), 400
+    user = User(
+        email=email,
+        username=username,
+        first_name=first_name,
+        last_name=last_name,
+        role=UserRole.ADMIN,
+        status=UserStatus.ACTIVE,
+        is_verified=True
+    )
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({'success': True, 'user_id': user.id})
+
 
 @admin_bp.route('/users')
 @login_required
@@ -389,10 +425,14 @@ def delete_user(user_id):
     user     = User.query.get_or_404(user_id)
     username = user.username
     
-    # No permitir eliminar otros administradores
-    if user.is_admin():
-        flash('No se puede eliminar un administrador', 'error')
-        return redirect(url_for('admin.user_detail', user_id=user_id))
+    # Permitir que el dueño elimine administradores secundarios, pero nunca a sí mismo ni a otros dueños
+    if user.role == UserRole.ADMIN:
+        if user.is_owner:
+            flash('No se puede eliminar al dueño de la plataforma.', 'error')
+            return redirect(url_for('admin.user_detail', user_id=user_id))
+        if not current_user.is_owner:
+            flash('Solo el dueño puede eliminar administradores.', 'error')
+            return redirect(url_for('admin.user_detail', user_id=user_id))
     
     # Si estoy eliminando a un PRODUCTOR: dejar huérfanos a sus subproductores
     if user.is_producer():

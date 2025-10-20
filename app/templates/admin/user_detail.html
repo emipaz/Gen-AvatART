@@ -181,11 +181,18 @@ Seguridad implementada:
       <!-- h-100 hace que todas las cards tengan la misma altura -->
       <div class="card h-100">
         <div class="card-body">
-          <!-- Label descriptivo con estilo muted y tamaño pequeño -->
           <div class="text-muted small">Rol</div>
-          <!-- Valor del rol con peso de fuente semibold -->
-          <!-- Usa valor del enum si existe, sino muestra guión -->
-          <div class="fw-semibold">{{ user.role.value if user.role else '—' }}</div>
+          <div class="fw-semibold">
+            {% if user.is_owner %}
+              <span class="badge bg-dark">Dueño</span>
+            {% elif user.role.value == 'admin' %}
+              <span class="badge bg-danger">Admin</span>
+            {% else %}
+              <span class="badge bg-{{ 'primary' if user.role.value == 'producer' else 'success' if user.role.value == 'subproducer' else 'info' }}">
+                {{ user.role.value.title() }}
+              </span>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>
@@ -302,54 +309,45 @@ Seguridad implementada:
   <!-- flex-wrap permite que los botones se envuelvan en pantallas pequeñas -->
   <div class="d-flex gap-2 flex-wrap">
 
-    <!-- Formulario independiente para aprobar usuario -->
-    <!-- method="post" para seguridad en acciones críticas -->
-    <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
-      <!-- Botón de aprobación con lógica condicional -->
-      <!-- Habilitado solo si el estado es 'pending' o 'suspended' -->
-      <!-- user.status.value|lower convierte a minúsculas para comparación -->
-      <!-- btn-success (verde) si está habilitado, btn-secondary (gris) si no -->
-      <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm"
-              {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
-        <!-- Icono de check con margen derecho -->
-        <i class="fas fa-check me-1"></i> Aprobar
-      </button>
-    </form>
-
-    <!-- Formulario independiente para suspender usuario -->
-    <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
-      <!-- Botón de suspensión con validación de estado -->
-      <!-- Habilitado solo si el estado actual es 'active' -->
-      <!-- btn-warning (amarillo) para acción de advertencia -->
-      <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm"
-              {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
-        <!-- Icono de prohibición con margen derecho -->
-        <i class="fas fa-ban me-1"></i> Suspender
-      </button>
-    </form>
-
-    <!-- Botón de promoción a productor con doble validación -->
-    <!-- Solo visible para usuarios finales (final_user) que estén activos -->
-    <!-- Doble condicional asegura que cumple ambos requisitos -->
-    {% if user.role.value == 'final_user' and user.status.value == 'active' %}
-    <!-- Botón que activa modal Bootstrap -->
-    <!-- data-bs-toggle y data-bs-target controlan el modal -->
-    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#promoteModal">
-      <!-- Icono de flecha hacia arriba para indicar promoción -->
-      <i class="fas fa-arrow-up me-1"></i> Promocionar a Productor
-    </button>
+    {% if current_user.is_owner %}
+      <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+        <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm"
+                {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
+          <i class="fas fa-check me-1"></i> Aprobar
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
+        <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm"
+                {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
+          <i class="fas fa-ban me-1"></i> Suspender
+        </button>
+      </form>
+      {% if not user.is_owner and user.is_admin %}
+        <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este administrador?');">
+          <button class="btn btn-danger btn-sm">
+            <i class="fas fa-trash-alt me-1"></i> Eliminar Admin
+          </button>
+        </form>
+      {% endif %}
+    {% elif current_user.is_admin %}
+      <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+        <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm"
+                {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
+          <i class="fas fa-check me-1"></i> Aprobar
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
+        <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm"
+                {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
+          <i class="fas fa-ban me-1"></i> Suspender
+        </button>
+      </form>
     {% endif %}
-
-    <!-- Formulario para eliminación con confirmación JavaScript -->
-    <!-- onsubmit ejecuta confirmación antes de enviar el formulario -->
-    <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
-      <!-- Botón de eliminación con color de peligro -->
-      <!-- btn-danger (rojo) indica acción destructiva -->
-      <button class="btn btn-danger btn-sm">
-        <!-- Icono de papelera para indicar eliminación -->
-        <i class="fas fa-trash-alt me-1"></i> Eliminar
+    {% if user.role.value == 'final_user' and user.status.value == 'active' %}
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#promoteModal">
+        <i class="fas fa-arrow-up me-1"></i> Promocionar a Productor
       </button>
-    </form>
+    {% endif %}
   </div>
 
   <!-- Modal para promocionar a productor -->

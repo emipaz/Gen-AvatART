@@ -119,9 +119,85 @@ Funcionalidades JavaScript:
         <div class="col-md-9 col-lg-10">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1><i class="fas fa-users"></i> Gestión de Usuarios</h1>
-                <a href="{{ url_for('admin.create_producer') }}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Crear Productor
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('admin.create_producer') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Productor
+                    </a>
+                    {% if current_user.is_owner %}
+                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalCrearAdmin">
+                        <i class="fas fa-user-shield"></i> Crear Admin
+                    </button>
+                    {% endif %}
+                </div>
+                        {% if current_user.is_owner %}
+                        <!-- Modal para crear admin -->
+                        <div class="modal fade" id="modalCrearAdmin" tabindex="-1" aria-labelledby="modalCrearAdminLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form id="formCrearAdmin">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="modalCrearAdminLabel">Crear Administrador</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">Email</label>
+                                                <input type="email" name="email" class="form-control" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Username</label>
+                                                <input type="text" name="username" class="form-control" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Nombre</label>
+                                                <input type="text" name="first_name" class="form-control" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Apellido</label>
+                                                <input type="text" name="last_name" class="form-control" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Contraseña</label>
+                                                <input type="password" name="password" class="form-control" required>
+                                            </div>
+                                            <div id="crearAdminError" class="text-danger small"></div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger">Crear Admin</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var form = document.getElementById('formCrearAdmin');
+                            if(form) {
+                                form.addEventListener('submit', function(e) {
+                                    e.preventDefault();
+                                    var data = new FormData(form);
+                                    fetch("{{ url_for('admin.create_admin') }}", {
+                                        method: 'POST',
+                                        body: data,
+                                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                                    })
+                                    .then(r => r.json())
+                                    .then(resp => {
+                                        if(resp.success) {
+                                            location.reload();
+                                        } else {
+                                            document.getElementById('crearAdminError').innerText = resp.error || 'Error desconocido';
+                                        }
+                                    })
+                                    .catch(() => {
+                                        document.getElementById('crearAdminError').innerText = 'Error de red';
+                                    });
+                                });
+                            }
+                        });
+                        </script>
+                        {% endif %}
             </div>
 
             <!-- Filtros -->
@@ -201,9 +277,15 @@ Funcionalidades JavaScript:
                                         </td>
                                         <td>{{ user.email }}</td>
                                         <td>
-                                            <span class="badge bg-{{ 'danger' if user.role.value == 'admin' else 'primary' if user.role.value == 'producer' else 'success' if user.role.value == 'subproducer' else 'info' }}">
-                                                {{ user.role.value.title() }}
-                                            </span>
+                                            {% if user.is_owner %}
+                                                <span class="badge bg-dark">Dueño</span>
+                                            {% elif user.role.value == 'admin' %}
+                                                <span class="badge bg-danger">Admin</span>
+                                            {% else %}
+                                                <span class="badge bg-{{ 'primary' if user.role.value == 'producer' else 'success' if user.role.value == 'subproducer' else 'info' }}">
+                                                    {{ user.role.value.title() }}
+                                                </span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <span class="badge bg-{{ 'success' if user.status.value == 'active' else 'warning' if user.status.value == 'pending' else 'danger' if user.status.value == 'suspended' else 'secondary' }}">
