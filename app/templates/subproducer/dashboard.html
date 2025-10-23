@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h1>Dashboard Subproductor</h1>
+    <hr>
+    <h3>Estadísticas</h3>
+    <ul>
+        <li><b>Total de avatares:</b> {{ stats.total_avatars }}</li>
+        <li><b>Avatares aprobados:</b> {{ stats.approved_avatars }}</li>
+        <li><b>Avatares pendientes:</b> {{ stats.pending_avatars }}</li>
+        <li><b>Total de reels:</b> {{ stats.total_reels }}</li>
+        <li><b>Reels completados:</b> {{ stats.completed_reels }}</li>
+        <li><b>Ganancias aprobadas:</b> {{ stats.total_earnings }}</li>
+        <li><b>Ganancias pendientes:</b> {{ stats.pending_earnings }}</li>
+        <li><b>Productor supervisor:</b> {{ stats.producer_name }}</li>
+    </ul>
+    <h3>Avatares recientes</h3>
+    <ul>
+        {% for avatar in recent_avatars %}
+            <li>{{ avatar.name }} - {{ avatar.created_at }}</li>
+        {% else %}
+            <li>No hay avatares recientes.</li>
+        {% endfor %}
+    </ul>
+    <h3>Reels recientes</h3>
+    <ul>
+        {% for reel in recent_reels %}
+            <li>{{ reel.title }} - {{ reel.created_at }}</li>
+        {% else %}
+            <li>No hay reels recientes.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

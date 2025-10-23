@@ -275,7 +275,7 @@ def register_invite(token):
     # Por ahora, simplemente redirigir al registro normal
     return redirect(url_for('auth.register'))
 
-@auth_bp.route('/verify-email/<token>')
+@auth_bp.route('/verify-email/<token>', methods=['GET', 'POST'])
 def verify_email(token):
     """
     Verifica el email del usuario mediante el token recibido.
@@ -307,6 +307,29 @@ def verify_email(token):
 
     if not user:
         return render_template('auth/verification_failed.html')
+
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        if not new_password or len(new_password) < 6:
+            flash('La contraseña debe tener al menos 6 caracteres.', 'error')
+            return render_template('auth/set_password.html', token=token)
+        if new_password != confirm_password:
+            flash('Las contraseñas no coinciden.', 'error')
+            return render_template('auth/set_password.html', token=token)
+        user.set_password(new_password)
+        user.email_verified = True
+        user.status = UserStatus.ACTIVE
+        user.email_verification_token = None
+        db.session.commit()
+        login_user(user)
+        flash("Cuenta activada y contraseña establecida. ¡Bienvenido!", "success")
+        return redirect(url_for('auth.complete_profile'))
+
+    # Si el usuario aún no tiene contraseña (invitado), mostrar formulario para setearla
+    if not user.password_hash or user.status == UserStatus.PENDING:
+        return render_template('auth/set_password.html', token=token)
+
 
     # Marcar como verificado y limpiar token
     user.email_verified           = True

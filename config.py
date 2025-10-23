@@ -72,6 +72,7 @@ class Config:
     MAIL_USE_TLS  = config('MAIL_USE_TLS', default=True, cast=bool)
     MAIL_USERNAME = config('MAIL_USERNAME', default='')
     MAIL_PASSWORD = config('MAIL_PASSWORD', default='')
+    MAIL_DEFAULT_SENDER = config('MAIL_DEFAULT_SENDER', default='noreply@gem-avatart.com')
     
     # JWT Configuration
     JWT_SECRET_KEY           = config('JWT_SECRET_KEY', default='jwt-secret-change-in-production')

@@ -110,20 +110,38 @@ def dashboard():
         - Información de ganancias personal únicamente
     """
     producer = current_user.get_producer()
-    
+
+    def safe_count(obj):
+        if hasattr(obj, 'count') and callable(obj.count) and not isinstance(obj, list):
+            return obj.count()
+        return len(obj)
+
+    def safe_filter(obj, **kwargs):
+        if hasattr(obj, 'filter_by'):
+            return obj.filter_by(**kwargs)
+        return [item for item in obj if all(getattr(item, k) == v for k, v in kwargs.items())]
+
     stats = {
-        'total_avatars' : current_user.created_avatars.count(),
-        'approved_avatars' : current_user.created_avatars.filter_by( status = AvatarStatus.ACTIVE).count(),
-        'pending_avatars'  : current_user.created_avatars.filter_by( status = AvatarStatus.PROCESSING).count(),
-        'total_reels'      : current_user.reels.count(),
-        'completed_reels'  : current_user.reels.filter_by( status = ReelStatus.COMPLETED).count(),
-        'total_earnings'   : Commission.get_user_total_earnings(current_user.id, 'approved'),
-        'pending_earnings' : Commission.get_user_total_earnings(current_user.id, 'pending'),
-        'producer_name'    : producer.user.full_name if producer else 'N/A'
+        'total_avatars': safe_count(current_user.created_avatars),
+        'approved_avatars': safe_count(safe_filter(current_user.created_avatars, status=AvatarStatus.ACTIVE)),
+        'pending_avatars': safe_count(safe_filter(current_user.created_avatars, status=AvatarStatus.PROCESSING)),
+        'total_reels': safe_count(current_user.reels),
+        'completed_reels': safe_count(safe_filter(current_user.reels, status=ReelStatus.COMPLETED)),
+        'total_earnings': Commission.get_user_total_earnings(current_user.id, 'approved'),
+        'pending_earnings': Commission.get_user_total_earnings(current_user.id, 'pending'),
+        'producer_name': producer.user.full_name if producer else 'N/A'
     }
-    
-    recent_avatars = current_user.created_avatars.order_by(Avatar.created_at.desc()).limit(5).all()
-    recent_reels   = current_user.reels.order_by(Reel.created_at.desc()).limit(5).all()
+
+    # Recientes: ordena por created_at si es lista, si no usa query
+    if hasattr(current_user.created_avatars, 'order_by'):
+        recent_avatars = current_user.created_avatars.order_by(Avatar.created_at.desc()).limit(5).all()
+    else:
+        recent_avatars = sorted(current_user.created_avatars, key=lambda a: a.created_at, reverse=True)[:5]
+
+    if hasattr(current_user.reels, 'order_by'):
+        recent_reels = current_user.reels.order_by(Reel.created_at.desc()).limit(5).all()
+    else:
+        recent_reels = sorted(current_user.reels, key=lambda r: r.created_at, reverse=True)[:5]
     
     return render_template('subproducer/dashboard.html',
                          stats          = stats,

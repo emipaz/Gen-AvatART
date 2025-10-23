@@ -805,6 +805,7 @@ def invite_member():
         - Relación jerárquica establecida automáticamente
         - Validación de unicidad para email y username
     """
+    from app.services.email_service import send_template_email
     producer = current_user.producer_profile
     
     if request.method == 'POST':
@@ -846,14 +847,30 @@ def invite_member():
             first_name    = first_name,
             last_name     = last_name,
             role          = UserRole(role),
-            status        = UserStatus.ACTIVE,
-            invited_by_id = current_user.id
+            status        = UserStatus.PENDING,
+            invited_by_id = current_user.id,
+            is_verified   = False  # Invitados por el productor se marcan como no verificados
         )
         # Establecer contraseña
         user.set_password(password)
         
         db.session.add(user)
         db.session.commit()
+
+        # Generar token de verificación
+        token = user.generate_verification_token()
+        # Enviar email de invitación
+        send_template_email(
+            template_name="invitation",
+            subject="Te han invitado a Gem-AvatART",
+            recipients=[user.email],
+            template_vars={
+                "user_name"         : user.full_name,
+                "producer_name"     : current_user.full_name,
+                "verification_link" : url_for('auth.verify_email', token=token, _external=True),
+                "app_name"          : "Gem-AvatART"
+            }
+        )
         
         flash(f'{role.title()} {username} agregado exitosamente', 'success')
         return redirect(url_for('producer.team'))
