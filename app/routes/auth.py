@@ -223,7 +223,7 @@ def register():
             last_name      = last_name,
             phone          = phone,
             role           = UserRole.FINAL_USER,
-            status         = UserStatus.PENDING,
+            status         = UserStatus.PENDING, # cambiar a PENDING si se requiere aprobación
             email_verified = False  # nuevo campo para verificación de email
         )
         user.set_password(password)
@@ -309,7 +309,8 @@ def verify_email(token):
         return render_template('auth/verification_failed.html')
 
     # Marcar como verificado y limpiar token
-    user.email_verified = True
+    user.email_verified           = True
+    user.status                   = UserStatus.ACTIVE  # Activar cuenta al verificar email
     user.email_verification_token = None
     db.session.commit()
 
