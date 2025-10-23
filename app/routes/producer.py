@@ -178,13 +178,21 @@ def dashboard():
         Reel.status        == ReelStatus.PENDING
     ).all()
     
+    # Obtener lista de subproductores para la sección "Mi Equipo" del dashboard
+    subproducers = User.query.filter_by(
+        invited_by_id = current_user.id,
+        role          = UserRole.SUBPRODUCER,
+        status        = UserStatus.ACTIVE
+    ).all()
+    
     return render_template('producer/dashboard.html',
                          stats           = stats,
                          team_stats      = stats,  # Alias para compatibilidad con template
                          recent_reels    = recent_reels,
                          recent_avatars  = recent_avatars,
                          pending_avatars = pending_avatars,
-                         pending_reels   = pending_reels)
+                         pending_reels   = pending_reels,
+                         subproducers    = subproducers)
 
 @producer_bp.route('/avatars')
 @login_required
@@ -732,22 +740,35 @@ def team():
         - Acceso rápido a funciones de invitación
         - Estadísticas de rendimiento por miembro del equipo
     """
-    # Obtener subproductores y afiliados
+    # Obtener subproductores y afiliados CON EL MISMO FILTRO que el dashboard
     subproducers = User.query.filter_by(
         invited_by_id = current_user.id,
-        role          = UserRole.SUBPRODUCER
+        role          = UserRole.SUBPRODUCER,
+        status        = UserStatus.ACTIVE  # ← AÑADIR ESTE FILTRO
     ).all()
     
     affiliates = User.query.filter_by(
         invited_by_id = current_user.id,
-        role          = UserRole.FINAL_USER
+        role          = UserRole.FINAL_USER,
+        status        = UserStatus.ACTIVE  # ← AÑADIR ESTE FILTRO
     ).all()
+    
+    # Combinar en team_members como espera el template
+    team_members = subproducers + affiliates
+    
+    # Estadísticas que espera el template
+    team_stats = {
+        'active_members': len(team_members),
+        'subproducers_count': len(subproducers)
+    }
     
     producer = current_user.producer_profile
     
     return render_template('producer/team.html',
-                         subproducers = subproducers,
-                         affiliates   = affiliates,
+                         team_members = team_members,    # ← Variable que espera el template
+                         team_stats   = team_stats,      # ← Variable que espera el template
+                         subproducers = subproducers,    # ← Mantener por compatibilidad
+                         affiliates   = affiliates,     # ← Mantener por compatibilidad
                          producer     = producer)
 
 @producer_bp.route('/team/invite', methods=['GET', 'POST'])
@@ -845,6 +866,9 @@ def invite_member():
 def settings():
     """
     Panel de configuración del productor.
+    # Vista de configuración del productor
+    # Obtiene el perfil del productor actual
+
     # Vista de configuración del productor
     # Obtiene el perfil del productor actual
 
@@ -1061,6 +1085,62 @@ def api_heygen_status():
         return jsonify({'status': 'error', 'message': str(e)})
 
 @producer_bp.route('/api/masked-heygen-key')
+@login_required
+@producer_required
+def api_masked_heygen_key():
+    producer = current_user.producer_profile
+    masked_api_key = producer.get_masked_heygen_api_key() if producer else None
+    return jsonify({'masked_api_key': masked_api_key})
+
+@producer_bp.route('/team/member/<int:member_id>')
+@login_required
+@producer_required
+def member_detail(member_id):
+    """
+    Ver detalle completo de un miembro del equipo.
+    
+    Proporciona información detallada sobre un miembro específico del equipo,
+    incluyendo estadísticas de rendimiento, historial de actividad y gestión
+    de permisos. Solo accesible para miembros de la propia red.
+    
+    Args:
+        member_id (int): ID del miembro del equipo a visualizar
+    
+    Returns:
+        Template: 'producer/member_detail.html' con información del miembro
+    
+    Context Variables:
+        member (User)         : Información completa del miembro
+        member_stats (dict)   : Estadísticas de rendimiento del miembro
+        recent_activity (list): Actividad reciente del miembro
+    
+    Note:
+        - Solo miembros invitados por el productor actual
+        - Estadísticas calculadas en tiempo real
+        - Información de actividad para supervisión
+    """
+    # Buscar el miembro y verificar que pertenece a la red del productor
+    member = User.query.filter_by(
+        id=member_id,
+        invited_by_id=current_user.id,
+        status=UserStatus.ACTIVE
+    ).first_or_404()
+    
+    # Estadísticas del miembro
+    member_stats = {
+        'total_reels': member.reels.count(),
+        'join_date': member.created_at,
+        'last_activity': getattr(member, 'last_login', None),
+        'role': member.role.value,
+        'status': member.status.value
+    }
+    
+    # Actividad reciente del miembro
+    recent_activity = member.reels.order_by(Reel.created_at.desc()).limit(5).all()
+    
+    # Por ahora, redirigir con información hasta que se implemente template completo
+    flash(f'Viendo perfil de {member.full_name} - Funcionalidad completa próximamente', 'info')
+    return redirect(url_for('producer.team'))@producer_bp.route('/api/masked-heygen-key')
 @login_required
 @producer_required
 def api_masked_heygen_key():
