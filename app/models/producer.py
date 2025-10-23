@@ -132,53 +132,59 @@ class Producer(db.Model):
         """
         return f'<Producer {self.company_name}>'
     
+    def get_masked_heygen_api_key(self, show_start=4, show_end=4, mask_char='*'):
+        """
+        Devuelve la API key de HeyGen enmascarada, mostrando solo los primeros y últimos caracteres.
+        Si no hay API key, retorna None.
+        Args:
+            show_start (int): Caracteres visibles al inicio
+            show_end (int): Caracteres visibles al final
+            mask_char (str): Carácter de enmascaramiento
+        Returns:
+            str or None: API key enmascarada o None
+        """
+        import logging
+        api_key = self.get_heygen_api_key()
+        logging.warning(f"[MASKED API] desencriptada: {api_key}")
+        if not api_key:
+            logging.warning("[MASKED API] No hay API key desencriptada")
+            return None
+        if len(api_key) <= (show_start + show_end):
+            logging.warning(f"[MASKED API] Clave corta, retornando completa: {api_key}")
+            return api_key
+        masked = f"{api_key[:show_start]}{mask_char * (len(api_key) - show_start - show_end)}{api_key[-show_end:]}"
+        logging.warning(f"[MASKED API] Clave enmascarada: {masked}")
+        return masked
+
+
     def set_heygen_api_key(self, api_key):
         """
-        Establece y encripta la API key de HeyGen.
-        
-        Utiliza Fernet para encriptar la API key antes de almacenarla
-        en la base de datos. La clave de encriptación debe estar en
-        las variables de entorno.
-        
-        Args:
-            api_key (str): API key de HeyGen en texto plano
-        
-        Raises:
-            ValueError: Si no se encuentra la clave de encriptación
-        
-        Note:
-            No realiza commit automático, debe hacerse manualmente
+        Establece y encripta la API key de HeyGen usando la configuración centralizada.
+        Utiliza Fernet para encriptar la API key antes de almacenarla en la base de datos.
+        La clave de encriptación se obtiene de la clase Config.
         """
-        encryption_key = os.environ.get('ENCRYPTION_KEY')
+        from config import Config
+        encryption_key = getattr(Config, 'ENCRYPTION_KEY', None)
         if not encryption_key:
-            raise ValueError("Clave de encriptación no encontrada en variables de entorno")
-        
+            raise ValueError("Clave de encriptación no encontrada en Config.ENCRYPTION_KEY")
         fernet = Fernet(encryption_key.encode())
-        self.heygen_api_key_encrypted = fernet.encrypt(api_key.encode()).decode()  # ✅ MANTENER
-    
+        self.heygen_api_key_encrypted = fernet.encrypt(api_key.encode()).decode()
+
+
     def get_heygen_api_key(self):
         """
-        Desencripta y retorna la API key de HeyGen.
-        
-        Utiliza Fernet para desencriptar la API key almacenada
-        en la base de datos.
-        
-        Returns:
-            str or None: API key en texto plano si existe y se puede desencriptar, None en caso contrario
-        
-        Raises:
-            ValueError: Si no se encuentra la clave de encriptación
+        Desencripta y retorna la API key de HeyGen usando la configuración centralizada.
+        Utiliza Fernet para desencriptar la API key almacenada en la base de datos.
         """
         if not self.heygen_api_key_encrypted:
             return None
-        
-        encryption_key = os.environ.get('ENCRYPTION_KEY')
+        from config import Config
+        encryption_key = getattr(Config, 'ENCRYPTION_KEY', None)
         if not encryption_key:
-            raise ValueError("Clave de encriptación no encontrada en variables de entorno")
-        
+            raise ValueError("Clave de encriptación no encontrada en Config.ENCRYPTION_KEY")
         try:
             fernet = Fernet(encryption_key.encode())
-            return fernet.decrypt(self.heygen_api_key_encrypted.encode()).decode()  # ✅ MANTENER
+            return fernet.decrypt(self.heygen_api_key_encrypted.encode()).decode()
         except Exception:
             return None
            

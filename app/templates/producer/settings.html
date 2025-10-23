@@ -6,6 +6,14 @@ de su cuenta y equipo. Incluye configuración de perfil, tarifas de comisiones,
 permisos de equipo, notificaciones, integración con APIs y configuraciones
 avanzadas de productividad.
 
+---
+NUEVO: Manejo seguro de la API key de HeyGen
+---------------------------------------------
+Se utiliza la variable Jinja `masked_api_key` para mostrar la API key enmascarada.
+Esta variable es enviada desde la vista Flask y contiene solo los primeros y últimos caracteres de la API key,
+ocultando el resto por seguridad. Si el productor no tiene API key, la variable será None o cadena vacía.
+---
+
 El template incluye:
     - Configuración de perfil personal
     - Gestión de tarifas y comisiones
@@ -29,6 +37,8 @@ Clases Bootstrap utilizadas:
 
 Variables Jinja utilizadas:
     - current_user: Usuario productor autenticado
+    - producer: Instancia del modelo Producer
+    - masked_api_key: API key de HeyGen enmascarada (solo primeros y últimos caracteres)
     - team_settings: Configuraciones del equipo
     - rate_settings: Configuración de tarifas
     - notification_settings: Configuración de notificaciones
@@ -558,101 +568,50 @@ Validaciones incluidas:
                             <h5 class="mb-0"><i class="fas fa-plug text-purple"></i> Integraciones de APIs</h5>
                         </div>
                         <div class="card-body">
-                            <!-- Integración con HeyGen -->
+
+                            <!-- Integración con HeyGen (única sección) -->
                             <div class="card bg-light mb-3">
-                                <div class="card-body">
-                                    <form method="POST" action="{{ url_for('producer.settings') }}">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <div>
-                                                <h6 class="mb-1">HeyGen API</h6>
-                                                <p class="text-muted mb-0">Servicio principal de generación de avatars</p>
-                                            </div>
-                                            {% if producer and producer.has_heygen_access() %}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check-circle"></i> Conectado
-                                                </span>
-                                            {% else %}
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="fas fa-exclamation-triangle"></i> No configurado
-                                                </span>
-                                            {% endif %}
-                                        </div>
-                                        
-                                        <div class="row g-3">
-                                            <div class="col-12">
-                                                <label class="form-label">API Key de HeyGen</label>
-                                                <div class="input-group">
-                                                    <input type="password" 
-                                                           name="heygen_api_key" 
-                                                           class="form-control" 
-                                                           value="{% if producer and producer.has_heygen_access() %}••••••••••••••••{% endif %}" 
-                                                           placeholder="Ingresa tu API key de HeyGen"
-                                                           {% if not producer or not producer.has_heygen_access() %}required{% endif %}>
-                                                    <button class="btn btn-outline-secondary" 
-                                                            type="button" 
-                                                            onclick="toggleApiKeyVisibility(this)"
-                                                            title="Mostrar/Ocultar API key">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
+                                <!-- Única sección para API Key de HeyGen -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="flex-grow-1">
+                                        <label class="form-label mb-1">API Key de HeyGen:</label>
+                                        <input type="text" id="maskedApiKeyInput" class="form-control" value="" readonly>
+                                        <small class="text-muted">Solo se muestran los primeros y últimos caracteres por seguridad.</small>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary ms-2 mt-4" data-bs-toggle="modal" data-bs-target="#apiKeyModal" id="apiKeyEditBtn">
+                                        <i class="fas fa-edit"></i> Cambiar API Key
+                                    </button>
+                                </div>
+                                {% if not masked_api_key %}
+                                    <div class="alert alert-warning mt-3 mb-0">
+                                        <span class="fw-bold text-danger"><i class="fas fa-exclamation-triangle"></i> Necesitas configurar tu API Key de HeyGen</span><br>
+                                        Para usar las funciones de HeyGen debes ingresar tu API Key. Puedes obtenerla desde tu cuenta en <a href="https://app.heygen.com" target="_blank">HeyGen</a>.
+                                    </div>
+                                {% endif %}
+                                <!-- Modal Bootstrap para ingresar/cambiar API Key -->
+                                <div class="modal fade" id="apiKeyModal" tabindex="-1" aria-labelledby="apiKeyModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form method="post">
+                                                <input type="hidden" name="form_type" value="heygen_api_key">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="apiKeyModalLabel">{% if masked_api_key %}Cambiar API Key{% else %}Agregar API Key{% endif %}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                                                 </div>
-                                                <small class="text-muted">
-                                                    Necesitas una API key válida de HeyGen para crear avatares digitales.
-                                                    <a href="https://heygen.com/api" target="_blank" class="text-decoration-none">
-                                                        Obtener API key <i class="fas fa-external-link-alt"></i>
-                                                    </a>
-                                                </small>
-                                            </div>
-                                            
-                                            {% if producer and producer.has_heygen_access() %}
-                                            <div class="col-12">
-                                                <div class="alert alert-info mb-0">
-                                                    <i class="fas fa-info-circle me-2"></i>
-                                                    <strong>Estado de la API:</strong> 
-                                                    {% if producer.get_setting('api_validation_status') == 'valid' %}
-                                                        <span class="text-success">✅ Validada y funcionando</span>
-                                                    {% elif producer.get_setting('api_validation_status') == 'invalid' %}
-                                                        <span class="text-danger">❌ API key inválida</span>
-                                                    {% else %}
-                                                        <span class="text-warning">⏳ Pendiente de validación</span>
-                                                    {% endif %}
+                                                <div class="modal-body">
+                                                    <label class="form-label">API Key de HeyGen</label>
+                                                    <input type="text" name="heygen_api_key" class="form-control" placeholder="Ingresa tu API key" required>
+                                                    <small class="text-muted">Tu clave será guardada de forma segura y encriptada.</small>
                                                 </div>
-                                            </div>
-                                            {% endif %}
-                                            
-                                            <div class="col-12">
-                                                <button type="submit" class="btn btn-primary me-2">
-                                                    <i class="fas fa-save"></i> 
-                                                    {% if producer and producer.has_heygen_access() %}
-                                                        Actualizar API Key
-                                                    {% else %}
-                                                        Configurar API Key
-                                                    {% endif %}
-                                                </button>
-                                                
-                                                {% if producer and producer.has_heygen_access() %}
-                                                <button type="button" class="btn btn-outline-success" onclick="testHeyGenAPI()">
-                                                    <i class="fas fa-test-tube"></i> Probar Conexión
-                                                </button>
-                                                {% endif %}
-                                            </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+                                                </div>
+                                            </form>
                                         </div>
-                                    </form>
+                                    </div>
                                 </div>
                             </div>
-
-                            <!-- Información adicional sobre HeyGen -->
-                            {% if not producer or not producer.has_heygen_access() %}
-                            <div class="alert alert-warning">
-                                <h6><i class="fas fa-exclamation-triangle me-2"></i>Configuración Requerida</h6>
-                                <p class="mb-2">Para comenzar a crear avatares digitales necesitas:</p>
-                                <ol class="mb-0">
-                                    <li>Una cuenta válida en <a href="https://heygen.com" target="_blank">HeyGen.com</a></li>
-                                    <li>Generar una API key desde tu panel de HeyGen</li>
-                                    <li>Configurar la API key en este formulario</li>
-                                    <li>Probar la conexión para verificar que funciona</li>
-                                </ol>
-                            </div>
-                            {% endif %}
 
                             <!-- Integración con servicio de email -->
                             <div class="card bg-light mb-3">
@@ -682,23 +641,6 @@ Validaciones incluidas:
                                 </div>
                             </div>
 
-                            <!-- Webhook para integraciones externas -->
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h6 class="mb-3">Webhooks</h6>
-                                    <div class="mb-3">
-                                        <label class="form-label">URL de Webhook</label>
-                                        <div class="input-group">
-                                            <input type="url" class="form-control" placeholder="https://tu-servidor.com/webhook">
-                                            <button class="btn btn-outline-primary" type="button">
-                                                <i class="fas fa-plus"></i> Agregar
-                                            </button>
-                                        </div>
-                                        <small class="text-muted">Recibe notificaciones en tiempo real de eventos importantes</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -814,7 +756,7 @@ function updateProfile(event) {
         showAlert('Error al actualizar el perfil: ' + error.message, 'danger');
     });
 }
-}
+
 
 // Actualizar tarifas
 function updateRates(event) {
@@ -837,7 +779,7 @@ function updateRates(event) {
         showAlert('Error al actualizar las tarifas: ' + error.message, 'danger');
     });
 }
-}
+
 
 // Actualizar notificaciones
 function updateNotifications(event) {
@@ -860,7 +802,7 @@ function updateNotifications(event) {
         showAlert('Error al actualizar notificaciones: ' + error.message, 'danger');
     });
 }
-}
+
 
 // Probar API de HeyGen
 function testHeyGenAPI() {
@@ -899,21 +841,27 @@ function testHeyGenAPI() {
     });
 }
 
-// Mostrar/ocultar API key
-function toggleApiKeyVisibility(button) {
-    const input = button.previousElementSibling;
-    const icon = button.querySelector('i');
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'fas fa-eye-slash';
-        button.title = 'Ocultar API key';
-    } else {
-        input.type = 'password';
-        icon.className = 'fas fa-eye';
-        button.title = 'Mostrar API key';
-    }
+// Cargar la API key enmascarada vía AJAX y mostrarla en el input
+function loadMaskedApiKey() {
+    fetch("{{ url_for('producer.api_masked_heygen_key') }}")
+        .then(response => response.json())
+        .then(data => {
+            const input = document.getElementById('maskedApiKeyInput');
+            const btn = document.getElementById('apiKeyEditBtn');
+            if (data.masked_api_key) {
+                input.value = data.masked_api_key;
+                btn.innerHTML = '<i class="fas fa-edit"></i> Cambiar API Key';
+            } else {
+                input.value = '';
+                input.placeholder = 'No hay API Key configurada';
+                btn.innerHTML = '<i class="fas fa-plus"></i> Agregar API Key';
+            }
+        });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadMaskedApiKey();
+});
 
 // Actualizar permisos (placeholder)
 function updatePermissions() {

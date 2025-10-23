@@ -24,7 +24,7 @@ from .user import User, UserRole, UserStatus
 from .producer import Producer
 
 # Modelo de avatares digitales con estados
-from .avatar import Avatar, AvatarStatus
+from .avatar import Avatar, AvatarStatus,  AvatarSnapshotStatus, AvatarSnapshot
 
 # Modelo de reels/videos con estados de procesamiento
 from .reel import Reel, ReelStatus
@@ -56,7 +56,9 @@ __all__ = [
     'PermissionSubjectType',
     'PermissionStatus',
     'ProducerRequest',
-    'ProducerRequestStatus'
+    'ProducerRequestStatus',
+    'AvatarSnapshot',
+    'AvatarSnapshotStatus'
 ]
 
 # Nota: Al usar __all__, se mejora la legibilidad del código y se previene

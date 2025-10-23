@@ -89,6 +89,9 @@ class Config:
     SUBPRODUCER_COMMISSION_RATE = float(config('SUBPRODUCER_COMMISSION_RATE', default=0.10))  # 10%
     # AFFILIATE_COMMISSION_RATE = float(config('AFFILIATE_COMMISSION_RATE', default=0.05))  # 5%
 
+    # ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='L2a5Rl8zpCSjhZNiqVKSgH2UpSpSxPXdh0HhTcqETy4=')
+    ENCRYPTION_KEY = config('ENCRYPTION_KEY')
+
 class DevelopmentConfig(Config):
     """
     Configuración específica para el entorno de desarrollo.
@@ -107,7 +110,7 @@ class DevelopmentConfig(Config):
         - Ideal para desarrollo local y depuración
     """
     DEBUG           = True
-    SQLALCHEMY_ECHO = True
+    SQLALCHEMY_ECHO = False
 
 class ProductionConfig(Config):
     """
