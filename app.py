@@ -64,6 +64,11 @@ if __name__ == '__main__':
     # Crear instancia de la aplicación Flask con configuración
     app = create_app(os.getenv('FLASK_CONFIG') or 'default')
     
+    # Configurar logging mejorado para debug
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    app.logger.setLevel(logging.DEBUG)
+    
     # Crear tablas de base de datos si no existen
     with app.app_context():
         # Importar todos los modelos para registro en SQLAlchemy

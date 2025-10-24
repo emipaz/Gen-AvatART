@@ -82,6 +82,38 @@ def producer_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def producer_or_subproducer_required(f):
+    """
+    Decorador para requerir permisos de productor O subproductor.
+    
+    Este decorador permite acceso tanto a productores como a subproductores
+    para funcionalidades que pueden ser realizadas por ambos roles,
+    como la creación de avatares.
+    
+    Args:
+        f (function): Función de vista a proteger
+    
+    Returns:
+        function: Función decorada con verificación de permisos
+    
+    Note:
+        - Permite rol PRODUCER y SUBPRODUCER
+        - Se ejecuta después de @login_required
+        - Redirige a index si no tiene los permisos necesarios
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Acceso denegado. Debe iniciar sesión.', 'error')
+            return redirect(url_for('auth.login'))
+        
+        if not (current_user.is_producer() or current_user.is_subproducer()):
+            flash('Acceso denegado. Permisos de productor o subproductor requeridos.', 'error')
+            return redirect(url_for('main.index'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
 @producer_bp.route('/dashboard')
 @login_required
 @producer_required
@@ -392,9 +424,16 @@ def archive_avatar(avatar_id):
     flash('Avatar archivado.', 'success')
     return redirect(url_for('producer.avatars'))
 
+@producer_bp.route('/test')
+@login_required
+def test_route():
+    """Ruta de prueba para diagnosticar errores"""
+    print(f"TEST ROUTE: Usuario {current_user.username}, Rol: {current_user.role}")
+    return f"<h1>Test OK</h1><p>Usuario: {current_user.username}</p><p>Rol: {current_user.role}</p>"
+
 @producer_bp.route('/avatars/create', methods=['GET', 'POST'])
 @login_required
-@producer_required
+@producer_or_subproducer_required
 def create_avatar():
     """
     Crear un nuevo avatar/clone digital con integración HeyGen.
@@ -429,12 +468,25 @@ def create_avatar():
         - TODO: Integración real con HeyGen API (actualmente simulado)
         - Configuración de monetización para avatares premium
     """
-    producer = current_user.producer_profile
+    # Obtener el productor relevante dependiendo del rol del usuario
+    if current_user.is_producer():
+        # Si es productor, usa su propio perfil
+        producer = current_user.producer_profile
+    elif current_user.is_subproducer():
+        # Si es subproductor, usa el perfil del productor que lo invitó
+        supervisor = User.query.get(current_user.invited_by_id)
+        if not supervisor or not supervisor.producer_profile:
+            flash('Error: No se encontró el productor supervisor', 'error')
+            return redirect(url_for('main.index'))
+        producer = supervisor.producer_profile
+    else:
+        flash('Acceso denegado', 'error')
+        return redirect(url_for('main.index'))
     
     # Verificar cuota API (si no hay límite o no se ha alcanzado)
     api_calls_used = getattr(producer, 'api_calls_this_month', 0)
-    if producer.monthly_api_limit and api_calls_used >= producer.monthly_api_limit:
-        flash('Has alcanzado tu límite mensual de API calls', 'error')
+    if producer and producer.monthly_api_limit and api_calls_used >= producer.monthly_api_limit:
+        flash('Se ha alcanzado el límite mensual de API calls', 'error')
         return redirect(url_for('producer.avatars'))
 
     
@@ -1157,10 +1209,4 @@ def member_detail(member_id):
     
     # Por ahora, redirigir con información hasta que se implemente template completo
     flash(f'Viendo perfil de {member.full_name} - Funcionalidad completa próximamente', 'info')
-    return redirect(url_for('producer.team'))@producer_bp.route('/api/masked-heygen-key')
-@login_required
-@producer_required
-def api_masked_heygen_key():
-    producer = current_user.producer_profile
-    masked_api_key = producer.get_masked_heygen_api_key() if producer else None
-    return jsonify({'masked_api_key': masked_api_key})
+    return redirect(url_for('producer.team'))

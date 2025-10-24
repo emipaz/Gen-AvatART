@@ -42,6 +42,8 @@ from app.models.commission import Commission
 from app.utils.date_utils import get_current_month_range
 from app.services.snapshot_service import save_avatar_snapshot
 from datetime import datetime
+from uuid import uuid4
+
 subproducer_bp = Blueprint('subproducer', __name__)
 
 def subproducer_required(f):
@@ -111,15 +113,23 @@ def dashboard():
     """
     producer = current_user.get_producer()
 
+    # Funciones auxiliares para manejar tanto listas como consultas
     def safe_count(obj):
-        if hasattr(obj, 'count') and callable(obj.count) and not isinstance(obj, list):
-            return obj.count()
-        return len(obj)
+        if hasattr(obj, 'count') and callable(obj.count):
+            try:
+                return obj.count()
+            except TypeError:
+                # Si es una lista, usar len()
+                return len(obj) if obj else 0
+        return len(obj) if obj else 0
 
     def safe_filter(obj, **kwargs):
         if hasattr(obj, 'filter_by'):
             return obj.filter_by(**kwargs)
-        return [item for item in obj if all(getattr(item, k) == v for k, v in kwargs.items())]
+        # Si es una lista, filtrar manualmente
+        if obj:
+            return [item for item in obj if all(getattr(item, k, None) == v for k, v in kwargs.items())]
+        return []
 
     stats = {
         'total_avatars': safe_count(current_user.created_avatars),
@@ -136,12 +146,16 @@ def dashboard():
     if hasattr(current_user.created_avatars, 'order_by'):
         recent_avatars = current_user.created_avatars.order_by(Avatar.created_at.desc()).limit(5).all()
     else:
-        recent_avatars = sorted(current_user.created_avatars, key=lambda a: a.created_at, reverse=True)[:5]
+        # Si es una lista, ordenar manualmente
+        avatars_list = current_user.created_avatars or []
+        recent_avatars = sorted(avatars_list, key=lambda a: a.created_at, reverse=True)[:5]
 
     if hasattr(current_user.reels, 'order_by'):
         recent_reels = current_user.reels.order_by(Reel.created_at.desc()).limit(5).all()
     else:
-        recent_reels = sorted(current_user.reels, key=lambda r: r.created_at, reverse=True)[:5]
+        # Si es una lista, ordenar manualmente  
+        reels_list = current_user.reels or []
+        recent_reels = sorted(reels_list, key=lambda r: r.created_at, reverse=True)[:5]
     
     return render_template('subproducer/dashboard.html',
                          stats          = stats,
@@ -154,41 +168,39 @@ def dashboard():
 def avatars():
     """
     Lista paginada de avatares creados por el subproductor con filtros.
-    
-    Proporciona una vista completa de todos los avatares creados por
-    el subproductor actual, con capacidades de filtrado por estado
-    y paginación automática. Solo muestra avatares propios.
-    
-    Query Parameters:
-        page (int, opcional): Número de página para paginación (default: 1)
-        status (str, opcional): Filtro por estado (active, processing, inactive, failed)
-    
-    Returns:
-        Template: 'subproducer/avatars.html' con lista paginada de avatares
-    
-    Context Variables:
-        avatars (Pagination): Objeto de paginación con avatares filtrados
-    
-    Note:
-        - Solo muestra avatares creados por el subproductor actual
-        - Filtrado dinámico por estado de avatar
-        - Paginación de 12 elementos por página (optimizado para grids)
-        - Ordenamiento por fecha de creación (más recientes primero)
-        - No incluye avatares de otros subproductores del mismo productor
     """
-    page          = request.args.get('page', 1, type=int)
-    status_filter = request.args.get('status')
-    
-    query = current_user.created_avatars
-    
-    if status_filter:
-        query = query.filter_by(status=AvatarStatus(status_filter))
-    
-    avatars = query.order_by(Avatar.created_at.desc()).paginate(
-        page=page, per_page=12, error_out=False
-    )
-    
-    return render_template('subproducer/avatars.html', avatars=avatars)
+    try:
+        print(f"DEBUG: Usuario actual: {current_user.username}")
+        
+        page          = request.args.get('page', 1, type=int)
+        status_filter = request.args.get('status')
+        
+        print(f"DEBUG: Parámetros - page: {page}, status_filter: {status_filter}")
+        
+        # Construir consulta base para avatares creados por el subproductor
+        query = Avatar.query.filter_by(created_by_id=current_user.id)
+        
+        if status_filter:
+            query = query.filter_by(status=AvatarStatus(status_filter))
+        
+        print(f"DEBUG: Query construida exitosamente")
+        
+        avatars = query.order_by(Avatar.created_at.desc()).paginate(
+            page=page, per_page=12, error_out=False
+        )
+        
+        print(f"DEBUG: Paginación exitosa, avatares: {avatars.total}")
+        
+        result = render_template('subproducer/avatars.html', avatars=avatars)
+        print(f"DEBUG: Template renderizado exitosamente")
+        
+        return result
+        
+    except Exception as e:
+        print(f"ERROR EN AVATARS: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 @subproducer_bp.route('/avatars/create', methods=['GET', 'POST'])
 @login_required
@@ -196,90 +208,84 @@ def avatars():
 def create_avatar():
     """
     Crear un nuevo avatar bajo la supervisión del productor.
-    
-    Maneja la creación de avatares por parte del subproductor,
-    incluyendo validación de cuotas API del productor y establecimiento
-    del estado inicial PENDING para aprobación. Requiere productor asignado.
-    
-    Methods:
-        GET  : Muestra el formulario de creación de avatar
-        POST : Procesa los datos y crea el avatar para aprobación
-    
-    Form Data (POST):
-        name (str): Nombre descriptivo del avatar
-        description (str): Descripción detallada del avatar
-        avatar_type (str): Tipo de avatar (male, female, custom)
-        language (str): Idioma principal (default: 'es')
-        tags (str): Etiquetas separadas por comas
-    
-    Returns:
-        GET : Template 'subproducer/create_avatar.html'
-        POST: Redirección a lista de avatares o template con errores
-    
-    Note:
-        - Requiere productor asignado para validar cuotas
-        - Estado inicial PROCESSING hasta aprobación del productor
-        - No se incrementa uso de API hasta aprobación
-        - Avatar se asigna al productor pero creado por el subproductor
-        - Validación automática de cuota API del productor padre
     """
-    # Obtener productor asignado
-    producer = current_user.get_producer()
-    
-    # Validar que el subproductor tiene un productor asignado
-    if not producer:
-        flash('No tienes un productor asignado', 'error')
-        return redirect(url_for('subproducer.dashboard'))
-    
-    # Validar que el productor tiene cuota API disponible<
-    if not producer.has_api_quota():
-        flash('El productor ha alcanzado su límite mensual de API calls', 'error')
-        return redirect(url_for('subproducer.avatars'))
-    
-    # Manejar formulario
-    if request.method == 'POST':
-        name         = request.form.get('name')
-        description  = request.form.get('description')
-        avatar_type  = request.form.get('avatar_type')
-        language     = request.form.get('language', 'es')
-        tags         = request.form.get('tags', '')
+    try:
+        print(f"DEBUG: CREATE_AVATAR - Usuario actual: {current_user.username}")
+        print(f"DEBUG: CREATE_AVATAR - Método: {request.method}")
         
-        avatar = Avatar(
-            producer_id   = producer.id,
-            created_by_id = current_user.id,
-            name          = name,
-            description   = description,
-            avatar_type   = avatar_type,
-            language      = language,
-            status        = AvatarStatus.PROCESSING
-        )
-        # Asignar etiquetas si se proporcionan
-        avatar.set_tags(tags.split(','))
+        # Obtener productor asignado
+        producer = current_user.get_producer()
+        print(f"DEBUG: CREATE_AVATAR - Productor obtenido: {producer.user.username if producer else 'None'}")
         
-        # Guardar en base de datos
-        db.session.add(avatar)
-        db.session.commit()
+        # Validar que el subproductor tiene un productor asignado
+        if not producer:
+            flash('No tienes un productor asignado', 'error')
+            return redirect(url_for('subproducer.dashboard'))
+        
+        # Validar que el productor tiene cuota API disponible
+        api_calls_used = getattr(producer, 'api_calls_this_month', 0)
+        print(f"DEBUG: CREATE_AVATAR - API calls usadas: {api_calls_used}, límite: {producer.monthly_api_limit}")
+        
+        if producer.monthly_api_limit and api_calls_used >= producer.monthly_api_limit:
+            flash('El productor ha alcanzado su límite mensual de API calls', 'error')
+            return redirect(url_for('subproducer.avatars'))
+        
+        # Manejar formulario
+        if request.method == 'POST':
+            print("DEBUG: CREATE_AVATAR - Procesando POST")
+            name         = request.form.get('name')
+            description  = request.form.get('description')
+            avatar_type  = request.form.get('avatar_type')
+            language     = request.form.get('language', 'es')
+            tags         = request.form.get('tags', '')
+            
+            avatar = Avatar(
+                producer_id   = producer.id,
+                created_by_id = current_user.id,
+                name          = name,
+                description   = description,
+                avatar_type   = avatar_type,
+                language      = language,
+                avatar_ref    = f"local_{uuid4().hex}",  # Requerido, no puede ser NULL
+                status        = AvatarStatus.PROCESSING
+            )
+            # Asignar etiquetas si se proporcionan
+            if tags:
+                avatar.set_tags([t.strip() for t in tags.split(',') if t.strip()])
+            
+            # Guardar en base de datos
+            db.session.add(avatar)
+            db.session.commit()
 
-        # Guardar snapshot para poder recrear este avatar luego (p. ej., por productor custodio)
-        save_avatar_snapshot(
-            avatar_id=avatar.id,
-            producer_id=producer.id,
-            created_by_id=current_user.id,
-            source="subproducer_ui",
-            inputs={
-                "name": name,
-                "description": description,
-                "avatar_type": avatar_type,
-                "language": language,
-                "tags": [t.strip() for t in tags.split(",") if t.strip()],
-            },
-            heygen_owner_hint=producer.company_name,
-        )
+            # Guardar snapshot para poder recrear este avatar luego (p. ej., por productor custodio)
+            save_avatar_snapshot(
+                avatar_id=avatar.id,
+                producer_id=producer.id,
+                created_by_id=current_user.id,
+                source="subproducer_ui",
+                inputs={
+                    "name": name,
+                    "description": description,
+                    "avatar_type": avatar_type,
+                    "language": language,
+                    "tags": [t.strip() for t in tags.split(",") if t.strip()],
+                },
+                heygen_owner_hint=producer.company_name,
+            )
+            
+            flash('Avatar creado y enviado para aprobación', 'success')
+            return redirect(url_for('subproducer.avatars'))
         
-        flash('Avatar creado y enviado para aprobación', 'success')
-        return redirect(url_for('subproducer.avatars'))
-    
-    return render_template('subproducer/create_avatar.html')
+        print("DEBUG: CREATE_AVATAR - Renderizando template GET")
+        result = render_template('subproducer/create_avatar.html')
+        print("DEBUG: CREATE_AVATAR - Template renderizado exitosamente")
+        return result
+        
+    except Exception as e:
+        print(f"ERROR EN CREATE_AVATAR: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 @subproducer_bp.route('/reels')
 @login_required
@@ -313,12 +319,10 @@ def reels():
     page          = request.args.get('page', 1, type=int)
     status_filter = request.args.get('status')
     
-    # Construir consulta base
-    
-    query = current_user.reels
+    # Construir consulta base para reels creados por el subproductor
+    query = Reel.query.filter_by(creator_id=current_user.id)
     
     # Aplicar filtro si se proporciona
-    
     if status_filter:
         query = query.filter_by(status=ReelStatus(status_filter))
 
