@@ -191,7 +191,9 @@ def avatars():
         
         print(f"DEBUG: Paginación exitosa, avatares: {avatars.total}")
         
-        result = render_template('subproducer/avatars.html', avatars=avatars)
+        result = render_template('subproducer/avatars.html', 
+                               avatars=avatars, 
+                               selected_status=status_filter or '')
         print(f"DEBUG: Template renderizado exitosamente")
         
         return result
