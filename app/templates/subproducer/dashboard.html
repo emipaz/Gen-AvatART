@@ -1,34 +1,374 @@
-{% extends 'base.html' %}
+{#}
+Template de dashboard para subproductores en Gem-AvatART.
+
+Este template implementa el panel de control principal para usuarios con rol de
+subproductor, donde pueden gestionar sus avatares, crear reels, ver estadísticas
+personales y monitorear sus comisiones bajo la supervisión de su productor.
+
+El template incluye:
+    - Panel de estadísticas personales del subproductor
+    - Vista de avatares creados y su estado de aprobación
+    - Resumen de reels creados y procesados
+    - Información del productor supervisor
+    - Comisiones generadas personales
+    - Actividad reciente de creación de contenido
+    - Enlaces rápidos a funciones disponibles
+
+Clases Bootstrap utilizadas:
+    - Layout: container-fluid, row, col-*, d-flex, justify-content-between
+    - Cards: card, card-body, card-header, card-title
+    - Tables: table, table-responsive, table-hover, table-striped
+    - Badges: badge, bg-success, bg-warning, bg-primary, bg-info
+    - Buttons: btn, btn-primary, btn-outline-primary, btn-success
+    - Typography: text-muted, text-center, display-6, lead
+    - Spacing: mb-*, mt-*, p-*, g-3
+    - Utilities: border-start, shadow-sm
+
+Variables Jinja utilizadas:
+    - current_user: Usuario subproductor autenticado
+    - stats: Estadísticas personales del subproductor
+    - recent_avatars: Avatares recientes creados
+    - recent_reels: Reels recientes creados
+    - available_avatars: Avatares disponibles para crear reels
+    - producer: Información del productor supervisor
+
+Rutas Flask referenciadas (url_for):
+    - producer.create_avatar: Crear nuevo avatar
+    - user.reel_create: Crear nuevo reel
+    - user.reels: Ver todos los reels personales
+    - user.profile: Configuración del perfil
+
+Limitaciones del subproductor mostradas:
+    - Solo puede crear avatares (requieren aprobación)
+    - Solo puede usar avatares aprobados para reels
+    - Ve únicamente sus propias estadísticas
+    - Depende del productor supervisor
+    - No puede gestionar otros usuarios
+
+Iconografía Font Awesome:
+    - fas fa-user-tie: Subproductor y gestión personal
+    - fas fa-user-circle: Avatares digitales personales
+    - fas fa-video: Reels y contenido creado
+    - fas fa-dollar-sign: Comisiones personales
+    - fas fa-industry: Productor supervisor
+    - fas fa-chart-line: Estadísticas personales
+    - fas fa-plus: Crear nuevos elementos
+    - fas fa-eye: Ver detalles
+    - fas fa-clock: Actividad reciente
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard Subproductor - Gem-AvatART{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h1>Dashboard Subproductor</h1>
-    <hr>
-    <h3>Estadísticas</h3>
-    <ul>
-        <li><b>Total de avatares:</b> {{ stats.total_avatars }}</li>
-        <li><b>Avatares aprobados:</b> {{ stats.approved_avatars }}</li>
-        <li><b>Avatares pendientes:</b> {{ stats.pending_avatars }}</li>
-        <li><b>Total de reels:</b> {{ stats.total_reels }}</li>
-        <li><b>Reels completados:</b> {{ stats.completed_reels }}</li>
-        <li><b>Ganancias aprobadas:</b> {{ stats.total_earnings }}</li>
-        <li><b>Ganancias pendientes:</b> {{ stats.pending_earnings }}</li>
-        <li><b>Productor supervisor:</b> {{ stats.producer_name }}</li>
-    </ul>
-    <h3>Avatares recientes</h3>
-    <ul>
-        {% for avatar in recent_avatars %}
-            <li>{{ avatar.name }} - {{ avatar.created_at }}</li>
-        {% else %}
-            <li>No hay avatares recientes.</li>
-        {% endfor %}
-    </ul>
-    <h3>Reels recientes</h3>
-    <ul>
-        {% for reel in recent_reels %}
-            <li>{{ reel.title }} - {{ reel.created_at }}</li>
-        {% else %}
-            <li>No hay reels recientes.</li>
-        {% endfor %}
-    </ul>
+<!-- Contenedor principal del dashboard con layout fluido -->
+<div class="container-fluid">
+    <!-- Header del dashboard con bienvenida y estadísticas principales -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <!-- Sección de bienvenida con información del subproductor -->
+        <div>
+            <!-- Título principal con icono representativo -->
+            <h1 class="mb-1"><i class="fas fa-user-tie text-primary"></i> Dashboard Subproductor</h1>
+            
+            <!-- Saludo personalizado con nombre del usuario -->
+            <p class="text-muted mb-0">Bienvenido, {{ current_user.full_name }}</p>
+            
+            <!-- Información del productor supervisor -->
+            {% if stats and stats.producer_name %}
+                <small class="text-muted">
+                    <i class="fas fa-industry"></i> Supervisor: {{ stats.producer_name }}
+                </small>
+            {% endif %}
+        </div>
+        
+        <!-- Botón de acción rápida para crear avatar -->
+        <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Crear Avatar
+        </a>
+    </div>
+
+    <!-- Fila de estadísticas principales en cards -->
+    <div class="row g-3 mb-4">
+        <!-- Card de estadística: Total de avatares creados -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary text-white rounded p-3 me-3">
+                            <i class="fas fa-user-circle fa-2x"></i>
+                        </div>
+                        <div>
+                            <h3 class="display-6 mb-0">{{ stats.total_avatars if stats else 0 }}</h3>
+                            <p class="text-muted mb-0">Avatares Creados</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de estadística: Avatares aprobados -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success text-white rounded p-3 me-3">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                        <div>
+                            <h3 class="display-6 mb-0">{{ stats.approved_avatars if stats else 0 }}</h3>
+                            <p class="text-muted mb-0">Avatares Aprobados</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de estadística: Total de reels -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-info text-white rounded p-3 me-3">
+                            <i class="fas fa-video fa-2x"></i>
+                        </div>
+                        <div>
+                            <h3 class="display-6 mb-0">{{ stats.total_reels if stats else 0 }}</h3>
+                            <p class="text-muted mb-0">Reels Creados</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de estadística: Ganancias totales -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning text-white rounded p-3 me-3">
+                            <i class="fas fa-dollar-sign fa-2x"></i>
+                        </div>
+                        <div>
+                            <h3 class="display-6 mb-0">${{ "%.0f"|format(stats.total_earnings if stats and stats.total_earnings else 0) }}</h3>
+                            <p class="text-muted mb-0">Ganancias Totales</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fila principal con contenido en dos columnas -->
+    <div class="row">
+        <!-- Columna principal izquierda con avatares y reels -->
+        <div class="col-lg-8">
+            <!-- Card con avatares recientes -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Mis Avatares</h5>
+                    <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary btn-sm">
+                        Ver Todos
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_avatars %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Avatar</th>
+                                        <th>Estado</th>
+                                        <th>Idioma</th>
+                                        <th>Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for avatar in recent_avatars[:5] %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if avatar.avatar_url %}
+                                                    <img src="{{ avatar.avatar_url }}" class="rounded-circle me-2" style="width: 32px; height: 32px;" alt="Avatar">
+                                                {% else %}
+                                                    <div class="bg-light rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                        <i class="fas fa-user-circle text-muted"></i>
+                                                    </div>
+                                                {% endif %}
+                                                <strong>{{ avatar.name }}</strong>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if avatar.status.value == 'approved' else 'warning' if avatar.status.value == 'pending' else 'info' }}">
+                                                {{ avatar.status.value.title() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ avatar.language if avatar.language else 'N/A' }}</td>
+                                        <td>{{ avatar.created_at.strftime('%d/%m/%Y') if avatar.created_at else 'N/A' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-user-circle fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No has creado avatares aún</h6>
+                            <p class="text-muted">Crea tu primer avatar para comenzar a generar contenido.</p>
+                            <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Avatar
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card con reels recientes -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Mis Reels Recientes</h5>
+                    <a href="{{ url_for('user.reels') }}" class="btn btn-outline-primary btn-sm">
+                        Ver Todos
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_reels %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Título</th>
+                                        <th>Avatar Usado</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for reel in recent_reels[:5] %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ reel.title }}</strong>
+                                            {% if reel.description %}
+                                                <br><small class="text-muted">{{ reel.description[:40] }}...</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ reel.avatar.name if reel.avatar else 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if reel.status.value == 'completed' else 'warning' if reel.status.value == 'pending' else 'info' }}">
+                                                {{ reel.status.value.title() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ reel.created_at.strftime('%d/%m/%Y') if reel.created_at else 'N/A' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No has creado reels aún</h6>
+                            <p class="text-muted">Usa tus avatares aprobados para crear contenido.</p>
+                            {% if stats and stats.approved_avatars and stats.approved_avatars > 0 %}
+                                <a href="{{ url_for('user.reel_create') }}" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Crear Reel
+                                </a>
+                            {% else %}
+                                <p class="text-muted">Necesitas avatares aprobados para crear reels.</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna lateral derecha con información adicional -->
+        <div class="col-lg-4">
+            <!-- Card con resumen de estado -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Estado General</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Estadísticas de estado -->
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <h4 class="text-warning">
+                                {{ stats.pending_avatars if stats else 0 }}
+                            </h4>
+                            <small class="text-muted">Avatares Pendientes</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-info">
+                                {{ stats.completed_reels if stats else 0 }}
+                            </h4>
+                            <small class="text-muted">Reels Completados</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Información del supervisor -->
+                    {% if stats and stats.producer_name %}
+                        <div class="border-top pt-3">
+                            <small class="text-muted d-block">Productor Supervisor:</small>
+                            <strong><i class="fas fa-industry text-primary"></i> {{ stats.producer_name }}</strong>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card con ganancias detalladas -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Mis Ganancias</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-success">
+                                ${{ "%.2f"|format(stats.total_earnings if stats and stats.total_earnings else 0) }}
+                            </h4>
+                            <small class="text-muted">Total Aprobado</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">
+                                ${{ "%.2f"|format(stats.pending_earnings if stats and stats.pending_earnings else 0) }}
+                            </h4>
+                            <small class="text-muted">Pendiente</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card con acciones rápidas para subproductor -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Crear Avatar
+                        </a>
+                        {% if stats and stats.approved_avatars and stats.approved_avatars > 0 %}
+                            <a href="{{ url_for('user.reel_create') }}" class="btn btn-success">
+                                <i class="fas fa-video"></i> Crear Reel
+                            </a>
+                        {% else %}
+                            <button class="btn btn-outline-secondary" disabled>
+                                <i class="fas fa-video"></i> Crear Reel
+                                <br><small>(Necesitas avatares aprobados)</small>
+                            </button>
+                        {% endif %}
+                        <a href="{{ url_for('user.reels') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-eye"></i> Ver Mis Reels
+                        </a>
+                        <a href="{{ url_for('user.profile') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-cog"></i> Mi Perfil
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

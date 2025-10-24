@@ -67,9 +67,9 @@ Propiedades del usuario mostradas:
     - invited_by: Usuario que lo invitó (si aplica)
 
 Estadísticas condicionales mostradas:
-    - reels.count(): Número de reels creados (si puede crear reels)
-    - created_avatars.count(): Número de avatars creados (si puede crear avatars)
-    - commissions_earned.count(): Número de comisiones ganadas
+    - reels.count(): Número de reels creados (lazy='dynamic' query)
+    - created_avatars|length: Número de avatars creados (backref normal)
+    - commissions_earned.count(): Número de comisiones ganadas (lazy='dynamic' query)
 
 Métodos Jinja utilizados:
     - current_user.role.value.title(): Capitalización del rol
@@ -435,8 +435,8 @@ Validación de errores:
                                     <!-- Columna para estadística de reels -->
                                     <div class="col-md-4">
                                         <!-- Número destacado con color primario -->
-                                        <!-- current_user.reels.count() cuenta los reels del usuario -->
-                                        <h4 class="text-primary">{{ current_user.reels.count() }}</h4>
+                                        <!-- current_user.reels.count() cuenta los reels del usuario (lazy='dynamic') -->
+                                        <h4 class="text-primary">{{ current_user.reels.count() if current_user.reels else 0 }}</h4>
                                         
                                         <!-- Descripción con texto secundario -->
                                         <small class="text-muted">Reels Creados</small>
@@ -447,8 +447,8 @@ Validación de errores:
                                     {% if current_user.can_create_avatars() %}
                                     <div class="col-md-4">
                                         <!-- Número con color de éxito (verde) -->
-                                        <!-- created_avatars.count() cuenta los avatars creados -->
-                                        <h4 class="text-success">{{ current_user.created_avatars.count() }}</h4>
+                                        <!-- created_avatars es backref normal, usar |length -->
+                                        <h4 class="text-success">{{ current_user.created_avatars|length if current_user.created_avatars else 0 }}</h4>
                                         
                                         <!-- Descripción de avatars creados -->
                                         <small class="text-muted">Avatars Creados</small>
@@ -458,8 +458,8 @@ Validación de errores:
                                     <!-- Columna para estadística de comisiones -->
                                     <div class="col-md-4">
                                         <!-- Número con color informativo (azul claro) -->
-                                        <!-- commissions_earned.count() cuenta las comisiones ganadas -->
-                                        <h4 class="text-info">{{ current_user.commissions_earned.count() }}</h4>
+                                        <!-- commissions_earned.count() cuenta las comisiones ganadas (lazy='dynamic') -->
+                                        <h4 class="text-info">{{ current_user.commissions_earned.count() if current_user.commissions_earned else 0 }}</h4>
                                         
                                         <!-- Descripción de comisiones -->
                                         <small class="text-muted">Comisiones</small>
