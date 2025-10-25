@@ -33,8 +33,8 @@ Variables Jinja utilizadas:
     - producer: Información del productor supervisor
 
 Rutas Flask referenciadas (url_for):
-    - producer.create_avatar: Crear nuevo avatar
-    - user.reel_create: Crear nuevo reel
+    - subproducer.create_avatar: Crear nuevo avatar
+    - user.create_reel: Crear nuevo reel
     - user.reels: Ver todos los reels personales
     - user.profile: Configuración del perfil
 
@@ -83,7 +83,7 @@ Iconografía Font Awesome:
         </div>
         
         <!-- Botón de acción rápida para crear avatar -->
-        <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
+        <a href="{{ url_for('subproducer.create_avatar') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Crear Avatar
         </a>
     </div>
@@ -167,7 +167,7 @@ Iconografía Font Awesome:
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Mis Avatares</h5>
-                    <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary btn-sm">
+                    <a href="{{ url_for('subproducer.avatars') }}" class="btn btn-outline-primary btn-sm">
                         Ver Todos
                     </a>
                 </div>
@@ -215,7 +215,7 @@ Iconografía Font Awesome:
                             <i class="fas fa-user-circle fa-3x text-muted mb-3"></i>
                             <h6 class="text-muted">No has creado avatares aún</h6>
                             <p class="text-muted">Crea tu primer avatar para comenzar a generar contenido.</p>
-                            <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
+                            <a href="{{ url_for('subproducer.create_avatar') }}" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> Crear Avatar
                             </a>
                         </div>
@@ -270,7 +270,7 @@ Iconografía Font Awesome:
                             <h6 class="text-muted">No has creado reels aún</h6>
                             <p class="text-muted">Usa tus avatares aprobados para crear contenido.</p>
                             {% if stats and stats.approved_avatars and stats.approved_avatars > 0 %}
-                                <a href="{{ url_for('user.reel_create') }}" class="btn btn-primary">
+                                <a href="{{ url_for('user.create_reel') }}" class="btn btn-primary">
                                     <i class="fas fa-plus"></i> Crear Reel
                                 </a>
                             {% else %}
@@ -346,11 +346,11 @@ Iconografía Font Awesome:
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('producer.create_avatar') }}" class="btn btn-primary">
+                        <a href="{{ url_for('subproducer.create_avatar') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Crear Avatar
                         </a>
                         {% if stats and stats.approved_avatars and stats.approved_avatars > 0 %}
-                            <a href="{{ url_for('user.reel_create') }}" class="btn btn-success">
+                            <a href="{{ url_for('user.create_reel') }}" class="btn btn-success">
                                 <i class="fas fa-video"></i> Crear Reel
                             </a>
                         {% else %}

@@ -381,8 +381,10 @@ def create_reel():
         flash('No tienes un productor asignado', 'error')
         return redirect(url_for('subproducer.dashboard'))
     
-    # Obtener avatars disponibles
-    available_avatars = producer.avatars.filter_by(status=AvatarStatus.APPROVED).all()
+    # Obtener avatars disponibles (tanto APPROVED como ACTIVE)
+    available_avatars = producer.avatars.filter(
+        Avatar.status.in_([AvatarStatus.APPROVED, AvatarStatus.ACTIVE])
+    ).all()
     
     if not available_avatars:
         flash('No hay avatars aprobados disponibles', 'warning')
