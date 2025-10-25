@@ -279,17 +279,17 @@ class Producer(db.Model):
         Para operar necesita:
         - Estado ACTIVE
         - API key de HeyGen configurada
-        - Cuenta Stripe Connect configurada (NUEVO según README)
+        # - Cuenta Stripe Connect configurada (DESHABILITADO por ahora)
         
         Returns:
             bool: True si puede operar, False en caso contrario
             
         Note:
-            ✅ ACTUALIZADO - Incluye verificación de Stripe Connect
+            ✅ SIMPLIFICADO - Solo requiere HeyGen por ahora
         """
         return (self.status == ProducerStatus.ACTIVE and 
-                self.has_heygen_access() and 
-                self.has_stripe_connected())  # ✅ NUEVO requisito
+                self.has_heygen_access())
+                # self.has_stripe_connected())  # ❌ COMENTADO - No requerido por ahora
     
     def get_team_members(self):
         """
