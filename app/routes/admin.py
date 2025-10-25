@@ -162,30 +162,45 @@ def dashboard():
 def create_admin():
     """
     Endpoint para crear un nuevo administrador. Solo el dueño puede acceder.
-    Espera: email, nombre, apellido, username, password.
+
+    query Parameters:
+        email (str)      : Correo electrónico del nuevo administrador
+        username (str)   : Nombre de usuario del nuevo administrador
+        first_name (str) : Nombre del nuevo administrador
+        last_name (str)  : Apellido del nuevo administrador
+        password (str)   : Contraseña del nuevo administrador 
+    
+    Returns:
+        JSON: {'success': True, 'user_id': int} o {'error': str} con código HTTP apropiado
+
     """
     if not current_user.is_owner:
         return jsonify({'error': 'Solo el dueño puede crear administradores.'}), 403
-    data = request.form
-    email = data.get('email')
-    username = data.get('username')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    password = data.get('password')
+    
+    # Obtener datos del formulario
+    data        = request.form
+    email       = data.get('email')
+    username    = data.get('username')
+    first_name  = data.get('first_name')
+    last_name   = data.get('last_name')
+    # password    = data.get('password')
+
     if not all([email, username, first_name, last_name, password]):
         return jsonify({'error': 'Todos los campos son obligatorios.'}), 400
     if User.query.filter_by(email=email).first() or User.query.filter_by(username=username).first():
         return jsonify({'error': 'El email o username ya existe.'}), 400
+    
     user = User(
-        email=email,
-        username=username,
-        first_name=first_name,
-        last_name=last_name,
-        role=UserRole.ADMIN,
-        status=UserStatus.ACTIVE,
-        is_verified=True
+        email      = email,
+        username   = username,
+        first_name = first_name,
+        last_name  = last_name,
+        role       = UserRole.ADMIN,
+        status     = UserStatus.ACTIVE,
+        is_verified= True
     )
-    user.set_password(password)
+    
+    # user.set_password(password) # password configura al verificar el mail
     db.session.add(user)
     db.session.commit()
     return jsonify({'success': True, 'user_id': user.id})

@@ -48,6 +48,7 @@ class UserRole(Enum):
     SUBPRODUCER = "subproducer" # Sub-productor
     FINAL_USER  = "final_user"  # ✅ CAMBIO - Usuario final (era AFFILIATE)
     AFFILIATE   = FINAL_USER    # Mantener para compatibilidad, pero usar FINAL_USER
+
 class UserStatus(Enum):
     """
     Enumeración que define los estados posibles de una cuenta de usuario.

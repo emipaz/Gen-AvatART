@@ -325,7 +325,7 @@ Seguridad implementada:
       {% if not user.is_owner and user.is_admin %}
         <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este administrador?');">
           <button class="btn btn-danger btn-sm">
-            <i class="fas fa-trash-alt me-1"></i> Eliminar Admin
+            <i class="fas fa-trash-alt me-1"></i> Eliminar
           </button>
         </form>
       {% endif %}

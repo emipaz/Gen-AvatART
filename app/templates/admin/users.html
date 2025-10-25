@@ -15,16 +15,16 @@ El template incluye:
     - Estados vacíos informativos
 
 Clases Bootstrap utilizadas:
-    - Layout: container-fluid, row, col-*, d-flex, justify-content-between, align-items-center
-    - Sidebar: nav, nav-link, flex-column, bg-light, px-0
-    - Cards: card, card-body, card-header
-    - Forms: form-label, form-select, form-control, btn-group
-    - Table: table, table-responsive, table-hover, thead, tbody
-    - Badges: badge, bg-success, bg-warning, bg-danger, bg-primary, bg-info, bg-secondary
-    - Pagination: pagination, page-item, page-link, justify-content-center
-    - Images: rounded-circle, me-2
-    - Typography: text-muted, text-center
-    - Spacing: mb-*, py-*, g-3, fa-2x, fa-3x
+    - Layout  : container-fluid, row, col-*, d-flex, justify-content-between, align-items-center
+    - Sidebar : nav, nav-link, flex-column, bg-light, px-0
+    - Cards   : card, card-body, card-header
+    - Forms   : form-label, form-select, form-control, btn-group
+    - Table   : table, table-responsive, table-hover, thead, tbody
+    - Badges  : badge, bg-success, bg-warning, bg-danger, bg-primary, bg-info, bg-secondary
+    - Pagination : pagination, page-item, page-link, justify-content-center
+    - Images     : rounded-circle, me-2
+    - Typography : text-muted, text-center
+    - Spacing    : mb-*, py-*, g-3, fa-2x, fa-3x
 
 Variables Jinja utilizadas:
     - users: Objeto de paginación con lista de usuarios
@@ -48,6 +48,7 @@ Rutas Flask referenciadas (url_for):
     - admin.user_detail: Ver detalles de usuario específico
     - admin.approve_user: Aprobar usuario pendiente
     - admin.suspend_user: Suspender usuario activo
+    - admin.create_admin: Endpoint AJAX para crear nuevo admin
 
 Iconografía Font Awesome:
     - fas fa-tachometer-alt: Admin panel
@@ -129,7 +130,7 @@ Funcionalidades JavaScript:
                     </button>
                     {% endif %}
                 </div>
-                        {% if current_user.is_owner %}
+                    {% if current_user.is_owner %}
                         <!-- Modal para crear admin -->
                         <div class="modal fade" id="modalCrearAdmin" tabindex="-1" aria-labelledby="modalCrearAdminLabel" aria-hidden="true">
                             <div class="modal-dialog">
@@ -156,10 +157,12 @@ Funcionalidades JavaScript:
                                                 <label class="form-label">Apellido</label>
                                                 <input type="text" name="last_name" class="form-control" required>
                                             </div>
+                                            <!-- password el usuario lo configura al validal el mail 
                                             <div class="mb-3">
                                                 <label class="form-label">Contraseña</label>
                                                 <input type="password" name="password" class="form-control" required>
                                             </div>
+                                            -->
                                             <div id="crearAdminError" class="text-danger small"></div>
                                         </div>
                                         <div class="modal-footer">
@@ -172,14 +175,15 @@ Funcionalidades JavaScript:
                         </div>
                         <script>
                         document.addEventListener('DOMContentLoaded', function() {
+                            // Manejar el envío del formulario de creación de admin vía AJAX
                             var form = document.getElementById('formCrearAdmin');
                             if(form) {
                                 form.addEventListener('submit', function(e) {
                                     e.preventDefault();
                                     var data = new FormData(form);
                                     fetch("{{ url_for('admin.create_admin') }}", {
-                                        method: 'POST',
-                                        body: data,
+                                        method  : 'POST',
+                                        body    : data,
                                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                                     })
                                     .then(r => r.json())
@@ -197,7 +201,7 @@ Funcionalidades JavaScript:
                             }
                         });
                         </script>
-                        {% endif %}
+                    {% endif %}
             </div>
 
             <!-- Filtros -->
