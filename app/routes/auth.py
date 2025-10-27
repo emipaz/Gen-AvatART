@@ -479,54 +479,38 @@ def logout():
     flash('Has cerrado sesión exitosamente', 'info')
     return redirect(url_for('main.index'))
 
-@auth_bp.route('/profile', methods=['GET', 'POST'])
-@login_required
-def profile():
-    """"
-    Ruta de gestión del perfil de usuario.
-    
-    Permite visualizar y editar la información personal del usuario.
-    Incluye campos específicos para productores con información comercial
-    adicional si tienen un perfil de productor asociado.
-    
-    Methods:
-        GET  : Muestra el perfil actual del usuario
-        POST : Actualiza la información del perfil
-    
-    Form Data (POST):
-        first_name (str)            : Nombre del usuario
-        last_name (str)             : Apellido del usuario
-        phone (str)                 : Teléfono de contacto
-        company_name (str, opcional): Nombre de empresa (solo productores)
-        business_type (str, opcional): Tipo de negocio (solo productores)
-        website (str, opcional)     : Sitio web (solo productores)
-    
-    Returns:
-        GET : Template 'auth/profile.html' con datos del usuario
-        POST: Redirección al perfil actualizado o template con errores
-    
-    Note:
-        - Campos comerciales solo disponibles para usuarios con rol PRODUCER
-        - Actualización diferenciada según el tipo de usuario
-        - Validación automática de permisos por rol
-    """
-    if request.method == 'POST':
-        current_user.first_name = request.form.get('first_name', current_user.first_name)
-        current_user.last_name  = request.form.get('last_name' , current_user.last_name)
-        current_user.phone      = request.form.get('phone'     , current_user.phone)
-        
-        # Si es productor, actualizar información comercial
-        if current_user.is_producer() and current_user.producer_profile:
-            producer = current_user.producer_profile
-            producer.company_name  = request.form.get('company_name',  producer.company_name)
-            producer.business_type = request.form.get('business_type', producer.business_type)
-            producer.website       = request.form.get('website',       producer.website)
-        
-        db.session.commit()
-        flash('Perfil actualizado exitosamente', 'success')
-        return redirect(url_for('auth.profile'))
-    
-    return render_template('auth/profile.html', user=current_user)
+# RUTA DUPLICADA - USAR user.profile EN SU LUGAR
+# @auth_bp.route('/profile', methods=['GET', 'POST'])
+# @login_required
+# def profile():
+#     """"
+#     DEPRECATED: Ruta duplicada de gestión del perfil de usuario.
+#     
+#     USAR EN SU LUGAR: user.profile (/user/profile)
+#     Esta ruta está comentada para evitar conflictos y confusión.
+#     Toda la funcionalidad de perfil se maneja ahora en user.py
+#     
+#     Methods:
+#         GET  : Muestra el perfil actual del usuario
+#         POST : Actualiza la información del perfil
+#     """
+#     if request.method == 'POST':
+#         current_user.first_name = request.form.get('first_name', current_user.first_name)
+#         current_user.last_name  = request.form.get('last_name' , current_user.last_name)
+#         current_user.phone      = request.form.get('phone'     , current_user.phone)
+#         
+#         # Si es productor, actualizar información comercial
+#         if current_user.is_producer() and current_user.producer_profile:
+#             producer = current_user.producer_profile
+#             producer.company_name  = request.form.get('company_name',  producer.company_name)
+#             producer.business_type = request.form.get('business_type', producer.business_type)
+#             producer.website       = request.form.get('website',       producer.website)
+#         
+#         db.session.commit()
+#         flash('Perfil actualizado exitosamente', 'success')
+#         return redirect(url_for('auth.profile'))
+#     
+#     return render_template('auth/profile.html', user=current_user)
 
 @auth_bp.route('/change-password', methods=['GET', 'POST'])
 @login_required

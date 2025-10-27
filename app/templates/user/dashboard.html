@@ -134,6 +134,33 @@ Estados de reel manejados:
                         </div>
                     </div>
                 </div>
+
+                <!-- Tarjeta especial: Upgrade a Productor (solo si no es productor) -->
+                {% if not current_user.is_producer() %}
+                <div class="col-md-12 mt-3">
+                    <div class="card border-warning">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h5 class="card-title text-warning">
+                                        <i class="fas fa-crown me-2"></i>
+                                        ¿Quieres crear tus propios avatares?
+                                    </h5>
+                                    <p class="card-text text-muted mb-0">
+                                        Conviértete en Productor y accede a todas las funcionalidades: crear avatares, gestionar tu equipo y obtener APIs propias.
+                                    </p>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <a href="{{ url_for('user.request_producer') }}" class="btn btn-warning">
+                                        <i class="fas fa-rocket me-1"></i>
+                                        Solicitar Upgrade
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 
             </div>
 
@@ -176,9 +203,19 @@ Estados de reel manejados:
                                     </a>
                                 </div>
                                 
+                                <!-- Acción: Solicitar ser Productor (solo si no es productor) -->
+                                {% if not current_user.is_producer() %}
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('user.request_producer') }}" class="btn btn-outline-warning btn-lg w-100">
+                                        <i class="fas fa-crown"></i><br>
+                                        Ser Productor
+                                    </a>
+                                </div>
+                                {% endif %}
+                                
                                 <!-- Acción: Ver estadísticas -->
                                 <div class="col-md-3">
-                                    <a href="#" class="btn btn-outline-warning btn-lg w-100">
+                                    <a href="#" class="btn btn-outline-secondary btn-lg w-100">
                                         <i class="fas fa-chart-bar"></i><br>
                                         Estadísticas
                                     </a>

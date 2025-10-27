@@ -1,84 +1,212 @@
 {% extends "base.html" %}
-{% block title %}Reel #{{ reel.id }}{% endblock %}
+
+{% block title %}{{ reel.title }} - Detalle del Reel{% endblock %}
 
 {% block content %}
-<div class="container my-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">🎞️ {{ reel.title or 'Reel sin título' }}</h3>
-    <a href="{{ url_for('user.reels') }}" class="btn btn-outline-secondary btn-sm">
-      <i class="fas fa-arrow-left me-1"></i> Volver
-    </a>
-  </div>
-
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <div class="row g-4">
-        <div class="col-md-6">
-          {% if reel.video_url %}
-            <video controls class="w-100 rounded shadow-sm">
-              <source src="{{ reel.video_url }}" type="video/mp4">
-              Tu navegador no soporta video.
-            </video>
-          {% else %}
-            <div class="alert alert-light text-center py-5 border">
-              <i class="fas fa-video-slash fa-2x mb-2 text-muted"></i>
-              <p class="mb-0">Este reel aún no tiene video disponible.</p>
-            </div>
-          {% endif %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+            <i class="fas fa-video me-2 text-primary"></i>
+            {{ reel.title or 'Reel sin título' }}
+        </h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{{ url_for('user.reels') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Volver a mis reels
+            </a>
         </div>
-
-        <div class="col-md-6">
-          <h5 class="fw-bold">Detalles</h5>
-          <table class="table table-sm">
-            <tr><th>ID</th><td>{{ reel.id }}</td></tr>
-            <tr><th>Estado</th><td>{{ reel.status.value }}</td></tr>
-            <tr><th>Duración</th><td>{{ reel.duration or '—' }} seg</td></tr>
-            <tr><th>Creado por</th><td>{{ reel.creator_name }}</td></tr>
-            <tr>
-              <th>Avatar</th>
-              <td>
-                {% if reel.avatar %}
-                  {% if current_user.is_admin() %}
-                    <a href="{{ url_for('admin.avatar_detail', avatar_id=reel.avatar.id) }}">
-                      {{ reel.avatar.name }}
-                    </a>
-                  {% else %}
-                    {{ reel.avatar.name }}
-                  {% endif %}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
-            </tr>
-            <tr><th>Propietario</th><td>{{ reel.owner.username if reel.owner else '—' }}</td></tr>
-            <tr><th>Fecha creación</th><td>{{ reel.created_at.strftime('%d/%m/%Y %H:%M') if reel.created_at else '—' }}</td></tr>
-            <tr><th>Visibilidad</th><td>{{ 'Público' if reel.is_public else 'Privado' }}</td></tr>
-            <tr><th>Resolución</th><td>{{ reel.resolution }}</td></tr>
-            <tr><th>Background</th><td>{{ reel.background_type }}</td></tr>
-            <tr><th>Categoría</th><td>{{ reel.category or '—' }}</td></tr>
-            <tr><th>Tags</th><td>{{ reel.tags or '—' }}</td></tr>
-          </table>
-
-          {% if reel.video_url %}
-            <div class="mt-3 text-center">
-              <a href="{{ reel.video_url }}" target="_blank" class="btn btn-success btn-sm">
-                <i class="fas fa-play-circle me-1"></i> Ver en HeyGen
-              </a>
-            </div>
-          {% endif %}
-
-          {% if reel.description %}
-            <h6 class="mt-3">📝 Descripción</h6>
-            <p class="text-muted">{{ reel.description }}</p>
-          {% endif %}
-
-          {% if reel.script %}
-            <h6 class="mt-3">📜 Guion</h6>
-            <pre class="bg-light p-2 rounded small">{{ reel.script }}</pre>
-          {% endif %}
-        </div>
-      </div>
     </div>
-  </div>
+
+    <div class="row">
+        <!-- Panel del video -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-play-circle me-2"></i>
+                        Video Preview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if reel.video_url %}
+                        <div class="ratio ratio-16x9">
+                            <video controls class="rounded">
+                                <source src="{{ reel.video_url }}" type="video/mp4">
+                                Tu navegador no soporta video HTML5.
+                            </video>
+                        </div>
+                        <div class="mt-3 text-center">
+                            <a href="{{ reel.video_url }}" target="_blank" class="btn btn-success">
+                                <i class="fas fa-external-link-alt me-1"></i>
+                                Ver en HeyGen
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-video-slash fa-4x mb-3 text-muted"></i>
+                            <h5 class="text-muted">Video no disponible</h5>
+                            <p class="text-muted">Este reel aún no tiene video disponible.</p>
+                            {% if reel.status.value == 'pending' %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-clock me-1"></i>
+                                    El video está siendo procesado. Por favor, espera unos momentos.
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Panel del guión -->
+            {% if reel.script %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-scroll me-2"></i>
+                        Guión
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="bg-light p-3 rounded">
+                        <pre class="mb-0" style="white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">{{ reel.script }}</pre>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Panel de información -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Detalles del Reel
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="border rounded p-2 text-center">
+                                <small class="text-muted d-block">ID</small>
+                                <strong>{{ reel.id }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2 text-center">
+                                <small class="text-muted d-block">Estado</small>
+                                {% if reel.status.value == 'pending' %}
+                                    <span class="badge bg-warning">{{ reel.status.value }}</span>
+                                {% elif reel.status.value == 'completed' %}
+                                    <span class="badge bg-success">{{ reel.status.value }}</span>
+                                {% elif reel.status.value == 'processing' %}
+                                    <span class="badge bg-info">{{ reel.status.value }}</span>
+                                {% elif reel.status.value == 'failed' %}
+                                    <span class="badge bg-danger">{{ reel.status.value }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ reel.status.value }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <h6><i class="fas fa-user me-1 text-primary"></i> Avatar</h6>
+                        <p class="mb-1">
+                            {% if reel.avatar %}
+                                {% if current_user.is_admin() %}
+                                    <a href="{{ url_for('admin.avatar_detail', avatar_id=reel.avatar.id) }}" class="text-decoration-none">
+                                        {{ reel.avatar.name }}
+                                    </a>
+                                {% else %}
+                                    {{ reel.avatar.name }}
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">No especificado</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6><i class="fas fa-user-tag me-1 text-primary"></i> Creador</h6>
+                        <p class="mb-1">{{ reel.creator_name }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6><i class="fas fa-crown me-1 text-primary"></i> Propietario</h6>
+                        <p class="mb-1">{{ reel.owner.username if reel.owner else '—' }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6><i class="fas fa-calendar me-1 text-primary"></i> Fecha de creación</h6>
+                        <p class="mb-1">{{ reel.created_at.strftime('%d/%m/%Y %H:%M') if reel.created_at else '—' }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6><i class="fas fa-clock me-1 text-primary"></i> Duración</h6>
+                        <p class="mb-1">{{ reel.duration or '—' }} seg</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6><i class="fas fa-eye me-1 text-primary"></i> Visibilidad</h6>
+                        {% if reel.is_public %}
+                            <span class="badge bg-success">Público</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Privado</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de configuración técnica -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Configuración Técnica
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">Resolución</small>
+                        <div><strong>{{ reel.resolution }}</strong></div>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Background</small>
+                        <div><strong>{{ reel.background_type }}</strong></div>
+                    </div>
+                    {% if reel.category %}
+                    <div class="mb-2">
+                        <small class="text-muted">Categoría</small>
+                        <div><strong>{{ reel.category }}</strong></div>
+                    </div>
+                    {% endif %}
+                    {% if reel.tags %}
+                    <div class="mb-2">
+                        <small class="text-muted">Tags</small>
+                        <div><strong>{{ reel.tags }}</strong></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Panel de descripción -->
+            {% if reel.description %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-align-left me-2"></i>
+                        Descripción
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ reel.description }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 {% endblock %}

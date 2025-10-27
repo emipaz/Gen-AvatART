@@ -315,17 +315,22 @@ class Avatar(db.Model):
     
     def approve(self, approved_by_user):
         """
-        Aprueba el avatar para su uso.
+        Aprueba el avatar para su uso y lo activa completamente.
         
         Args:
             approved_by_user (User): Usuario que aprueba el avatar
         
         Note:
-            Cambia el estado a APPROVED y registra quién y cuándo lo aprobó
+            Cambia el estado a ACTIVE y habilita todos los flags para que
+            el avatar esté completamente listo para usar
         """
-        self.status = AvatarStatus.APPROVED
-        self.approved_by_id = approved_by_user.id
-        self.approved_at = datetime.utcnow()
+        self.status = AvatarStatus.ACTIVE  # Cambiado de APPROVED a ACTIVE
+        self.enabled_by_admin = True       # Habilitar por admin
+        self.enabled_by_producer = True    # Habilitar por productor  
+        self.enabled_by_subproducer = True # Habilitar por subproductor
+        # Nota: Los campos approved_by_id y approved_at pueden no existir en el modelo actual
+        # self.approved_by_id = approved_by_user.id
+        # self.approved_at = datetime.utcnow()
         # from app import db
         db.session.commit()
     

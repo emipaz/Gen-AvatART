@@ -327,6 +327,29 @@ Acciones disponibles:
                                     <i class="fas fa-eye"></i> Ver Detalles
                                 </a>
                                 
+                                <!-- Botones de aprobación para avatares pendientes -->
+                                {% if avatar.status.value == 'processing' %}
+                                    <div class="alert alert-warning p-2 mb-2">
+                                        <small><i class="fas fa-clock"></i> <strong>Pendiente de aprobación</strong></small>
+                                        <br><small>Creado por: {{ avatar.created_by.username }}</small>
+                                    </div>
+                                    
+                                    <div class="btn-group" role="group">
+                                        <form method="post" action="{{ url_for('producer.approve_avatar', avatar_id=avatar.id) }}" class="flex-fill">
+                                            <button type="submit" class="btn btn-success w-100" 
+                                                    onclick="return confirm('¿Aprobar este avatar?')">
+                                                <i class="fas fa-check"></i> Aprobar
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{{ url_for('producer.reject_avatar', avatar_id=avatar.id) }}" class="flex-fill">
+                                            <button type="submit" class="btn btn-danger w-100" 
+                                                    onclick="return confirm('¿Rechazar este avatar?')">
+                                                <i class="fas fa-times"></i> Rechazar
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% endif %}
+                                
                                 <!-- Botones secundarios -->
                                 <div class="btn-group" role="group">
                                     <button type="button" class="btn btn-outline-secondary btn-sm" 

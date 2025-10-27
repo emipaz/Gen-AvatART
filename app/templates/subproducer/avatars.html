@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Avatares - Subproductor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+            <i class="fas fa-robot me-2 text-primary"></i>
+            Mis Avatares
+        </h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{{ url_for('subproducer.create_avatar') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                Crear Avatar
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form method="GET" class="d-flex">
+                <select name="status" class="form-select me-2" onchange="this.form.submit()">
+                    <option value="">Todos los estados</option>
+                    <option value="processing" {% if selected_status == 'processing' %}selected{% endif %}>
+                        Pendiente de Aprobación
+                    </option>
+                    <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>
+                        Aprobado
+                    </option>
+                    <option value="active" {% if selected_status == 'active' %}selected{% endif %}>
+                        Activo/Listo para usar
+                    </option>
+                    <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>
+                        Rechazado/Inactivo
+                    </option>
+                </select>
+                <input type="hidden" name="page" value="1">
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Avatares -->
+    {% if avatars.items %}
+        <div class="row">
+            {% for avatar in avatars.items %}
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="card-title mb-0">{{ avatar.name }}</h6>
+                            {% if avatar.status.value == 'processing' %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-clock me-1"></i>Pendiente
+                                </span>
+                            {% elif avatar.status.value == 'approved' %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-check me-1"></i>Aprobado
+                                </span>
+                            {% elif avatar.status.value == 'active' %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-play me-1"></i>Activo
+                                </span>
+                            {% elif avatar.status.value == 'inactive' %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times me-1"></i>Rechazado
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            {% if avatar.description %}
+                                <p class="card-text text-muted">{{ avatar.description[:100] }}{% if avatar.description|length > 100 %}...{% endif %}</p>
+                            {% endif %}
+                            
+                            <div class="small text-muted mb-2">
+                                <div><strong>Tipo:</strong> {{ avatar.avatar_type }}</div>
+                                <div><strong>Idioma:</strong> {{ avatar.language }}</div>
+                                <div><strong>Creado:</strong> {{ avatar.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+                            </div>
+
+                            {% if avatar.tags %}
+                                <div class="mb-2">
+                                    {% for tag in avatar.tags.split(',') if avatar.tags %}
+                                        <span class="badge bg-light text-dark me-1">{{ tag.strip() }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer">
+                            {% if avatar.status.value == 'PROCESSING' %}
+                                <small class="text-warning">
+                                    <i class="fas fa-hourglass-half me-1"></i>
+                                    Esperando aprobación del productor
+                                </small>
+                            {% elif avatar.status.value == 'APPROVED' %}
+                                <small class="text-success">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Avatar listo para usar
+                                </small>
+                            {% elif avatar.status.value == 'INACTIVE' %}
+                                <small class="text-danger">
+                                    <i class="fas fa-ban me-1"></i>
+                                    Avatar rechazado por el productor
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Paginación -->
+        {% if avatars.pages > 1 %}
+            <nav aria-label="Paginación de avatares">
+                <ul class="pagination justify-content-center">
+                    {% if avatars.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('subproducer.avatars', page=avatars.prev_num, status=request.args.get('status')) }}">
+                                Anterior
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for page_num in avatars.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != avatars.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('subproducer.avatars', page=page_num, status=request.args.get('status')) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">…</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if avatars.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('subproducer.avatars', page=avatars.next_num, status=request.args.get('status')) }}">
+                                Siguiente
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+
+    {% else %}
+        <!-- Sin avatares -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-robot fa-4x text-muted"></i>
+            </div>
+            <h3 class="text-muted">No tienes avatares creados</h3>
+            <p class="text-muted mb-4">
+                {% if request.args.get('status') %}
+                    No hay avatares con el estado seleccionado.
+                {% else %}
+                    Crea tu primer avatar para comenzar a generar contenido.
+                {% endif %}
+            </p>
+            <a href="{{ url_for('subproducer.create_avatar') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus me-2"></i>
+                Crear mi primer avatar
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
