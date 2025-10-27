@@ -1,0 +1,205 @@
+{#
+==============================================================
+TEMPLATE: REQUEST_PRODUCER - SOLICITUD PARA SER PRODUCTOR
+==============================================================
+
+Propósito y Funcionalidad:
+- Formulario de solicitud para que usuarios regulares puedan convertirse en productores
+- Permite a los usuarios completar información profesional y comercial requerida
+- Maneja diferentes estados: usuario regular, solicitud pendiente, productor aprobado
+- Recolecta datos comerciales necesarios para evaluación de la solicitud
+
+Contexto de Uso:
+- Accesible desde el dashboard de usuarios regulares o navegación principal
+- Se renderiza desde user.py en la ruta /request-producer (GET y POST)
+- Parte del flujo de upgrade de permisos en la aplicación
+- Gateway para acceder a funcionalidades avanzadas de producción
+
+Variables de Contexto:
+- approved: Boolean - Indica si el usuario ya es productor aprobado
+- existing: Boolean - Indica si ya existe una solicitud pendiente para este usuario
+- Form fields: company_name, business_type, website, expected_volume, motivation
+
+Bootstrap 5 Classes Utilizadas:
+Container y Layout:
+- container: Contenedor responsivo principal
+- my-5: Margin vertical (top y bottom) de 3rem
+- row: Sistema de grid para organización de campos
+- col-md-6, col-12: Columnas responsivas para layout de formulario
+- g-3: Gap/spacing de 1rem entre elementos del grid
+
+Card Component:
+- card: Componente contenedor principal con bordes redondeados
+- shadow-sm: Sombra sutil para elevación visual
+- card-header: Cabecera del card con background diferenciado
+- card-body: Contenido principal del card con padding
+
+Alert Components:
+- alert: Clase base para mensajes de estado
+- alert-success: Alertas de éxito (usuario ya aprobado)
+- alert-info: Alertas informativas (solicitud pendiente)
+
+Form Components:
+- form-label: Etiquetas de formulario con estilos consistentes
+- form-control: Clase base para inputs de texto, textarea, etc.
+- form-select: Estilizado específico para elementos select
+- form-check: Para elementos de checkbox/radio (si se agregan)
+
+Button Components:
+- btn: Clase base para botones
+- btn-primary: Botón principal de envío
+- btn-outline-secondary: Botón secundario con borde
+
+Flexbox y Alignment:
+- d-flex: Display flex para contenedores
+- align-items-center: Alineación vertical centrada
+- justify-content-between: Distribución espaciada entre elementos
+
+Text y Typography:
+- text-muted: Color de texto gris para información secundaria
+- me-2: Margin end de 0.5rem para espaciado de iconos
+
+Spacing:
+- mb-4: Margin bottom de 1.5rem
+- mt-4: Margin top de 1.5rem para separar secciones
+
+Responsive Design:
+- Máximo ancho de 760px para mantener legibilidad
+- Grid responsivo que se adapta en mobile (col-md-6 se convierte en col-12)
+- Form fields que se reorganizan en pantallas pequeñas
+
+Rutas Flask Utilizadas:
+- {{ url_for('user.request_producer') }}: Endpoint POST para envío del formulario
+- {{ url_for('main.index') }}: Redirección al inicio para cancelar
+
+Font Awesome Icons:
+- fas fa-briefcase: Ícono de maletín para representar trabajo/empresa
+- fas fa-check-circle: Ícono de confirmación para estado aprobado
+- fas fa-clock: Ícono de reloj para solicitud pendiente
+- fas fa-arrow-left: Ícono de flecha para botón de volver
+- fas fa-paper-plane: Ícono de avión de papel para enviar solicitud
+
+Form Fields y Validación:
+- company_name: Campo requerido, nombre de empresa/marca personal
+- business_type: Campo opcional, tipo de negocio o rubro
+- website: Campo URL opcional con validación automática HTML5
+- expected_volume: Select con opciones predefinidas de volumen mensual
+- motivation: Textarea para descripción y motivación detallada
+
+Estados y Lógica Condicional:
+- Estado 1: Usuario regular (formulario activo)
+- Estado 2: Solicitud pendiente (formulario deshabilitado + alerta info)
+- Estado 3: Productor aprobado (formulario deshabilitado + alerta success)
+- Botón de envío se deshabilita condicionalmente
+
+Características UX:
+- Información contextual sobre qué significa ser productor
+- Feedback visual claro sobre el estado actual del usuario
+- Formulario progresivo con campos opcionales y requeridos claramente marcados
+- Placeholders informativos para guiar al usuario
+- Validación HTML5 integrada para campos específicos
+- Navegación clara con opción de cancelar
+#}
+
+{% extends "base.html" %}
+{% block title %}Solicitar ser productor - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal con ancho máximo para formulario -->
+<div class="container my-5" style="max-width: 760px;">
+  
+  <!-- Card principal del formulario -->
+  <div class="card shadow-sm">
+    
+    <!-- Cabecera del card con ícono y título -->
+    <div class="card-header d-flex align-items-center">
+      <i class="fas fa-briefcase me-2"></i>
+      <strong>Solicitud para ser productor</strong>
+    </div>
+    
+    <!-- Contenido principal del formulario -->
+    <div class="card-body">
+      
+      <!-- Descripción explicativa de los beneficios de ser productor -->
+      <p class="text-muted mb-4">
+        Los productores pueden crear avatares digitales, gestionar equipos y acceder a funcionalidades avanzadas de HeyGen.
+      </p>
+
+      <!-- Alertas de estado según la condición del usuario -->
+      {% if approved %}
+        <!-- Usuario ya es productor aprobado -->
+        <div class="alert alert-success">
+          <i class="fas fa-check-circle"></i> Ya sos productor autorizado.
+        </div>
+      {% elif existing %}
+        <!-- Usuario tiene solicitud pendiente -->
+        <div class="alert alert-info">
+          <i class="fas fa-clock"></i> Ya tenés una solicitud pendiente. Te avisaremos por email.
+        </div>
+      {% endif %}
+
+      <!-- Formulario de solicitud para productor -->
+      <form method="POST" action="{{ url_for('user.request_producer') }}">
+        
+        <!-- Grid responsivo para organizar campos del formulario -->
+        <div class="row g-3">
+          
+          <!-- Campo requerido: Nombre de empresa -->
+          <div class="col-md-6">
+            <label class="form-label">Nombre de la empresa *</label>
+            <input type="text" name="company_name" class="form-control" required
+                   placeholder="Tu empresa o marca personal">
+          </div>
+          
+          <!-- Campo opcional: Tipo de negocio -->
+          <div class="col-md-6">
+            <label class="form-label">Rubro / Tipo de negocio</label>
+            <input type="text" name="business_type" class="form-control" 
+                   placeholder="Ej: Agencia, Productora, Freelance">
+          </div>
+          
+          <!-- Campo opcional: Website con validación URL -->
+          <div class="col-12">
+            <label class="form-label">Website</label>
+            <input type="url" name="website" class="form-control" 
+                   placeholder="https://tusitio.com">
+          </div>
+          
+          <!-- Campo select: Volumen esperado de producción -->
+          <div class="col-md-6">
+            <label class="form-label">Volumen esperado de videos/mes</label>
+            <select name="expected_volume" class="form-select">
+              <option value="">Seleccionar...</option>
+              <option value="1-10">1-10 videos</option>
+              <option value="11-50">11-50 videos</option>
+              <option value="51-100">51-100 videos</option>
+              <option value="100+">Más de 100 videos</option>
+            </select>
+          </div>
+          
+          <!-- Campo textarea: Motivación y experiencia -->
+          <div class="col-12">
+            <label class="form-label">Descripción / Motivación</label>
+            <textarea name="motivation" rows="4" class="form-control" 
+                   placeholder="Contanos por qué querés ser productor, tu experiencia y objetivos"></textarea>
+          </div>
+        </div>
+
+        <!-- Botones de acción: Volver y Enviar -->
+        <div class="d-flex justify-content-between mt-4">
+          
+          <!-- Botón secundario: Volver al inicio -->
+          <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+          </a>
+          
+          <!-- Botón principal: Enviar solicitud (condicional) -->
+          <button type="submit" class="btn btn-primary" {% if existing or approved %}disabled{% endif %}>
+            <i class="fas fa-paper-plane"></i> Enviar solicitud
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
