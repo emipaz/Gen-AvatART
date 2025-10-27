@@ -133,19 +133,19 @@ Validación de errores:
                         <div class="row mb-4">
                             <!-- Columna de 3/12 del ancho en pantallas medianas, centrada -->
                             <!-- text-center alinea todo el contenido al centro -->
-                            <div class="col-md-3 text-center">
+                            <div class="col-md-3 text-center" id="avatar-container">
                                 <!-- Condicional Jinja para mostrar avatar existente o placeholder -->
                                 {% if current_user.avatar_url %}
                                     <!-- Imagen del avatar actual del usuario -->
                                     <!-- img-fluid hace la imagen responsiva -->
                                     <!-- rounded-circle aplica border-radius: 50% para forma circular -->
                                     <!-- max-width: 150px limita el tamaño máximo del avatar -->
-                                    <img src="{{ current_user.avatar_url }}" class="img-fluid rounded-circle" style="max-width: 150px;" alt="Avatar">
+                                    <img src="{{ current_user.avatar_url }}" class="img-fluid rounded-circle" style="max-width: 150px;" alt="Avatar" id="avatar-preview">
                                 {% else %}
                                     <!-- Placeholder de avatar cuando el usuario no tiene imagen -->
                                     <!-- fa-8x hace el icono 8 veces más grande que el tamaño base -->
                                     <!-- text-muted aplica color gris para indicar elemento inactivo -->
-                                    <i class="fas fa-user-circle fa-8x text-muted"></i>
+                                    <i class="fas fa-user-circle fa-8x text-muted" id="avatar-placeholder"></i>
                                 {% endif %}
                                 
                                 <!-- Sección de botón para cambiar avatar -->
@@ -512,30 +512,52 @@ document.getElementById('avatar').addEventListener('change', function(e) {
         
         // Define función que se ejecuta cuando la lectura se completa
         reader.onload = function(e) {
-            // Busca si ya existe una imagen de avatar
-            const img = document.querySelector('img');
+            // Busca el contenedor específico del avatar
+            const avatarContainer = document.getElementById('avatar-container');
             
-            if (img) {
+            // Busca si ya existe una imagen de avatar
+            const existingImg = document.getElementById('avatar-preview');
+            
+            if (existingImg) {
                 // Si existe imagen, actualiza su source con la nueva imagen
-                img.src = e.target.result;
+                existingImg.src = e.target.result;
             } else {
-                // Si no hay imagen (solo icono placeholder), crea elemento imagen
-                const icon = document.querySelector('.fa-user-circle');
+                // Si no hay imagen (solo icono placeholder), reemplázalo
+                const placeholder = document.getElementById('avatar-placeholder');
                 
-                // Crea nuevo elemento img con la imagen seleccionada
-                const imgElement = document.createElement('img');
-                imgElement.src = e.target.result;
-                imgElement.className = 'img-fluid rounded-circle';
-                imgElement.style.maxWidth = '150px';
-                imgElement.alt = 'Avatar';
-                
-                // Reemplaza el icono placeholder con la nueva imagen
-                icon.parentNode.replaceChild(imgElement, icon);
+                if (placeholder) {
+                    // Crea nuevo elemento img con la imagen seleccionada
+                    const imgElement = document.createElement('img');
+                    imgElement.src = e.target.result;
+                    imgElement.className = 'img-fluid rounded-circle';
+                    imgElement.style.maxWidth = '150px';
+                    imgElement.alt = 'Avatar';
+                    imgElement.id = 'avatar-preview';
+                    
+                    // Reemplaza el icono placeholder con la nueva imagen
+                    placeholder.parentNode.replaceChild(imgElement, placeholder);
+                }
             }
         };
         
         // Inicia la lectura del archivo como URL de datos (base64)
         reader.readAsDataURL(file);
+        
+        // Auto-enviar formulario después de seleccionar imagen
+        setTimeout(function() {
+            // Mostrar indicador de carga en el botón
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando avatar...';
+                submitBtn.disabled = true;
+            }
+            
+            // Enviar formulario automáticamente
+            const form = document.querySelector('form');
+            if (form) {
+                form.submit();
+            }
+        }, 1000); // 1 segundo para que el usuario vea el preview
     }
 });
 </script>

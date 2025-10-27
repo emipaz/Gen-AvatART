@@ -209,9 +209,12 @@ def profile():
             
             # Procesar avatar si se subió uno nuevo
             if form.avatar.data:
+                print(f"DEBUG: Procesando avatar para usuario {current_user.id}")
                 avatar_url = save_avatar(form.avatar.data)
+                print(f"DEBUG: Avatar URL resultado: {avatar_url}")
                 if avatar_url:
                     current_user.avatar_url = avatar_url
+                    print(f"DEBUG: Avatar URL asignado a current_user: {current_user.avatar_url}")
             
             # Cambiar contraseña si se proporcionó
             if form.current_password.data:
@@ -227,7 +230,9 @@ def profile():
                     return render_template('user/profile.html', form=form)
             
             # Guardar cambios
+            print(f"DEBUG: Antes del commit - user.avatar_url: {current_user.avatar_url}")
             db.session.commit()
+            print(f"DEBUG: Después del commit - user.avatar_url: {current_user.avatar_url}")
             flash('Perfil actualizado correctamente', 'success')
             return redirect(url_for('user.profile'))
             
