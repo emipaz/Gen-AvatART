@@ -416,12 +416,82 @@ def archive_avatar(avatar_id):
     avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
 
     if avatar.status == AvatarStatus.INACTIVE:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': 'El avatar ya estaba archivado.', 'status': 'inactive'})
         flash('El avatar ya estaba archivado.', 'info')
         return redirect(url_for('producer.avatars'))
 
     avatar.status = AvatarStatus.INACTIVE
     db.session.commit()
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'message': 'Avatar archivado.', 'status': 'inactive'})
     flash('Avatar archivado.', 'success')
+    return redirect(url_for('producer.avatars'))
+
+# --- NUEVO: Reactivar avatar (solo si no fue desactivado por el subproductor) ---
+# @producer_bp.route('/avatar/<int:avatar_id>/activate', methods=['POST'])
+# @login_required
+# @producer_required
+# def activate_avatar(avatar_id):
+#     """Permite al productor reactivar un avatar si no fue desactivado por el subproductor."""
+#     producer = current_user.producer_profile
+#     avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
+
+#     # Solo permitir si está inactivo y NO fue desactivado por el subproductor
+#     if avatar.status != AvatarStatus.INACTIVE:
+#         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+#             return jsonify({'success': False, 'message': 'El avatar no está archivado.', 'status': avatar.status.value.lower()})
+#         flash('El avatar no está archivado.', 'info')
+#         return redirect(url_for('producer.avatars'))
+
+#     if hasattr(avatar, 'enabled_by_subproducer') and not avatar.enabled_by_subproducer:
+#         avatar.status = AvatarStatus.ACTIVE
+#         db.session.commit()
+#         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+#             return jsonify({'success': True, 'message': 'Avatar reactivado correctamente.', 'status': 'active'})
+#         flash('Avatar reactivado correctamente.', 'success')
+#     else:
+#         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+#             return jsonify({'success': False, 'message': 'No se puede reactivar: el subproductor lo desactivó.', 'status': 'inactive'})
+#         flash('No se puede reactivar: el subproductor lo desactivó.', 'warning')
+#     return redirect(url_for('producer.avatars'))
+
+@producer_bp.route('/avatar/<int:avatar_id>/reactivate', methods=['POST'])
+@login_required
+@producer_required
+def reactivate_avatar(avatar_id):
+    """
+    Reactiva un avatar inactivo del productor actual.
+    
+    Cambia el estado de un avatar de INACTIVE a ACTIVE, permitiendo
+    que vuelva a ser utilizado para crear reels y aparezca en las
+    listas de avatares disponibles.
+    
+    Args:
+        avatar_id (int): ID del avatar a reactivar
+    
+    Returns:
+        Redirect: Redirección a la página de avatares con mensaje de confirmación
+    
+    Note:
+        - Solo el productor dueño del avatar puede reactivarlo
+        - El avatar debe estar en estado INACTIVE
+        - Después de reactivar aparecerá en filtro "Activos"
+    """
+    producer = current_user.producer_profile
+    avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
+
+    if avatar.status == AvatarStatus.ACTIVE:
+        flash('El avatar ya estaba activo.', 'info')
+        return redirect(url_for('producer.avatars'))
+    
+    if avatar.status != AvatarStatus.INACTIVE:
+        flash('Solo se pueden reactivar avatares archivados.', 'error')
+        return redirect(url_for('producer.avatars'))
+
+    avatar.status = AvatarStatus.ACTIVE
+    db.session.commit()
+    flash('Avatar reactivado exitosamente.', 'success')
     return redirect(url_for('producer.avatars'))
 
 @producer_bp.route('/test')
@@ -1210,3 +1280,142 @@ def member_detail(member_id):
     # Por ahora, redirigir con información hasta que se implemente template completo
     flash(f'Viendo perfil de {member.full_name} - Funcionalidad completa próximamente', 'info')
     return redirect(url_for('producer.team'))
+
+@producer_bp.route('/avatar/<int:avatar_id>/stats')
+@login_required
+@producer_required
+def avatar_stats(avatar_id):
+    """Estadísticas de un avatar, incluyendo los creados por subproductores."""
+    producer = current_user.producer_profile
+    avatar = Avatar.query.get_or_404(avatar_id)
+    if avatar.producer_id != producer.id:
+        flash("No tenés acceso a este avatar.", "error")
+        return redirect(url_for('producer.avatars'))
+
+    # Total de reels asociados a este avatar
+    reels = avatar.reels if hasattr(avatar, 'reels') else []
+    if hasattr(reels, 'all'):
+        reels = reels.all()
+    total_reels = len(reels)
+
+    # Reels de este mes
+    now = datetime.now()
+    this_month = len([r for r in reels if r.created_at and r.created_at.year == now.year and r.created_at.month == now.month])
+
+    # Uso por miembro
+    usage_by_member = []
+    from collections import defaultdict
+    member_usage = defaultdict(list)
+    for r in reels:
+        member_usage[r.creator_id].append(r)
+    for member_id, member_reels in member_usage.items():
+        user = User.query.get(member_id)
+        usage_by_member.append({
+            'name': user.full_name if user else f'ID {member_id}',
+            'reels_count': len(member_reels),
+            'last_used': max([r.created_at for r in member_reels if r.created_at], default=None)
+        })
+    # Formatear fechas para el frontend
+    for m in usage_by_member:
+        if m['last_used']:
+            m['last_used'] = m['last_used'].strftime('%d/%m/%Y %H:%M')
+
+    return jsonify({
+        'total_reels': total_reels,
+        'this_month': this_month,
+        'usage_by_member': usage_by_member
+    })
+
+
+# @producer_bp.route('/avatar/<int:avatar_id>/access')
+# @login_required
+# @producer_required
+# def avatar_access(avatar_id):
+#     """Devuelve información de acceso para el avatar (simulado)."""
+#     producer = current_user.producer_profile
+#     avatar = Avatar.query.get_or_404(avatar_id)
+#     if avatar.producer_id != producer.id:
+#         return jsonify({'error': 'No autorizado'}), 403
+
+#     # Simulación: lista de usuarios con acceso (puedes adaptar a tu modelo real)
+#     # Aquí se asume que hay una relación avatar.access_users o similar
+#     # Si no existe, se devuelve una lista vacía o de ejemplo
+#     access_users = []
+#     if hasattr(avatar, 'access_users'):
+#         for user in avatar.access_users:
+#             access_users.append({
+#                 'id': user.id,
+#                 'name': user.full_name,
+#                 'role': user.role.value
+#             })
+#     # Ejemplo si no existe la relación
+#     else:
+#         access_users = [
+#             {'id': 1, 'name': 'Demo User', 'role': 'SUBPRODUCER'}
+#         ]
+
+#     return jsonify({
+#         'avatar_id': avatar.id,
+#         'access_users': access_users
+#     })
+
+from app.models.clone_permission import ClonePermission, PermissionStatus, PermissionSubjectType
+# GET y POST: gestión de acceso granular a un avatar
+@producer_bp.route('/avatar/<int:avatar_id>/access', methods=['GET', 'POST'])
+@login_required
+@producer_required
+def avatar_access(avatar_id):
+    """Gestiona el acceso de miembros del equipo a un avatar (GET: lista, POST: actualiza permisos)."""
+    producer = current_user.producer_profile
+    avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
+
+    # Obtener todos los miembros del equipo (subproductores y usuarios finales)
+    team_members = list(producer.get_team_members())
+
+    if request.method == 'GET':
+        # Para cada miembro, buscar si tiene permiso activo para este avatar
+        members_data = []
+        for member in team_members:
+            perm = ClonePermission.query.filter_by(clone_id=avatar.id, subject_id=member.id).first()
+            members_data.append({
+                'id': member.id,
+                'username': member.username,
+                'full_name': member.full_name,
+                'has_access': perm is not None and perm.status == PermissionStatus.ACTIVE
+            })
+        return jsonify({'team_members': members_data})
+
+    # POST: actualizar permisos según access_list
+    data = request.get_json(force=True)
+    access_list = data.get('access_list', [])
+    updated = 0
+    for item in access_list:
+        member_id = int(item['member_id'])
+        has_access = bool(item['has_access'])
+        member = next((m for m in team_members if m.id == member_id), None)
+        if not member:
+            continue
+        # Buscar permiso existente
+        perm = ClonePermission.query.filter_by(clone_id=avatar.id, subject_id=member_id).first()
+        if has_access:
+            if not perm:
+                # Crear permiso nuevo
+                perm = ClonePermission(
+                    clone_id=avatar.id,
+                    producer_id=producer.id,
+                    subject_id=member_id,
+                    subject_type=PermissionSubjectType.SUBPRODUCER if member.role.name == 'SUBPRODUCER' else PermissionSubjectType.FINAL_USER,
+                    status=PermissionStatus.ACTIVE,
+                    granted_by_id=current_user.id
+                )
+                db.session.add(perm)
+                updated += 1
+            elif perm.status != PermissionStatus.ACTIVE:
+                perm.status = PermissionStatus.ACTIVE
+                updated += 1
+        else:
+            if perm and perm.status == PermissionStatus.ACTIVE:
+                perm.status = PermissionStatus.REVOKED
+                updated += 1
+    db.session.commit()
+    return jsonify({'success': True, 'updated': updated})

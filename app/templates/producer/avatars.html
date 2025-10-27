@@ -365,12 +365,20 @@ Acciones disponibles:
                                 {# Si no tenés st definido en la card, añadí esta línea arriba de los badges: #}
                                 {# {% set st = (avatar.status or '')|lower %} #}
 
-                                {% if (avatar.status or '')|lower != 'inactive' %}
+                                {% if avatar.status.value != 'inactive' %}
                                     <form class="mt-2" method="post"
                                         action="{{ url_for('producer.archive_avatar', avatar_id=avatar.id) }}"
                                         onsubmit="return confirm('¿Archivar este avatar? Podrás verlo filtrando por estado INACTIVE.');">
                                         <button type="submit" class="btn btn-outline-danger btn-sm w-100">
                                             <i class="fas fa-box-archive"></i> Archivar
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form class="mt-2" method="post"
+                                        action="{{ url_for('producer.reactivate_avatar', avatar_id=avatar.id) }}"
+                                        onsubmit="return confirm('¿Reactivar este avatar? Volverá a estar disponible para crear reels.');">
+                                        <button type="submit" class="btn btn-outline-success btn-sm w-100">
+                                            <i class="fas fa-play-circle"></i> Reactivar
                                         </button>
                                     </form>
                                 {% endif %}
