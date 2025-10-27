@@ -33,7 +33,10 @@
                         Activo/Listo para usar
                     </option>
                     <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>
-                        Rechazado/Inactivo
+                        Deshabilitado temporalmente
+                    </option>
+                    <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>
+                        Rechazado por el productor
                     </option>
                 </select>
                 <input type="hidden" name="page" value="1">
@@ -62,6 +65,10 @@
                                     <i class="fas fa-play me-1"></i>Activo
                                 </span>
                             {% elif avatar.status.value == 'inactive' %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-pause me-1"></i>Deshabilitado
+                                </span>
+                            {% elif avatar.status.value == 'rejected' %}
                                 <span class="badge bg-danger">
                                     <i class="fas fa-times me-1"></i>Rechazado
                                 </span>
@@ -98,6 +105,11 @@
                                     Avatar listo para usar
                                 </small>
                             {% elif avatar.status.value == 'INACTIVE' %}
+                                <small class="text-secondary">
+                                    <i class="fas fa-pause me-1"></i>
+                                    Avatar deshabilitado temporalmente
+                                </small>
+                            {% elif avatar.status.value == 'REJECTED' %}
                                 <small class="text-danger">
                                     <i class="fas fa-ban me-1"></i>
                                     Avatar rechazado por el productor

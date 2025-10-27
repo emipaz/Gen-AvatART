@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Mis Reels - Subproductor{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">🎬 Mis Reels</h3>
+    
+    <div class="d-flex gap-2">
+      <!-- Filtros por estado -->
+      <select class="form-select form-select-sm" id="statusFilter" onchange="filterReels()">
+        <option value="">Todos los estados</option>
+        <option value="pending">Pendiente</option>
+        <option value="processing">Procesando</option>
+        <option value="completed">Completado</option>
+        <option value="failed">Fallido</option>
+        <option value="published">Publicado</option>
+      </select>
+      
+      <!-- Botón crear reel -->
+      <a href="{{ url_for('subproducer.create_reel') }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus me-1"></i> Crear Reel
+      </a>
+    </div>
+  </div>
+
+  {% if reels.items %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Título</th>
+            <th>Avatar</th>
+            <th>Estado</th>
+            <th>Creado</th>
+            <th>Duración</th>
+            <th>Visibilidad</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for reel in reels.items %}
+            <tr>
+              <td>
+                <span class="fw-bold text-primary">#{{ reel.id }}</span>
+              </td>
+              <td>
+                <div class="fw-medium">{{ reel.title or 'Sin título' }}</div>
+                {% if reel.description %}
+                  <small class="text-muted">{{ reel.description[:50] }}{% if reel.description|length > 50 %}...{% endif %}</small>
+                {% endif %}
+              </td>
+              <td>
+                {% if reel.avatar %}
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-placeholder rounded-circle bg-secondary me-2" style="width: 30px; height: 30px;">
+                      <i class="fas fa-user text-white" style="font-size: 12px; line-height: 30px;"></i>
+                    </div>
+                    <span class="small">{{ reel.avatar.name }}</span>
+                  </div>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if reel.status.value == 'completed' %}
+                  <span class="badge bg-success">✅ Completado</span> 
+                {% elif reel.status.value == 'pending' %}
+                  <span class="badge bg-warning text-dark">⏳ Pendiente</span>
+                {% elif reel.status.value == 'processing' %}
+                  <span class="badge bg-info">🔄 Procesando</span>
+                {% elif reel.status.value == 'failed' %}
+                  <span class="badge bg-danger">❌ Fallido</span>
+                {% elif reel.status.value == 'published' %}
+                  <span class="badge bg-primary">🌐 Publicado</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ reel.status.value }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="small">
+                  {{ reel.created_at.strftime('%d/%m/%Y') if reel.created_at else '—' }}
+                  <br>
+                  <span class="text-muted">{{ reel.created_at.strftime('%H:%M') if reel.created_at else '' }}</span>
+                </div>
+              </td>
+              <td>
+                {% if reel.duration %}
+                  <span class="small">{{ reel.duration }}s</span>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if reel.is_public %}
+                  <span class="badge bg-info text-dark">🌍 Público</span>
+                {% else %}
+                  <span class="badge bg-secondary">🔒 Privado</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm" role="group">
+                  <!-- Ver reel -->
+                  {% if reel.status.value == 'completed' or reel.status.value == 'published' %}
+                    <a href="{{ url_for('user.view_reel', reel_id=reel.id) }}" 
+                       class="btn btn-outline-primary" 
+                       title="Ver reel">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                  {% endif %}
+                  
+                  <!-- Editar (solo si está pendiente) -->
+                  {% if reel.status.value == 'pending' %}
+                    <a href="{{ url_for('subproducer.create_reel') }}?edit={{ reel.id }}" 
+                       class="btn btn-outline-secondary" 
+                       title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                  {% endif %}
+                  
+                  <!-- Descargar (solo si está completado) -->
+                  {% if reel.status.value == 'completed' or reel.status.value == 'published' %}
+                    <a href="#" onclick="downloadReel({{ reel.id }})" 
+                       class="btn btn-outline-success" 
+                       title="Descargar">
+                      <i class="fas fa-download"></i>
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Paginación -->
+    {% if reels.pages > 1 %}
+      <nav aria-label="Paginación de reels">
+        <ul class="pagination justify-content-center">
+          {% if reels.has_prev %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('subproducer.reels', page=reels.prev_num) }}">
+                <i class="fas fa-chevron-left"></i>
+              </a>
+            </li>
+          {% endif %}
+          
+          {% for page_num in reels.iter_pages() %}
+            {% if page_num %}
+              {% if page_num != reels.page %}
+                <li class="page-item">
+                  <a class="page-link" href="{{ url_for('subproducer.reels', page=page_num) }}">{{ page_num }}</a>
+                </li>
+              {% else %}
+                <li class="page-item active">
+                  <span class="page-link">{{ page_num }}</span>
+                </li>
+              {% endif %}
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link">…</span>
+              </li>
+            {% endif %}
+          {% endfor %}
+          
+          {% if reels.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('subproducer.reels', page=reels.next_num) }}">
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
+    
+  {% else %}
+    <!-- Estado vacío -->
+    <div class="text-center py-5">
+      <div class="mb-4">
+        <i class="fas fa-video-slash fa-4x text-muted"></i>
+      </div>
+      <h5 class="text-muted mb-3">Aún no has creado ningún reel</h5>
+      <p class="text-muted mb-4">
+        Crea tu primer reel usando los avatares aprobados por tu productor supervisor.
+      </p>
+      <a href="{{ url_for('subproducer.create_reel') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Crear mi primer reel
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<!-- JavaScript para funcionalidades -->
+<script>
+function filterReels() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const currentUrl = new URL(window.location);
+    
+    if (statusFilter) {
+        currentUrl.searchParams.set('status', statusFilter);
+    } else {
+        currentUrl.searchParams.delete('status');
+    }
+    
+    window.location.href = currentUrl.toString();
+}
+
+function downloadReel(reelId) {
+    // Implementar descarga de reel
+    alert('Funcionalidad de descarga en desarrollo para reel #' + reelId);
+}
+
+// Mantener filtro seleccionado al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const statusFilter = urlParams.get('status');
+    if (statusFilter) {
+        document.getElementById('statusFilter').value = statusFilter;
+    }
+});
+</script>
+{% endblock %}

@@ -261,7 +261,7 @@ def avatars():
     query = Avatar.query.filter_by(producer_id=producer.id)
 
     # Mapeo seguro desde el string del query a tu Enum
-    valid_statuses = {'ACTIVE', 'INACTIVE', 'PROCESSING'}
+    valid_statuses = {'ACTIVE', 'INACTIVE', 'PROCESSING', 'REJECTED', 'APPROVED', 'PENDING', 'FAILED'}
 
     if status_param in valid_statuses:
         # ✅ Columna Enum: comparo contra el Enum, NO contra string
@@ -465,7 +465,8 @@ def reactivate_avatar(avatar_id):
     
     Cambia el estado de un avatar de INACTIVE a ACTIVE, permitiendo
     que vuelva a ser utilizado para crear reels y aparezca en las
-    listas de avatares disponibles.
+    listas de avatares disponibles. También habilita todos los flags
+    necesarios para que el avatar esté completamente funcional.
     
     Args:
         avatar_id (int): ID del avatar a reactivar
@@ -477,6 +478,7 @@ def reactivate_avatar(avatar_id):
         - Solo el productor dueño del avatar puede reactivarlo
         - El avatar debe estar en estado INACTIVE
         - Después de reactivar aparecerá en filtro "Activos"
+        - Habilita automáticamente todos los flags necesarios
     """
     producer = current_user.producer_profile
     avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
@@ -489,7 +491,12 @@ def reactivate_avatar(avatar_id):
         flash('Solo se pueden reactivar avatares archivados.', 'error')
         return redirect(url_for('producer.avatars'))
 
+    # ✅ Cambiar estado y habilitar todos los flags
     avatar.status = AvatarStatus.ACTIVE
+    avatar.enabled_by_admin = True
+    avatar.enabled_by_producer = True
+    avatar.enabled_by_subproducer = True
+    
     db.session.commit()
     flash('Avatar reactivado exitosamente.', 'success')
     return redirect(url_for('producer.avatars'))

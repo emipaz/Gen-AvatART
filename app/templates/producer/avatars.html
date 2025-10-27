@@ -253,7 +253,7 @@ Acciones disponibles:
                             {% set st = (_raw|string).split('.')[-1] | lower %}
                         {% endif %}
 
-                        <span class="position-absolute top-0 end-0 m-2 badge bg-{{ 'success' if st == 'active' else ('warning' if st in ['processing','pending'] else 'secondary') }}">
+                        <span class="position-absolute top-0 end-0 m-2 badge bg-{{ 'success' if st == 'active' else ('warning' if st in ['processing','pending'] else ('danger' if st == 'rejected' else 'secondary')) }}">
                             {{ st|capitalize }}
                         </span>
                         
@@ -365,7 +365,7 @@ Acciones disponibles:
                                 {# Si no tenés st definido en la card, añadí esta línea arriba de los badges: #}
                                 {# {% set st = (avatar.status or '')|lower %} #}
 
-                                {% if avatar.status.value != 'inactive' %}
+                                {% if avatar.status.value not in ['inactive', 'rejected'] %}
                                     <form class="mt-2" method="post"
                                         action="{{ url_for('producer.archive_avatar', avatar_id=avatar.id) }}"
                                         onsubmit="return confirm('¿Archivar este avatar? Podrás verlo filtrando por estado INACTIVE.');">

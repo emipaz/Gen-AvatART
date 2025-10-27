@@ -30,14 +30,16 @@ class AvatarStatus(Enum):
         PENDING    : Pendiente de aprobación
         APPROVED   : Aprobado por el admin
         ACTIVE     : Clone activo y disponible para uso
-        INACTIVE   : Clone deshabilitado por el productor
+        INACTIVE   : Clone deshabilitado temporalmente
+        REJECTED   : Clone rechazado permanentemente
         PROCESSING : Clone en proceso de creación en HeyGen
         FAILED     : Falló la creación del clone en HeyGen
     """
     PENDING     = "pending"      # Pendiente de aprobación
     APPROVED    = "approved"     # Aprobado por el admin
     ACTIVE      = "active"       # Clone activo y disponible para uso   
-    INACTIVE    = "inactive"     # Clone deshabilitado
+    INACTIVE    = "inactive"     # Clone deshabilitado temporalmente
+    REJECTED    = "rejected"     # Clone rechazado permanentemente
     PROCESSING  = "processing"   # En proceso de creación
     FAILED      = "failed"       # Si falló la creación
 
