@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Detalle de Avatar{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- Migas de pan -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('admin.avatars') }}">Avatars</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center mb-4">
+    <div class="me-3">
+      {% if avatar.thumbnail_url %}
+        <img src="{{ avatar.thumbnail_url }}" class="rounded" style="width: 72px; height: 72px; object-fit: cover;" alt="Avatar">
+      {% else %}
+        <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width:72px;height:72px;">
+          <i class="fas fa-user-circle fa-2x text-muted"></i>
+        </span>
+      {% endif %}
+    </div>
+    <div>
+      <h3 class="mb-0">{{ avatar.name }}</h3>
+      <div class="text-muted">ID {{ avatar.id }}</div>
+    </div>
+    <div class="ms-auto">
+      <span class="badge bg-{% if avatar.status.value == 'approved' %}success{% elif avatar.status.value == 'pending' %}warning text-dark{% elif avatar.status.value == 'rejected' %}danger{% elif avatar.status.value == 'inactive' %}secondary{% else %}info{% endif %}">
+        {{ avatar.status.value|title }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Info principal -->
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header fw-semibold">Información del avatar</div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tr><th>Nombre</th><td>{{ avatar.name }}</td></tr>
+            <tr><th>Tipo</th><td>{{ avatar.avatar_type|title if avatar.avatar_type else '—' }}</td></tr>
+            <tr><th>Idioma</th><td>{{ avatar.language or '—' }}</td></tr>
+            <tr><th>Estado</th><td>{{ avatar.status.value|title }}</td></tr>
+            <tr><th>Descripción</th><td>{{ avatar.description or '—' }}</td></tr>
+            <tr><th>Fecha de creación</th><td>{{ avatar.created_at.strftime('%d/%m/%Y %H:%M') if avatar.created_at else '—' }}</td></tr>
+            <tr><th>Creador</th><td>
+              {% if avatar.created_by %}
+                <a href="{{ url_for('admin.user_detail', user_id=avatar.created_by.id) }}">{{ avatar.created_by.full_name }}</a>
+                <br><small class="text-muted">@{{ avatar.created_by.username }}</small>
+              {% else %}
+                —
+              {% endif %}
+            </td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header fw-semibold">Acciones administrativas</div>
+        <div class="card-body">
+          <div class="d-flex gap-2 flex-wrap">
+            {% if avatar.status.value == 'pending' %}
+              <form method="POST" action="{{ url_for('admin.approve_avatar', avatar_id=avatar.id) }}">
+                <button type="submit" class="btn btn-success" onclick="return confirm('¿Aprobar este avatar?')">
+                  <i class="fas fa-check"></i> Aprobar
+                </button>
+              </form>
+              <form method="POST" action="{{ url_for('admin.reject_avatar', avatar_id=avatar.id) }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('¿Rechazar este avatar?')">
+                  <i class="fas fa-times"></i> Rechazar
+                </button>
+              </form>
+            {% endif %}
+            <!-- Puedes agregar más acciones aquí -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección de estadísticas o detalles adicionales si existen -->
+  {# Puedes agregar aquí cards de reels, uso, etc. #}
+
+</div>
+{% endblock %}
