@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h1>Estadísticas del Avatar</h1>
+    <hr>
+    <h3>{{ stats.name }}</h3>
+    <ul>
+        <li><b>ID:</b> {{ stats.id }}</li>
+        <li><b>Estado:</b> {{ stats.status }}</li>
+        <li><b>Creado por (ID):</b> {{ stats.created_by }}</li>
+        <li><b>Fecha de creación:</b> {{ stats.created_at }}</li>
+        <li><b>Reels asociados:</b> {{ stats.reels_count }}</li>
+    </ul>
+    <a href="{{ url_for('producer.avatars') }}" class="btn btn-secondary">Volver a Avatares</a>
+</div>
+{% endblock %}

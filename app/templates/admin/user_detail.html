@@ -113,66 +113,62 @@ Seguridad implementada:
 {% block title %}Detalle de Usuario{% endblock %}
 
 {% block content %}
-<!-- Contenedor principal con padding vertical para espaciado -->
-<!-- my-4 aplica margen vertical de 1.5rem arriba y abajo -->
-<div class="container my-4">
-  
-  <!-- Navegación breadcrumb para mostrar jerarquía de páginas -->
-  <!-- aria-label mejora accesibilidad para lectores de pantalla -->
-  <nav aria-label="breadcrumb">
-    <!-- Lista ordenada que representa la ruta de navegación -->
-    <ol class="breadcrumb">
-      <!-- Enlace al dashboard administrativo -->
-      <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
-      <!-- Enlace a la lista general de usuarios -->
-      <li class="breadcrumb-item"><a href="{{ url_for('admin.users') }}">Usuarios</a></li>
-      <!-- Página actual, marcada como activa y sin enlace -->
-      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
-    </ol>
-  </nav>
-
-  <!-- Header principal con avatar y información básica del usuario -->
-  <!-- d-flex crea layout flexbox horizontal -->
-  <!-- align-items-center alinea verticalmente al centro -->
-  <!-- mb-3 aplica margen inferior de 1rem -->
-  <div class="d-flex align-items-center mb-3">
-    
-    <!-- Contenedor del avatar placeholder -->
-    <!-- me-3 aplica margen derecho de 1rem para separación -->
-    <div class="me-3">
-      <!-- Avatar circular placeholder con icono de usuario -->
-      <!-- rounded-circle hace el elemento completamente circular -->
-      <!-- bg-light aplica fondo gris claro -->
-      <!-- d-inline-flex permite centrado perfecto del contenido -->
-      <!-- width y height fijos de 56px para consistencia -->
-      <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center"
-            style="width:56px;height:56px;">
-        <!-- Icono Font Awesome de usuario con tamaño grande -->
-        <!-- text-muted aplica color gris para elemento inactivo -->
-        <i class="fas fa-user fa-lg text-muted"></i>
-      </span>
+<div class="container-fluid">
+  <div class="row">
+    <!-- ===== SIDEBAR DE NAVEGACIÓN ADMINISTRATIVA ===== -->
+    <div class="col-md-3 col-lg-2 px-0">
+      <div class="sidebar" style="background: linear-gradient(135deg, hwb(190 47% 24%) 0%, #fdfdfd 100%); min-height: calc(100vh - 120px); color: #010101;">
+        <div class="p-3">
+          <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
+        </div>
+        <nav class="nav flex-column">
+          <a class="nav-link" href="{{ url_for('admin.dashboard') }}" style="color: #010101;">
+            <i class="fas fa-home" style="color: #010101;"></i> Dashboard
+          </a>
+          <a class="nav-link active" href="{{ url_for('admin.users') }}" style="color: #010101;">
+            <i class="fas fa-users" style="color: #010101;"></i> Usuarios
+          </a>
+          <a class="nav-link" href="{{ url_for('admin.producers') }}" style="color: #010101;">
+            <i class="fas fa-industry" style="color: #010101;"></i> Productores
+          </a>
+          <a class="nav-link" href="{{ url_for('admin.avatars') }}" style="color: #010101;">
+            <i class="fas fa-user-circle" style="color: #010101;"></i> Avatars
+          </a>
+          <a class="nav-link" href="{{ url_for('admin.reels') }}" style="color: #010101;">
+            <i class="fas fa-video"></i> Reels
+          </a>
+          <a class="nav-link" href="{{ url_for('admin.commissions') }}" style="color: #010101;">
+            <i class="fas fa-dollar-sign"></i> Comisiones
+          </a>
+        </nav>
+      </div>
     </div>
-    
-    <!-- Información textual del usuario -->
-    <div>
-      <!-- Nombre completo del usuario como título principal -->
-      <!-- mb-0 elimina margen inferior por defecto del h3 -->
-      <!-- Lógica Jinja: usa nombre completo si existe, sino username -->
-      <!-- Operador ~ concatena strings, |trim elimina espacios extra -->
-      <h3 class="mb-0">
-        {{ (user.first_name ~ ' ' ~ user.last_name)|trim if (user.first_name or user.last_name) else user.username }}
-      </h3>
-      
-      <!-- Email del usuario como información secundaria -->
-      <!-- text-muted aplica color gris para información menos prominente -->
-      <div class="text-muted">{{ user.email }}</div>
-    </div>
-  </div>
 
-  <!-- Grid de información básica del usuario -->
-  <!-- row con g-3 aplica gap de 1rem entre columnas -->
-  <!-- mb-4 aplica margen inferior de 1.5rem -->
-  <div class="row g-3 mb-4">
+    <!-- ===== CONTENIDO PRINCIPAL DEL DETALLE DE USUARIO ===== -->
+    <div class="col-md-9 col-lg-10">
+      <!-- Migas de pan -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('admin.users') }}">Usuarios</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+        </ol>
+      </nav>
+      <!-- Header principal con avatar y datos básicos -->
+      <div class="d-flex align-items-center mb-3">
+        <div class="me-3">
+          <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+            <i class="fas fa-user fa-lg text-muted"></i>
+          </span>
+        </div>
+        <div>
+          <h3 class="mb-0">
+            {{ (user.first_name ~ ' ' ~ user.last_name)|trim if (user.first_name or user.last_name) else user.username }}
+          </h3>
+          <div class="text-muted">{{ user.email }}</div>
+        </div>
+      </div>
+      <!-- ...resto del contenido original... -->
     
     <!-- Card de rol del usuario -->
     <!-- col-6 en mobile (50% ancho), col-md-3 en desktop (25% ancho) -->

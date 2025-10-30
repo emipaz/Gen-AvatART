@@ -118,7 +118,8 @@ Validaciones JavaScript:
             <!-- Contenedor de la sidebar con fondo claro y altura mínima -->
             <!-- bg-light aplica fondo gris claro -->
             <!-- min-height calc() asegura que ocupe toda la altura visible menos header/footer -->
-            <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+            <div class="bg-light sidebar" style="background: linear-gradient(135deg, hwb(190 47% 24%) 0%, #fdfdfd 100%); min-height: calc(100vh - 120px); color: #010101;">
+            
                 <!-- Header de la sidebar con título del panel -->
                 <!-- p-3 aplica padding de 1rem en todas las direcciones -->
                 <div class="p-3">
@@ -130,33 +131,33 @@ Validaciones JavaScript:
                 <!-- nav con flex-column organiza los enlaces verticalmente -->
                 <nav class="nav flex-column">
                     <!-- Enlace al dashboard principal -->
-                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}" style="color: #010101;">
                         <i class="fas fa-home"></i> Dashboard
                     </a>
                     
                     <!-- Enlace a gestión de usuarios -->
-                    <a class="nav-link" href="{{ url_for('admin.users') }}">
+                    <a class="nav-link" href="{{ url_for('admin.users') }}" style="color: #010101;">
                         <i class="fas fa-users"></i> Usuarios
                     </a>
                     
                     <!-- Enlace a gestión de productores -->
-                    <a class="nav-link" href="{{ url_for('admin.producers') }}">
+                    <a class="nav-link" href="{{ url_for('admin.producers') }}" style="color: #010101;">
                         <i class="fas fa-industry"></i> Productores
                     </a>
                     
                     <!-- Enlace a gestión de avatars -->
-                    <a class="nav-link" href="{{ url_for('admin.avatars') }}">
+                    <a class="nav-link" href="{{ url_for('admin.avatars') }}" style="color: #010101;">
                         <i class="fas fa-user-circle"></i> Avatars
                     </a>
                     
                     <!-- Enlace a gestión de reels -->
-                    <a class="nav-link" href="{{ url_for('admin.reels') }}">
+                    <a class="nav-link" href="{{ url_for('admin.reels') }}" style="color: #010101;">
                         <i class="fas fa-video"></i> Reels
                     </a>
                     
                     <!-- Enlace actual a gestión de comisiones -->
                     <!-- active indica la sección actual con estilo diferenciado -->
-                    <a class="nav-link active" href="{{ url_for('admin.commissions') }}">
+                    <a class="nav-link active" href="{{ url_for('admin.commissions') }}" style="color: #010101;">
                         <i class="fas fa-dollar-sign"></i> Comisiones
                     </a>
                 </nav>

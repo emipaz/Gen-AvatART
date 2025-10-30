@@ -116,48 +116,49 @@ Funcionalidades de paginación:
         <!-- col-lg-2 ocupa 2/12 del ancho en pantallas grandes para optimización -->
         <!-- px-0 elimina padding horizontal para diseño edge-to-edge -->
         <div class="col-md-3 col-lg-2 px-0">
-            <!-- Contenedor de la sidebar con styling y altura dinámica -->
-            <!-- bg-light aplica fondo gris claro para diferenciación -->
-            <!-- min-height calc() asegura altura completa menos header/footer -->
-            <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
-                <!-- Header de la sidebar con título identificativo -->
+            <!-- Contenedor de la sidebar con fondo claro y altura mínima -->
+            <!-- bg-light aplica fondo gris claro -->
+            <!-- min-height calc() asegura que ocupe toda la altura visible menos header/footer -->
+            <div class="bg-light sidebar" style="background: linear-gradient(135deg, hwb(190 47% 24%) 0%, #fdfdfd 100%); min-height: calc(100vh - 120px); color: #010101;">
+            
+                <!-- Header de la sidebar con título del panel -->
                 <!-- p-3 aplica padding de 1rem en todas las direcciones -->
                 <div class="p-3">
-                    <!-- Título con icono dashboard para contexto administrativo -->
+                    <!-- Título con icono de dashboard administrativo -->
                     <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
                 </div>
                 
-                <!-- Navegación vertical con enlaces a todas las secciones -->
-                <!-- nav con flex-column organiza los enlaces en disposición vertical -->
+                <!-- Navegación vertical con enlaces a secciones administrativas -->
+                <!-- nav con flex-column organiza los enlaces verticalmente -->
                 <nav class="nav flex-column">
-                    <!-- Enlace al dashboard principal del administrador -->
-                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                    <!-- Enlace al dashboard principal -->
+                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}" style="color: #010101;">
                         <i class="fas fa-home"></i> Dashboard
                     </a>
                     
-                    <!-- Enlace a gestión completa de usuarios -->
-                    <a class="nav-link" href="{{ url_for('admin.users') }}">
+                    <!-- Enlace a gestión de usuarios -->
+                    <a class="nav-link" href="{{ url_for('admin.users') }}" style="color: #010101;">
                         <i class="fas fa-users"></i> Usuarios
                     </a>
                     
-                    <!-- Enlace a gestión de productores y subproductores -->
-                    <a class="nav-link" href="{{ url_for('admin.producers') }}">
+                    <!-- Enlace a gestión de productores -->
+                    <a class="nav-link" href="{{ url_for('admin.producers') }}" style="color: #010101;">
                         <i class="fas fa-industry"></i> Productores
                     </a>
                     
-                    <!-- Enlace a gestión de avatars del sistema -->
-                    <a class="nav-link" href="{{ url_for('admin.avatars') }}">
+                    <!-- Enlace a gestión de avatars -->
+                    <a class="nav-link" href="{{ url_for('admin.avatars') }}" style="color: #010101;">
                         <i class="fas fa-user-circle"></i> Avatars
                     </a>
                     
-                    <!-- Enlace actual a gestión de reels -->
-                    <!-- active indica la sección actual con estilo destacado -->
-                    <a class="nav-link active" href="{{ url_for('admin.reels') }}">
+                    <!-- Enlace a gestión de reels -->
+                    <a class="nav-link" href="{{ url_for('admin.reels') }}" style="color: #010101;">
                         <i class="fas fa-video"></i> Reels
                     </a>
                     
-                    <!-- Enlace a gestión de comisiones y pagos -->
-                    <a class="nav-link" href="{{ url_for('admin.commissions') }}">
+                    <!-- Enlace actual a gestión de comisiones -->
+                    <!-- active indica la sección actual con estilo diferenciado -->
+                    <a class="nav-link active" href="{{ url_for('admin.commissions') }}" style="color: #010101;">
                         <i class="fas fa-dollar-sign"></i> Comisiones
                     </a>
                 </nav>

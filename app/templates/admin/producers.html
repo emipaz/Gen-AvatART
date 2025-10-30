@@ -119,36 +119,36 @@ Funcionalidades JavaScript:
 {% block content %}
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
+        <!-- ===== SIDEBAR DE NAVEGACIÓN ADMINISTRATIVA ===== -->
         <div class="col-md-3 col-lg-2 px-0">
-            <div class="bg-light sidebar" style="min-height: calc(100vh - 120px);">
+            <div class="sidebar" style="background: linear-gradient(135deg, hwb(190 47% 24%) 0%, #fdfdfd 100%); min-height: calc(100vh - 120px); color: #010101;">
                 <div class="p-3">
                     <h5><i class="fas fa-tachometer-alt"></i> Admin Panel</h5>
                 </div>
                 <nav class="nav flex-column">
-                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
-                        <i class="fas fa-home"></i> Dashboard
+                    <a class="nav-link" href="{{ url_for('admin.dashboard') }}" style="color: #010101;">
+                        <i class="fas fa-home" style="color: #010101;"></i> Dashboard
                     </a>
-                    <a class="nav-link" href="{{ url_for('admin.users') }}">
-                        <i class="fas fa-users"></i> Usuarios
+                    <a class="nav-link" href="{{ url_for('admin.users') }}" style="color: #010101;">
+                        <i class="fas fa-users" style="color: #010101;"></i> Usuarios
                     </a>
-                    <a class="nav-link active" href="{{ url_for('admin.producers') }}">
-                        <i class="fas fa-industry"></i> Productores
+                    <a class="nav-link active" href="{{ url_for('admin.producers') }}" style="color: #010101;">
+                        <i class="fas fa-industry" style="color: #010101;"></i> Productores
                     </a>
-                    <a class="nav-link" href="{{ url_for('admin.avatars') }}">
-                        <i class="fas fa-user-circle"></i> Avatars
+                    <a class="nav-link" href="{{ url_for('admin.avatars') }}" style="color: #010101;">
+                        <i class="fas fa-user-circle" style="color: #010101;"></i> Avatars
                     </a>
-                    <a class="nav-link" href="{{ url_for('admin.reels') }}">
+                    <a class="nav-link" href="{{ url_for('admin.reels') }}" style="color: #010101;">
                         <i class="fas fa-video"></i> Reels
                     </a>
-                    <a class="nav-link" href="{{ url_for('admin.commissions') }}">
+                    <a class="nav-link" href="{{ url_for('admin.commissions') }}" style="color: #010101;">
                         <i class="fas fa-dollar-sign"></i> Comisiones
                     </a>
                 </nav>
             </div>
         </div>
 
-        <!-- Main Content -->
+        <!-- ===== CONTENIDO PRINCIPAL DEL MÓDULO PRODUCTORES ===== -->
         <div class="col-md-9 col-lg-10">
             <!-- Header con estadísticas -->
             <div class="d-flex justify-content-between align-items-center mb-4">
