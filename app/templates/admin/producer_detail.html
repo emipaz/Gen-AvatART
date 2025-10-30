@@ -72,7 +72,7 @@
             <tr><th>Stripe Account</th><td>{{ producer.stripe_account_id or '—' }}</td></tr>
             <tr>
               <th>API Key (HeyGen)</th>
-              <td>{{ producer.heygen_api_key_encrypted and '•••••••• (guardada)' or '—' }}</td>
+              <td>{{ producer.heygen_api_key_encrypted and '•••••••• (configurada por el productor)' or '—' }}</td>
             </tr>
             <tr><th>Creado</th><td>{{ producer.created_at.strftime('%d/%m/%Y %H:%M') if producer.created_at else '—' }}</td></tr>
             <tr><th>Verificado</th><td>{{ producer.verified_at.strftime('%d/%m/%Y %H:%M') if producer.verified_at else '—' }}</td></tr>

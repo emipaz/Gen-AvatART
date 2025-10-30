@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Reels del Equipo - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1"><i class="fas fa-video text-primary"></i> Reels del Equipo</h1>
+            <p class="text-muted mb-0">Monitorea los reels creados por vos y por tu red de subproductores.</p>
+        </div>
+        <a href="{{ url_for('producer.dashboard') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Volver al dashboard
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Estado</label>
+                    {% set status_selected = request.args.get('status', '') %}
+                    <select name="status" class="form-select">
+                        <option value="" {% if not status_selected %}selected{% endif %}>Todos los estados</option>
+                        <option value="pending" {% if status_selected == 'pending' %}selected{% endif %}>Pendientes</option>
+                        <option value="processing" {% if status_selected == 'processing' %}selected{% endif %}>En proceso</option>
+                        <option value="completed" {% if status_selected == 'completed' %}selected{% endif %}>Completados</option>
+                        <option value="failed" {% if status_selected == 'failed' %}selected{% endif %}>Fallidos</option>
+                        <option value="published" {% if status_selected == 'published' %}selected{% endif %}>Publicados</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Creador</label>
+                    {% set creator_selected = request.args.get('creator', '') %}
+                    <select name="creator" class="form-select">
+                        <option value="" {% if not creator_selected %}selected{% endif %}>Todos los miembros</option>
+                        {% for creator in creators %}
+                            <option value="{{ creator.id }}" {% if creator_selected == creator.id|string %}selected{% endif %}>
+                                {{ creator.full_name }} (@{{ creator.username }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="d-flex w-100 gap-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter"></i> Aplicar filtros
+                        </button>
+                        <a href="{{ url_for('producer.reels') }}" class="btn btn-outline-secondary">
+                            Limpiar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Listado de Reels</h5>
+            <span class="text-muted">{{ reels.total }} resultados</span>
+        </div>
+        <div class="card-body">
+            {% if reels.items %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Título</th>
+                                <th>Avatar</th>
+                                <th>Creador</th>
+                                <th>Estado</th>
+                                <th>Creado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reel in reels.items %}
+                                {% set status = reel.status.value if reel.status else 'unknown' %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ reel.title }}</strong>
+                                        {% if reel.description %}
+                                            <br><small class="text-muted">{{ reel.description[:70] }}{% if reel.description|length > 70 %}...{% endif %}</small>
+                                        {% endif %}
+                                        {% if reel.video_url %}
+                                            <br><a href="{{ reel.video_url }}" target="_blank" class="small">Ver video</a>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ reel.avatar.name if reel.avatar else 'Sin avatar' }}
+                                    </td>
+                                    <td>
+                                        {% if reel.creator %}
+                                            <div>{{ reel.creator.full_name }}</div>
+                                            <small class="text-muted">@{{ reel.creator.username }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Usuario no disponible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set badge_map = {
+                                            'pending':    'bg-warning',
+                                            'processing': 'bg-info',
+                                            'completed':  'bg-success',
+                                            'failed':     'bg-danger',
+                                            'published':  'bg-primary'
+                                        } %}
+                                        <span class="badge {{ badge_map.get(status, 'bg-secondary') }} text-uppercase">{{ status }}</span>
+                                    </td>
+                                    <td>
+                                        {{ reel.created_at.strftime('%d/%m/%Y %H:%M') if reel.created_at else 'N/D' }}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            {% if status in ['pending', 'processing'] %}
+                                                <form method="post" action="{{ url_for('producer.approve_reel', reel_id=reel.id) }}">
+                                                    <button type="submit" class="btn btn-sm btn-success" title="Aprobar">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="post" action="{{ url_for('producer.reject_reel', reel_id=reel.id) }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Rechazar">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <span class="text-muted small">Sin acciones</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if reels.pages > 1 %}
+                    <nav class="mt-3">
+                        <ul class="pagination justify-content-center">
+                            {% if reels.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('producer.reels', page=reels.prev_num, status=request.args.get('status'), creator=request.args.get('creator')) }}">Anterior</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                            {% endif %}
+
+                            {% for page_num in reels.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num == reels.page %}
+                                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                                    {% else %}
+                                        <li class="page-item"><a class="page-link" href="{{ url_for('producer.reels', page=page_num, status=request.args.get('status'), creator=request.args.get('creator')) }}">{{ page_num }}</a></li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if reels.has_next %}
+                                <li class="page-item"><a class="page-link" href="{{ url_for('producer.reels', page=reels.next_num, status=request.args.get('status'), creator=request.args.get('creator')) }}">Siguiente</a></li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-video fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No se encontraron reels</h4>
+                    <p class="text-muted">Cuando vos o tu equipo creen reels aparecerán listados aquí.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -79,6 +79,8 @@
                                 <p class="card-text text-muted">{{ avatar.description[:100] }}{% if avatar.description|length > 100 %}...{% endif %}</p>
                             {% endif %}
                             
+                            {% set metadata = avatar.meta_data if avatar.meta_data else {} %}
+
                             <div class="small text-muted mb-2">
                                 <div><strong>Tipo:</strong> {{ avatar.avatar_type }}</div>
                                 <div><strong>Idioma:</strong> {{ avatar.language }}</div>
@@ -94,26 +96,61 @@
                             {% endif %}
                         </div>
                         <div class="card-footer">
-                            {% if avatar.status.value == 'PROCESSING' %}
+                            {% set status_value = avatar.status.value %}
+                            {% if status_value == 'processing' %}
                                 <small class="text-warning">
                                     <i class="fas fa-hourglass-half me-1"></i>
                                     Esperando aprobación del productor
                                 </small>
-                            {% elif avatar.status.value == 'APPROVED' %}
+                            {% elif status_value == 'approved' %}
                                 <small class="text-success">
                                     <i class="fas fa-check-circle me-1"></i>
                                     Avatar listo para usar
                                 </small>
-                            {% elif avatar.status.value == 'INACTIVE' %}
-                                <small class="text-secondary">
+                            {% elif status_value == 'inactive' %}
+                                <small class="text-secondary d-block">
                                     <i class="fas fa-pause me-1"></i>
                                     Avatar deshabilitado temporalmente
                                 </small>
-                            {% elif avatar.status.value == 'REJECTED' %}
+                                {% if metadata.get('inactive_by') == 'subproducer' %}
+                                    <form method="post" action="{{ url_for('subproducer.enable_avatar', avatar_id=avatar.id) }}" class="mt-2">
+                                        <button type="submit" class="btn btn-outline-success btn-sm w-100">
+                                            <i class="fas fa-play-circle me-1"></i>
+                                            Reactivar avatar
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{{ url_for('subproducer.request_avatar_reactivation', avatar_id=avatar.id) }}" class="mt-2">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm w-100" {% if metadata.get('reactivation_requested') %}disabled{% endif %}>
+                                            <i class="fas fa-envelope-open-text me-1"></i>
+                                            Solicitar reactivación
+                                        </button>
+                                    </form>
+                                    {% if metadata.get('reactivation_requested') %}
+                                        <small class="text-muted d-block mt-2">
+                                            Solicitud enviada al productor. Te avisaremos cuando la procese.
+                                        </small>
+                                    {% endif %}
+                                {% endif %}
+                            {% elif status_value == 'rejected' %}
                                 <small class="text-danger">
                                     <i class="fas fa-ban me-1"></i>
                                     Avatar rechazado por el productor
                                 </small>
+                            {% else %}
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Estado: {{ status_value.title() }}
+                                </small>
+                            {% endif %}
+
+                            {% if status_value == 'active' %}
+                                <form method="post" action="{{ url_for('subproducer.disable_avatar', avatar_id=avatar.id) }}" class="mt-3">
+                                    <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                                        <i class="fas fa-pause-circle me-1"></i>
+                                        Deshabilitar temporalmente
+                                    </button>
+                                </form>
                             {% endif %}
                         </div>
                     </div>

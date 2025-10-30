@@ -236,6 +236,7 @@ Funcionalidades de gestión:
                                 <th>Rol</th>
                                 <th>Estado</th>
                                 <th>Último Acceso</th>
+                                <th>Avatares Creados</th>
                                 <th>Reels Creados</th>
                                 <th>Fecha Ingreso</th>
                                 <th>Acciones</th>
@@ -291,6 +292,13 @@ Funcionalidades de gestión:
                                     {% endif %}
                                 </td>
 
+                                <!-- Estadísticas de avatares -->
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        {{ member.created_avatars|length if member.created_avatars else 0 }}
+                                    </span>
+                                </td>
+
                                 <!-- Estadísticas de reels -->
                                 <td>
                                     <span class="badge bg-info">{{ member.reels.count() if member.reels else 0 }}</span>
@@ -311,15 +319,19 @@ Funcionalidades de gestión:
                                         </a>
 
                                         <!-- Toggle estado del miembro -->
-                                        <button type="button" class="btn btn-sm btn-outline-{{ 'warning' if member.status.value == 'active' else 'success' }}" 
-                                                onclick="toggleMemberStatus({{ member.id }}, '{{ member.full_name }}')"
+                                        <button type="button" class="btn btn-sm btn-outline-{{ 'warning' if member.status.value == 'active' else 'success' }}"
+                                                data-action="toggle-status"
+                                                data-member-id="{{ member.id }}"
+                                                data-member-name="{{ member.full_name }}"
                                                 title="{{ 'Desactivar' if member.status.value == 'active' else 'Activar' }}">
                                             <i class="fas fa-{{ 'user-times' if member.status.value == 'active' else 'user-check' }}"></i>
                                         </button>
 
                                         <!-- Remover del equipo -->
-                                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                onclick="removeMember({{ member.id }}, '{{ member.full_name }}')"
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-action="remove-member"
+                                                data-member-id="{{ member.id }}"
+                                                data-member-name="{{ member.full_name }}"
                                                 title="Remover del Equipo">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -391,27 +403,48 @@ Funcionalidades de gestión:
 <script>
 let currentMemberId = null;
 
-// Función para toggle de estado de miembro
 function toggleMemberStatus(memberId, memberName) {
     currentMemberId = memberId;
-    document.getElementById('toggleStatusMessage').textContent = 
+    document.getElementById('toggleStatusMessage').textContent =
         `¿Estás seguro de que deseas cambiar el estado de ${memberName}?`;
-    
+
     const modal = new bootstrap.Modal(document.getElementById('toggleStatusModal'));
     modal.show();
 }
 
-// Función para remover miembro
 function removeMember(memberId, memberName) {
     currentMemberId = memberId;
-    document.getElementById('removeMemberMessage').textContent = 
+    document.getElementById('removeMemberMessage').textContent =
         `¿Estás seguro de que deseas remover a ${memberName} del equipo?`;
-    
+
     const modal = new bootstrap.Modal(document.getElementById('removeMemberModal'));
     modal.show();
 }
 
-// Confirmar toggle de estado
+document.addEventListener('DOMContentLoaded', () => {
+    document
+        .querySelectorAll('[data-action="toggle-status"]')
+        .forEach(button => {
+            button.addEventListener('click', event => {
+                const target = event.currentTarget;
+                const memberId = Number(target.dataset.memberId);
+                const memberName = target.dataset.memberName;
+                toggleMemberStatus(memberId, memberName);
+            });
+        });
+
+    document
+        .querySelectorAll('[data-action="remove-member"]')
+        .forEach(button => {
+            button.addEventListener('click', event => {
+                const target = event.currentTarget;
+                const memberId = Number(target.dataset.memberId);
+                const memberName = target.dataset.memberName;
+                removeMember(memberId, memberName);
+            });
+        });
+});
+
 document.getElementById('confirmToggleStatus').addEventListener('click', function() {
     if (currentMemberId) {
         // TODO: Implementar ruta producer.toggle_member_status
@@ -433,7 +466,6 @@ document.getElementById('confirmToggleStatus').addEventListener('click', functio
     }
 });
 
-// Confirmar remoción de miembro
 document.getElementById('confirmRemoveMember').addEventListener('click', function() {
     if (currentMemberId) {
         // TODO: Implementar ruta producer.remove_member

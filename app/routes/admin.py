@@ -183,7 +183,7 @@ def create_admin():
     username    = data.get('username')
     first_name  = data.get('first_name')
     last_name   = data.get('last_name')
-    # password    = data.get('password')
+    password    = data.get('password')
 
     if not all([email, username, first_name, last_name, password]):
         return jsonify({'error': 'Todos los campos son obligatorios.'}), 400
@@ -479,11 +479,12 @@ def delete_user(user_id):
 @admin_required
 def create_producer():
     """
-    Crear un nuevo productor con perfil completo y validación de API.
+    Crear un nuevo productor cuidando la información sensible.
     
-    Maneja el onboarding completo de productores, creando tanto el usuario
-    como su perfil de productor con configuraciones específicas. Incluye
-    validación automática de la API key de HeyGen.
+    Maneja el onboarding completo de productores creando tanto el usuario
+    como su perfil de productor con configuraciones iniciales. Las credenciales
+    de HeyGen ya no se capturan desde el panel de administración; cada productor
+    las configurará de forma directa en su propio panel.
     
     Methods:
         GET  : Muestra el formulario de creación de productor
@@ -499,7 +500,6 @@ def create_producer():
         phone (str, opcional) : Teléfono de contacto
         
         # Datos específicos del productor:
-        heygen_api_key (str)          : API key de HeyGen para integración
         company_name (str, opcional)  : Nombre de la empresa
         business_type (str, opcional) : Tipo de negocio
         website (str, opcional)       : Sitio web corporativo
@@ -513,10 +513,10 @@ def create_producer():
     
     Note:
         - Crear usuario y productor es una transacción atómica
-        - Validación automática de API key después de creación
         - Usuario se crea con rol PRODUCER y estado ACTIVE
         - Configuraciones tienen valores por defecto sensatos
         - Validación de unicidad para email y username
+        - Las credenciales de HeyGen se gestionan desde el panel del productor
     """
 
     if request.method == 'POST':
@@ -529,7 +529,6 @@ def create_producer():
         phone      = request.form.get('phone')
 
         # Datos del productor
-        heygen_api_key    = request.form.get('heygen_api_key')
         company_name      = request.form.get('company_name')
         business_type     = request.form.get('business_type')
         website           = request.form.get('website')
@@ -561,10 +560,9 @@ def create_producer():
         db.session.add(user)
         db.session.flush()  # Para obtener el ID del usuario
         
-        # Crear perfil de productor  
+        # Crear perfil de productor sin capturar API keys sensibles
         producer = Producer(
             user_id                  = user.id,
-            heygen_api_key_encrypted = heygen_api_key,
             company_name             = company_name,
             business_type            = business_type,
             website                  = website,
@@ -576,7 +574,10 @@ def create_producer():
         db.session.add(producer)
         db.session.commit()
         
-        flash(f'Productor {username} creado exitosamente', 'success')
+        flash(
+            f'Productor {username} creado exitosamente. El productor debe configurar su API key desde su panel.',
+            'success'
+        )
         return redirect(url_for('admin.user_detail', user_id=user.id))
     
     return render_template('admin/create_producer.html')
