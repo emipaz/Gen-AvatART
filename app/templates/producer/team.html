@@ -313,19 +313,16 @@ Funcionalidades de gestión:
                                 <td>
                                     <div class="btn-group" role="group">
                                         <!-- Ver perfil detallado -->
-                                        <a href="{{ url_for('producer.member_detail', member_id=member.id) }}" 
-                                           class="btn btn-sm btn-outline-primary" title="Ver Perfil">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
+                                            <a href="{{ url_for('producer.member_detail', member_id=member.id) }}" class="btn btn-sm btn-outline-info" title="Ver Perfil">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
 
                                         <!-- Toggle estado del miembro -->
-                                        <button type="button" class="btn btn-sm btn-outline-{{ 'warning' if member.status.value == 'active' else 'success' }}"
-                                                data-action="toggle-status"
-                                                data-member-id="{{ member.id }}"
-                                                data-member-name="{{ member.full_name }}"
-                                                title="{{ 'Desactivar' if member.status.value == 'active' else 'Activar' }}">
-                                            <i class="fas fa-{{ 'user-times' if member.status.value == 'active' else 'user-check' }}"></i>
-                                        </button>
+                                            <form method="post" action="{{ url_for('producer.toggle_member_status', member_id=member.id) }}" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-{{ 'warning' if member.status.value == 'active' else 'success' }}" title="{{ 'Desactivar' if member.status.value == 'active' else 'Activar' }}" onclick="return confirm('{{ 'Suspender' if member.status.value == 'active' else 'Reactivar' }} a {{ member.first_name }} {{ member.last_name }}?');">
+                                                    <i class="fas fa-{{ 'user-times' if member.status.value == 'active' else 'user-check' }}"></i>
+                                                </button>
+                                            </form>
 
                                         <!-- Remover del equipo -->
                                         <button type="button" class="btn btn-sm btn-outline-danger"
