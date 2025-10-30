@@ -1,3 +1,4 @@
+# Endpoint para suspender (toggle status) a un subproductor o usuario final
 """
 Módulo de rutas de productor para la aplicación Gen-AvatART.
 
@@ -891,35 +892,50 @@ def team():
         - Acceso rápido a funciones de invitación
         - Estadísticas de rendimiento por miembro del equipo
     """
-    # Obtener subproductores y afiliados CON EL MISMO FILTRO que el dashboard
-    subproducers = User.query.filter_by(
-        invited_by_id = current_user.id,
-        role          = UserRole.SUBPRODUCER,
-        status        = UserStatus.ACTIVE  # ← AÑADIR ESTE FILTRO
-    ).all()
-    
-    affiliates = User.query.filter_by(
-        invited_by_id = current_user.id,
-        role          = UserRole.FINAL_USER,
-        status        = UserStatus.ACTIVE  # ← AÑADIR ESTE FILTRO
-    ).all()
-    
-    # Combinar en team_members como espera el template
-    team_members = subproducers + affiliates
-    
-    # Estadísticas que espera el template
+    # Filtros GET
+    search = request.args.get('search', '').strip()
+    role = request.args.get('role', '').strip()
+
+    # Filtro de estado
+    status = request.args.get('status', '').strip()
+
+    # Base query: mostrar todos los miembros invitados por el productor
+    query = User.query.filter(User.invited_by_id == current_user.id)
+    # Filtro por estado
+    if status == 'active':
+        query = query.filter(User.status == UserStatus.ACTIVE)
+    elif status == 'inactive':
+        query = query.filter(User.status == UserStatus.SUSPENDED)
+    # Filtro por rol
+    if role in ['subproducer', 'final_user']:
+        query = query.filter(User.role == (UserRole.SUBPRODUCER if role == 'subproducer' else UserRole.FINAL_USER))
+    # Filtro de búsqueda
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            (User.first_name.ilike(search_pattern)) |
+            (User.last_name.ilike(search_pattern)) |
+            (User.username.ilike(search_pattern))
+        )
+
+    team_members = query.order_by(User.role, User.first_name, User.last_name).all()
+
+    # Para compatibilidad con el template
+    subproducers = [u for u in team_members if u.role == UserRole.SUBPRODUCER]
+    affiliates = [u for u in team_members if u.role == UserRole.FINAL_USER]
+
     team_stats = {
-        'active_members': len(team_members),
+        'active_members': len([u for u in team_members if u.status == UserStatus.ACTIVE]),
         'subproducers_count': len(subproducers)
     }
-    
+
     producer = current_user.producer_profile
-    
+
     return render_template('producer/team.html',
-                         team_members = team_members,    # ← Variable que espera el template
-                         team_stats   = team_stats,      # ← Variable que espera el template
-                         subproducers = subproducers,    # ← Mantener por compatibilidad
-                         affiliates   = affiliates,     # ← Mantener por compatibilidad
+                         team_members = team_members,
+                         team_stats   = team_stats,
+                         subproducers = subproducers,
+                         affiliates   = affiliates,
                          producer     = producer)
 
 @producer_bp.route('/team/invite', methods=['GET', 'POST'])
@@ -1339,9 +1355,7 @@ def member_detail(member_id):
     # Actividad reciente del miembro
     recent_activity = member.reels.order_by(Reel.created_at.desc()).limit(5).all()
     
-    # Por ahora, redirigir con información hasta que se implemente template completo
-    flash(f'Viendo perfil de {member.full_name} - Funcionalidad completa próximamente', 'info')
-    return redirect(url_for('producer.team'))
+    return render_template('producer/member_detail.html', member=member, member_stats=member_stats, recent_activity=recent_activity)
 
 @producer_bp.route('/avatar/<int:avatar_id>/stats')
 @login_required
@@ -1481,3 +1495,25 @@ def avatar_access(avatar_id):
                 updated += 1
     db.session.commit()
     return jsonify({'success': True, 'updated': updated})
+
+
+@producer_bp.route('/team/member/<int:member_id>/toggle_status', methods=['POST'])
+@login_required
+@producer_required
+def toggle_member_status(member_id):
+    """
+    Suspende o reactiva a un miembro del equipo (subproductor o usuario final).
+    Solo el productor que invitó puede realizar la acción.
+    """
+    member = User.query.filter_by(id=member_id, invited_by_id=current_user.id).first_or_404()
+    if member.role not in [UserRole.SUBPRODUCER, UserRole.FINAL_USER]:
+        flash('Solo puedes suspender subproductores o usuarios finales.', 'warning')
+        return redirect(url_for('producer.team'))
+    if member.status == UserStatus.SUSPENDED:
+        member.status = UserStatus.ACTIVE
+        flash(f'{member.first_name} ha sido reactivado.', 'success')
+    else:
+        member.status = UserStatus.SUSPENDED
+        flash(f'{member.first_name} ha sido suspendido.', 'warning')
+    db.session.commit()
+    return redirect(url_for('producer.team'))
