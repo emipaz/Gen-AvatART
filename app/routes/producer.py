@@ -887,35 +887,43 @@ def team():
         - Acceso rápido a funciones de invitación
         - Estadísticas de rendimiento por miembro del equipo
     """
-    # Obtener subproductores y afiliados CON EL MISMO FILTRO que el dashboard
-    subproducers = User.query.filter_by(
-        invited_by_id = current_user.id,
-        role          = UserRole.SUBPRODUCER,
-        status        = UserStatus.ACTIVE  # ← AÑADIR ESTE FILTRO
-    ).all()
-    
-    affiliates = User.query.filter_by(
-        invited_by_id = current_user.id,
-        role          = UserRole.FINAL_USER,
-        status        = UserStatus.ACTIVE  # ← AÑADIR ESTE FILTRO
-    ).all()
-    
-    # Combinar en team_members como espera el template
-    team_members = subproducers + affiliates
-    
-    # Estadísticas que espera el template
+    # Filtros GET
+    search = request.args.get('search', '').strip()
+    role = request.args.get('role', '').strip()
+
+    # Base query
+    query = User.query.filter(
+        User.invited_by_id == current_user.id,
+        User.status == UserStatus.ACTIVE
+    )
+    if role in ['subproducer', 'final_user']:
+        query = query.filter(User.role == (UserRole.SUBPRODUCER if role == 'subproducer' else UserRole.FINAL_USER))
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            (User.first_name.ilike(search_pattern)) |
+            (User.last_name.ilike(search_pattern)) |
+            (User.username.ilike(search_pattern))
+        )
+
+    team_members = query.order_by(User.role, User.first_name, User.last_name).all()
+
+    # Para compatibilidad con el template
+    subproducers = [u for u in team_members if u.role == UserRole.SUBPRODUCER]
+    affiliates = [u for u in team_members if u.role == UserRole.FINAL_USER]
+
     team_stats = {
         'active_members': len(team_members),
         'subproducers_count': len(subproducers)
     }
-    
+
     producer = current_user.producer_profile
-    
+
     return render_template('producer/team.html',
-                         team_members = team_members,    # ← Variable que espera el template
-                         team_stats   = team_stats,      # ← Variable que espera el template
-                         subproducers = subproducers,    # ← Mantener por compatibilidad
-                         affiliates   = affiliates,     # ← Mantener por compatibilidad
+                         team_members = team_members,
+                         team_stats   = team_stats,
+                         subproducers = subproducers,
+                         affiliates   = affiliates,
                          producer     = producer)
 
 @producer_bp.route('/team/invite', methods=['GET', 'POST'])
