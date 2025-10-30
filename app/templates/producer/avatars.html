@@ -381,17 +381,17 @@ Acciones disponibles:
                                 {% if avatar.status.value not in ['inactive', 'rejected'] %}
                                     <form class="mt-2" method="post"
                                         action="{{ url_for('producer.archive_avatar', avatar_id=avatar.id) }}"
-                                        onsubmit="return confirm('¿Archivar este avatar? Podrás verlo filtrando por estado INACTIVE.');">
+                                        onsubmit="return confirm('¿Desactivar este avatar? Podrás volver a activarlo desde la misma vista.');">
                                         <button type="submit" class="btn btn-outline-danger btn-sm w-100">
-                                            <i class="fas fa-box-archive"></i> Archivar
+                                            <i class="fas fa-power-off"></i> Desactivar
                                         </button>
                                     </form>
                                 {% else %}
                                     <form class="mt-2" method="post"
                                         action="{{ url_for('producer.reactivate_avatar', avatar_id=avatar.id) }}"
-                                        onsubmit="return confirm('¿Reactivar este avatar? Volverá a estar disponible para crear reels.');">
+                                        onsubmit="return confirm('¿Activar nuevamente este avatar? Volverá a estar disponible para crear reels.');">
                                         <button type="submit" class="btn btn-outline-success btn-sm w-100">
-                                            <i class="fas fa-play-circle"></i> Reactivar
+                                            <i class="fas fa-sync-alt"></i> Activar
                                         </button>
                                     </form>
                                 {% endif %}

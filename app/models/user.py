@@ -249,7 +249,7 @@ class User(UserMixin, db.Model):
         Returns:
             bool: True si es productor, False en caso contrario
         """
-        return self.role == UserRole.PRODUCER
+        return self.role == UserRole.PRODUCER or self.is_owner
     
     def is_subproducer(self):
         """
@@ -354,6 +354,45 @@ class User(UserMixin, db.Model):
         elif self.invited_by and self.invited_by.is_producer():
             return self.invited_by.producer_profile
         return None
+
+    def ensure_producer_profile(self):
+        """
+        Garantiza que el usuario tenga un perfil de productor asociado.
+
+        Crea un registro de Producer en el momento para dueños que
+        acceden al panel sin una fila asociada previamente.
+
+        Returns:
+            Producer or None: Perfil de productor existente o recién creado.
+        """
+        if self.producer_profile:
+            return self.producer_profile
+
+        if not (self.is_producer() or self.is_owner):
+            return None
+
+        from app.models.producer import Producer, ProducerStatus  # Import local para evitar ciclos
+
+        producer = Producer.query.filter_by(user_id=self.id).first()
+        if not producer:
+            company_name = (self.full_name or self.email or f"Producer {self.id}").strip()
+            if not company_name:
+                company_name = self.username
+
+            producer = Producer(
+                user_id=self.id,
+                company_name=company_name,
+                business_type="owner" if self.is_owner else None,
+                status=ProducerStatus.ACTIVE if self.is_owner else ProducerStatus.PENDING,
+                is_verified=self.is_owner,
+            )
+            if self.is_owner:
+                producer.verified_at = datetime.utcnow()
+            db.session.add(producer)
+            db.session.flush()
+
+        self.producer_profile = producer
+        return producer
     
     def activate(self):
         """

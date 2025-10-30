@@ -582,6 +582,12 @@ Validaciones incluidas:
                                         <i class="fas fa-edit"></i> Cambiar API Key
                                     </button>
                                 </div>
+                                <form method="post" action="{{ url_for('producer.sync_heygen') }}" class="mt-2">
+                                    <button type="submit" class="btn btn-outline-success">
+                                        <i class="fas fa-sync-alt"></i> Sincronizar avatares con HeyGen
+                                    </button>
+                                    <small class="text-muted d-block mt-1">Usá este botón cuando quieras refrescar manualmente los clones disponibles.</small>
+                                </form>
                                 {% if not masked_api_key %}
                                     <div class="alert alert-warning mt-3 mb-0">
                                         <span class="fw-bold text-danger"><i class="fas fa-exclamation-triangle"></i> Necesitas configurar tu API Key de HeyGen</span><br>
