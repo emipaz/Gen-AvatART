@@ -352,12 +352,14 @@ Acciones disponibles:
                                 
                                 <!-- Botones secundarios -->
                                 <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
-                                            onclick="showUsageStats({{ avatar.id }})">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm js-show-stats"
+                                            data-avatar-id="{{ avatar.id }}">
                                         <i class="fas fa-chart-bar"></i> Estadísticas
                                     </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
-                                            onclick="manageAccess({{ avatar.id }})">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm js-manage-access"
+                                            data-avatar-id="{{ avatar.id }}">
                                         <i class="fas fa-users"></i> Acceso
                                     </button>
                                 </div>
@@ -451,6 +453,22 @@ Acciones disponibles:
 <script>
 let currentAvatarId = null;
 
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.js-show-stats').forEach(button => {
+        button.addEventListener('click', event => {
+            const avatarId = Number(event.currentTarget.dataset.avatarId);
+            showUsageStats(avatarId);
+        });
+    });
+
+    document.querySelectorAll('.js-manage-access').forEach(button => {
+        button.addEventListener('click', event => {
+            const avatarId = Number(event.currentTarget.dataset.avatarId);
+            manageAccess(avatarId);
+        });
+    });
+});
+
 // Mostrar estadísticas de uso de avatar
 function showUsageStats(avatarId) {
     currentAvatarId = avatarId;
@@ -463,6 +481,18 @@ function showUsageStats(avatarId) {
     fetch(`/producer/avatar/${avatarId}/stats`)
         .then(response => response.json())
         .then(data => {
+            const rows = data.usage_by_member
+                .map(member => {
+                    return (
+                        `<tr>
+                            <td>${member.name}</td>
+                            <td><span class="badge bg-info">${member.reels_count}</span></td>
+                            <td>${member.last_used || 'Nunca'}</td>
+                        </tr>`
+                    );
+                })
+                .join('');
+
             const content = `
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -492,20 +522,13 @@ function showUsageStats(avatarId) {
                                         <th>Último Uso</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    ${data.usage_by_member.map(member => `
-                                        <tr>
-                                            <td>${member.name}</td>
-                                            <td><span class="badge bg-info">${member.reels_count}</span></td>
-                                            <td>${member.last_used || 'Nunca'}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
+                                <tbody>${rows}</tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             `;
+
             document.getElementById('statsContent').innerHTML = content;
         })
         .catch(error => {
@@ -526,23 +549,26 @@ function manageAccess(avatarId) {
     fetch(`/producer/avatar/${avatarId}/access`)
         .then(response => response.json())
         .then(data => {
-            let content = '<div class="list-group">';
-            data.team_members.forEach(member => {
-                content += `
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>${member.full_name}</strong>
-                            <br><small class="text-muted">@${member.username}</small>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" 
-                                   id="access_${member.id}" value="${member.id}"
-                                   ${member.has_access ? 'checked' : ''}>
-                        </div>
-                    </div>
-                `;
-            });
-            content += '</div>';
+            const items = data.team_members
+                .map(member => {
+                    const checkedAttr = member.has_access ? 'checked' : '';
+
+                    return (
+                        `<div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${member.full_name}</strong>
+                                <br><small class="text-muted">@${member.username}</small>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       id="access_${member.id}" value="${member.id}" ${checkedAttr}>
+                            </div>
+                        </div>`
+                    );
+                })
+                .join('');
+
+            const content = `<div class="list-group">${items}</div>`;
             document.getElementById('accessContent').innerHTML = content;
         });
 }
