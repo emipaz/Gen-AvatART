@@ -422,6 +422,16 @@ def archive_avatar(avatar_id):
         return redirect(url_for('producer.avatars'))
 
     avatar.status = AvatarStatus.INACTIVE
+    avatar.enabled_by_producer = False
+
+    metadata = avatar.meta_data or {}
+    metadata['inactive_by'] = 'producer'
+    metadata['inactive_at'] = datetime.utcnow().isoformat()
+    metadata.pop('reactivation_requested', None)
+    metadata.pop('reactivation_requested_at', None)
+    metadata.pop('reactivation_requested_by', None)
+    avatar.meta_data = metadata
+
     db.session.commit()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Avatar archivado.', 'status': 'inactive'})
@@ -496,6 +506,14 @@ def reactivate_avatar(avatar_id):
     avatar.enabled_by_admin = True
     avatar.enabled_by_producer = True
     avatar.enabled_by_subproducer = True
+
+    metadata = avatar.meta_data or {}
+    metadata.pop('inactive_by', None)
+    metadata.pop('inactive_at', None)
+    metadata.pop('reactivation_requested', None)
+    metadata.pop('reactivation_requested_at', None)
+    metadata.pop('reactivation_requested_by', None)
+    avatar.meta_data = metadata
     
     db.session.commit()
     flash('Avatar reactivado exitosamente.', 'success')

@@ -204,6 +204,97 @@ def avatars():
         traceback.print_exc()
         raise
 
+
+@subproducer_bp.route('/avatars/<int:avatar_id>/disable', methods=['POST'])
+@login_required
+@subproducer_required
+def disable_avatar(avatar_id):
+    """Permite al subproductor deshabilitar temporalmente uno de sus avatares."""
+    avatar = Avatar.query.filter_by(id=avatar_id, created_by_id=current_user.id).first_or_404()
+
+    if avatar.status == AvatarStatus.INACTIVE:
+        flash('El avatar ya se encuentra inactivo.', 'info')
+        return redirect(url_for('subproducer.avatars'))
+
+    avatar.status = AvatarStatus.INACTIVE
+    avatar.enabled_by_subproducer = False
+
+    metadata = avatar.meta_data or {}
+    metadata['inactive_by'] = 'subproducer'
+    metadata['inactive_at'] = datetime.utcnow().isoformat()
+    metadata.pop('reactivation_requested', None)
+    metadata.pop('reactivation_requested_at', None)
+    metadata.pop('reactivation_requested_by', None)
+    avatar.meta_data = metadata
+
+    db.session.commit()
+    flash('Avatar deshabilitado. Podrás reactivarlo cuando lo necesites.', 'success')
+    return redirect(url_for('subproducer.avatars'))
+
+
+@subproducer_bp.route('/avatars/<int:avatar_id>/enable', methods=['POST'])
+@login_required
+@subproducer_required
+def enable_avatar(avatar_id):
+    """Permite reactivar un avatar previamente deshabilitado por el subproductor."""
+    avatar = Avatar.query.filter_by(id=avatar_id, created_by_id=current_user.id).first_or_404()
+
+    if avatar.status != AvatarStatus.INACTIVE:
+        flash('El avatar ya está activo.', 'info')
+        return redirect(url_for('subproducer.avatars'))
+
+    metadata = avatar.meta_data or {}
+    inactive_by = metadata.get('inactive_by')
+
+    if inactive_by and inactive_by != 'subproducer':
+        flash('Este avatar fue deshabilitado por tu productor. Solicita la reactivación.', 'warning')
+        return redirect(url_for('subproducer.avatars'))
+
+    avatar.status = AvatarStatus.ACTIVE
+    avatar.enabled_by_subproducer = True
+
+    metadata.pop('inactive_by', None)
+    metadata.pop('inactive_at', None)
+    metadata.pop('reactivation_requested', None)
+    metadata.pop('reactivation_requested_at', None)
+    metadata.pop('reactivation_requested_by', None)
+    avatar.meta_data = metadata
+
+    db.session.commit()
+    flash('Avatar reactivado correctamente.', 'success')
+    return redirect(url_for('subproducer.avatars'))
+
+
+@subproducer_bp.route('/avatars/<int:avatar_id>/request-reactivation', methods=['POST'])
+@login_required
+@subproducer_required
+def request_avatar_reactivation(avatar_id):
+    """Registra una solicitud para que el productor reactive un avatar inactivo."""
+    avatar = Avatar.query.filter_by(id=avatar_id, created_by_id=current_user.id).first_or_404()
+
+    if avatar.status != AvatarStatus.INACTIVE:
+        flash('El avatar ya está activo, no es necesario solicitar reactivación.', 'info')
+        return redirect(url_for('subproducer.avatars'))
+
+    metadata = avatar.meta_data or {}
+
+    if metadata.get('inactive_by') == 'subproducer':
+        flash('Puedes reactivar este avatar directamente sin pedir confirmación.', 'info')
+        return redirect(url_for('subproducer.avatars'))
+
+    if metadata.get('reactivation_requested'):
+        flash('Ya solicitaste la reactivación de este avatar. Espera la respuesta del productor.', 'info')
+        return redirect(url_for('subproducer.avatars'))
+
+    metadata['reactivation_requested'] = True
+    metadata['reactivation_requested_at'] = datetime.utcnow().isoformat()
+    metadata['reactivation_requested_by'] = current_user.id
+    avatar.meta_data = metadata
+
+    db.session.commit()
+    flash('Solicitud de reactivación enviada al productor.', 'success')
+    return redirect(url_for('subproducer.avatars'))
+
 @subproducer_bp.route('/avatars/create', methods=['GET', 'POST'])
 @login_required
 @subproducer_required
