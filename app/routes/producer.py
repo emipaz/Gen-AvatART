@@ -1146,6 +1146,25 @@ def settings():
     # Renderizar template con información actual
     return render_template('producer/settings.html', producer=producer)
 
+
+@producer_bp.route('/settings/sync-heygen', methods=['POST'])
+@login_required
+@producer_required
+def sync_heygen():
+    """Permite disparar manualmente la sincronización de avatares con HeyGen."""
+    producer = current_user.ensure_producer_profile()
+    if not producer:
+        flash('No se encontró el perfil de productor.', 'error')
+        return redirect(url_for('producer.settings'))
+
+    if not producer.get_heygen_api_key():
+        flash('Configura tu API key de HeyGen antes de sincronizar.', 'warning')
+        return redirect(url_for('producer.settings'))
+
+    synced, sync_message, category = sync_producer_heygen_avatars(producer)
+    flash(sync_message or 'Sincronización completada.', category or 'info')
+    return redirect(url_for('producer.settings'))
+
 @producer_bp.route('/earnings')
 @login_required
 @producer_required
