@@ -187,6 +187,21 @@ class Producer(db.Model):
             return fernet.decrypt(self.heygen_api_key_encrypted.encode()).decode()
         except Exception:
             return None
+
+    @property
+    def heygen_api_key(self):
+        """Expone la API key desencriptada sin duplicar lógica en las rutas."""
+        if not self.heygen_api_key_encrypted:
+            return None
+        return self.get_heygen_api_key()
+
+    @heygen_api_key.setter
+    def heygen_api_key(self, value):
+        """Permite asignar/remove la API key usando la misma interfaz del modelo."""
+        if value:
+            self.set_heygen_api_key(value)
+        else:
+            self.heygen_api_key_encrypted = None
            
     # Stripe Connect
     def set_stripe_account(self, account_id):
