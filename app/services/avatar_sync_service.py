@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.models.avatar import Avatar, AvatarStatus
 from app.models.producer import Producer
+from app.models.user import User
 from app.services.heygen_service import HeyGenService
 
 SyncResult = Tuple[bool, str, str]
@@ -48,7 +49,18 @@ def _get_owner_api_key() -> Optional[str]:
         candidate = current_app.config.get("HEYGEN_OWNER_API_KEY")
         if candidate:
             return candidate
-    return os.environ.get("HEYGEN_API_KEY_OWNER")
+    env_key = os.environ.get("HEYGEN_API_KEY_OWNER")
+    if env_key:
+        return env_key
+
+    try:
+        owner = User.query.filter_by(is_owner=True).first()
+        if owner and getattr(owner, "producer_profile", None):
+            return owner.producer_profile.get_heygen_api_key()
+    except Exception:  # pragma: no cover - fallback silencioso
+        return None
+
+    return None
 
 
 def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:

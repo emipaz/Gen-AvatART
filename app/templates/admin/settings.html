@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración - Admin - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="mb-1"><i class="fas fa-sliders-h text-primary"></i> Configuración de la Plataforma</h1>
+                    <p class="text-muted mb-0">Gestioná la API key global de HeyGen usada como respaldo para las sincronizaciones.</p>
+                </div>
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver al dashboard
+                </a>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-key"></i> API key de HeyGen (dueño)</h5>
+                    <span class="badge bg-primary">Sólo dueño</span>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">API key actual</label>
+                            {% if masked_api_key %}
+                                <input type="text" class="form-control" value="{{ masked_api_key }}" readonly>
+                                <div class="form-text">Mostramos solo los primeros y últimos caracteres por seguridad.</div>
+                            {% else %}
+                                <input type="text" class="form-control" value="" placeholder="No hay API key configurada" readonly>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Ingresar nueva API key</label>
+                            <input type="text" name="platform_heygen_api_key" class="form-control" autocomplete="off" placeholder="Pegá aquí la API key de HeyGen">
+                            <div class="form-text">La clave se almacena encriptada y se usará como respaldo para las sincronizaciones de los productores.</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar API key
+                            </button>
+                            {% if masked_api_key %}
+                                <button type="submit" name="action" value="clear" class="btn btn-outline-danger">
+                                    <i class="fas fa-trash"></i> Quitar API key
+                                </button>
+                            {% endif %}
+                        </div>
+                    </form>
+
+                    <div class="alert alert-info mt-4 mb-0">
+                        <i class="fas fa-info-circle"></i> Esta API key permite identificar qué avatares pertenecen al dueño y filtrar los públicos de HeyGen cuando un productor sincroniza su catálogo.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

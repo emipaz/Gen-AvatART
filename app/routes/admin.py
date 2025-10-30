@@ -44,6 +44,7 @@ from app.models.producer import Producer, ProducerStatus
 from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission, CommissionStatus
+from app.services.avatar_sync_service import sync_producer_heygen_avatars
 
 # Importación del modelo de solicitudes de productor
 from app.models.producer_request import ProducerRequest, ProducerRequestStatus
@@ -77,6 +78,68 @@ def admin_required(f):
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+@admin_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def settings():
+    """Configuración central de la plataforma disponible solo para el dueño."""
+    if not current_user.is_owner:
+        flash('Solo el dueño puede acceder a la configuración de la plataforma.', 'error')
+        return redirect(url_for('admin.dashboard'))
+
+    owner = current_user
+    producer_profile = owner.ensure_producer_profile()
+
+    if producer_profile is None:
+        flash('No se pudo preparar el perfil de productor del dueño.', 'error')
+        return redirect(url_for('admin.dashboard'))
+
+    masked_key = producer_profile.get_masked_heygen_api_key()
+
+    if request.method == 'POST':
+        new_key = (request.form.get('platform_heygen_api_key') or '').strip()
+        action = request.form.get('action', 'save')
+
+        try:
+            if action == 'clear':
+                producer_profile.heygen_api_key = None
+                settings_dict = producer_profile.settings or {}
+                settings_dict.pop('api_validation_status', None)
+                producer_profile.settings = settings_dict
+                producer_profile.updated_at = datetime.utcnow()
+                db.session.commit()
+                flash('API key del dueño eliminada.', 'info')
+            elif new_key:
+                if masked_key and new_key == masked_key:
+                    flash('No se detectaron cambios en la API key.', 'info')
+                elif all(c == '•' for c in new_key):
+                    flash('Ingresá la API key completa para actualizarla.', 'warning')
+                else:
+                    producer_profile.set_heygen_api_key(new_key)
+                    settings_dict = producer_profile.settings or {}
+                    settings_dict['api_validation_status'] = 'valid'
+                    producer_profile.settings = settings_dict
+                    producer_profile.updated_at = datetime.utcnow()
+                    db.session.commit()
+                    flash('API key global actualizada correctamente.', 'success')
+
+                    synced, sync_message, category = sync_producer_heygen_avatars(producer_profile)
+                    if sync_message:
+                        flash(sync_message, category)
+            else:
+                flash('No se ingresó ninguna API key.', 'warning')
+        except Exception as exc:
+            db.session.rollback()
+            flash(f'Error al actualizar la API key: {exc}', 'error')
+
+        return redirect(url_for('admin.settings'))
+
+    return render_template('admin/settings.html',
+                           owner=owner,
+                           producer=producer_profile,
+                           masked_api_key=masked_key)
 
 
 @admin_bp.route('/dashboard')
