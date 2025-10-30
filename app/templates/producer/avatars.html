@@ -282,6 +282,17 @@ Acciones disponibles:
                             </p>
                         {% endif %}
 
+                        {% set owner = avatar.created_by %}
+                        <div class="mb-3">
+                            <small class="text-muted">Creado por:</small>
+                            <div>
+                                <strong>{{ owner.full_name if owner else 'Usuario no asignado' }}</strong>
+                                {% if owner %}
+                                    <br><small class="text-muted">@{{ owner.username }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+
                         <!-- Características del avatar -->
                         <div class="mb-3">
                             <!-- Idioma -->
