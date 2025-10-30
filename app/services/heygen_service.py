@@ -38,10 +38,10 @@ class HeyGenService:
     def list_avatars(self) -> List[Dict]:
         """Lista todos los avatars disponibles"""
         try:
-            response = self.session.get(f"{self.base_url}/v1/avatars")
+            response = self.session.get(f"{self.base_url}/v2/avatars")
             if response.status_code == 200:
-                data = response.json()
-                return data.get('data', [])
+                data = response.json()["data"]["avatars"]
+                return data
             return []
         except Exception as e:
             print(f"Error listando avatars: {e}")

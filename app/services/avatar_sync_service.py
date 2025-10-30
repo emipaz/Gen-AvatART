@@ -73,15 +73,23 @@ def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:
     Returns:
         tuple: (éxito, mensaje, categoria_flash)
     """
+    import logging
+    logger = logging.getLogger("avatar_sync")
+
     producer_api_key = producer.get_heygen_api_key()
+    logger.info(f"[SYNC] Productor: {producer.id} - API Key: {'SET' if producer_api_key else 'NOT SET'}")
     if not producer_api_key:
+        logger.warning("[SYNC] El productor no tiene API key de HeyGen configurada.")
         return False, "El productor todavía no configuró su API key de HeyGen.", "warning"
 
     owner_api_key = _get_owner_api_key()
+    logger.info(f"[SYNC] Owner API Key: {'SET' if owner_api_key else 'NOT SET'}")
     if not owner_api_key:
+        logger.warning("[SYNC] No hay API key configurada para el dueño de la plataforma.")
         return False, "No hay API key configurada para el dueño de la plataforma.", "warning"
 
     base_url = current_app.config.get("HEYGEN_BASE_URL", "https://api.heygen.com") if current_app else "https://api.heygen.com"
+    logger.info(f"[SYNC] Base URL: {base_url}")
 
     try:
         producer_service = HeyGenService(producer_api_key, base_url)
@@ -89,13 +97,18 @@ def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:
 
         producer_avatars = producer_service.list_avatars()
         owner_avatars = owner_service.list_avatars()
+        logger.info(f"[SYNC] Avatares del productor recibidos: {len(producer_avatars) if producer_avatars else 0}")
+        logger.info(f"[SYNC] Avatares del owner recibidos: {len(owner_avatars) if owner_avatars else 0}")
     except Exception as exc:  # pragma: no cover - fallback ante errores de red
+        logger.error(f"[SYNC] Error al comunicarse con HeyGen: {exc}")
         return False, f"Error al comunicarse con HeyGen: {exc}", "danger"
 
     if not producer_avatars:
+        logger.info("[SYNC] No se encontraron avatares en HeyGen para sincronizar.")
         return True, "API key válida. No se encontraron avatares en HeyGen para sincronizar.", "info"
 
     owner_ids = _collect_ids(owner_avatars)
+    logger.info(f"[SYNC] IDs de avatares del owner: {owner_ids}")
 
     new_count = 0
     updated_count = 0
@@ -104,10 +117,16 @@ def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:
     try:
         for item in producer_avatars:
             avatar_id = _normalize_avatar_id(item)
-            if not avatar_id or avatar_id in owner_ids:
+            logger.debug(f"[SYNC] Procesando avatar_id: {avatar_id}")
+            if not avatar_id:
+                logger.warning(f"[SYNC] Avatar sin ID válido: {item}")
+                continue
+            if avatar_id in owner_ids:
+                logger.info(f"[SYNC] Avatar {avatar_id} es público/owner, se omite.")
                 continue
 
             avatar = Avatar.query.filter_by(producer_id=producer.id, avatar_ref=avatar_id).first()
+            logger.debug(f"[SYNC] Avatar en base local: {'ENCONTRADO' if avatar else 'NO ENCONTRADO'}")
 
             preview_url = _extract_first(item, "preview_url", "previewVideoUrl", "preview_video_url")
             thumb_url = _extract_first(item, "preview_image_url", "thumbnail_url", "cover_image_url")
@@ -118,6 +137,7 @@ def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:
             tags = item.get("tags") or item.get("labels") or []
 
             if not avatar:
+                logger.info(f"[SYNC] Creando nuevo avatar {avatar_id} para productor {producer.id}")
                 avatar = Avatar(
                     producer_id=producer.id,
                     created_by_id=producer.user_id,
@@ -143,6 +163,7 @@ def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:
                     avatar.set_tags(tags if isinstance(tags, (list, tuple)) else str(tags))
                 new_count += 1
             else:
+                logger.info(f"[SYNC] Actualizando avatar existente {avatar_id} para productor {producer.id}")
                 avatar.name = name or avatar.name
                 avatar.description = description or avatar.description
                 avatar.avatar_type = avatar_type or avatar.avatar_type
@@ -166,9 +187,11 @@ def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:
                 updated_count += 1
 
         if new_count or updated_count:
+            logger.info(f"[SYNC] Commit a la base de datos. Nuevos: {new_count}, Actualizados: {updated_count}")
             db.session.commit()
 
     except SQLAlchemyError as db_error:
+        logger.error(f"[SYNC] Error guardando avatares sincronizados: {db_error}")
         db.session.rollback()
         return False, f"Error guardando avatares sincronizados: {db_error}", "danger"
 
@@ -179,6 +202,8 @@ def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:
         if updated_count:
             parts.append(f"{updated_count} actualizados")
         detail = ", ".join(parts)
+        logger.info(f"[SYNC] Sincronización de HeyGen completada ({detail})")
         return True, f"Sincronización de HeyGen completada ({detail}).", "success"
 
+    logger.info("[SYNC] API key validada. No había avatares nuevos para sincronizar.")
     return True, "API key validada. No había avatares nuevos para sincronizar.", "info"
