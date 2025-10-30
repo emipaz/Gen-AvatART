@@ -103,7 +103,9 @@ class Reel(db.Model):
     avatar_id  = db.Column(db.Integer, db.ForeignKey('avatars.id'), nullable=True)  # <-- antes era False
 
     # relaciones (las usa tu template y propiedades)
-    creator = db.relationship('User', foreign_keys=[creator_id], backref='reels_creados')
+    # overlaps: necesario para evitar warnings de SQLAlchemy por relaciones superpuestas sobre creator_id
+    # creator_user y reels también usan creator_id, por eso se indica el parámetro
+    creator = db.relationship('User', foreign_keys=[creator_id], backref=db.backref('reels_creados', overlaps="creator_user,reels"), overlaps="creator_user,reels")
     owner   = db.relationship('User', foreign_keys=[owner_id],   backref='reels_propios')
     avatar  = db.relationship('Avatar', back_populates='reels')
     

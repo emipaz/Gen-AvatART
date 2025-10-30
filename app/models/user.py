@@ -153,7 +153,9 @@ class User(UserMixin, db.Model):
     producer_profile = db.relationship('Producer', backref = 'user', uselist = False, cascade = 'all, delete-orphan')
     
     # Relación con reels creados por este usuario
-    reels = db.relationship('Reel', foreign_keys = 'Reel.creator_id', backref = 'creator_user', lazy = 'dynamic')
+    # overlaps: necesario para evitar warnings de SQLAlchemy por relaciones superpuestas sobre creator_id
+    # reels_creados y creator_user también usan creator_id, por eso se indica el parámetro
+    reels = db.relationship('Reel', foreign_keys = 'Reel.creator_id', backref = 'creator_user', lazy = 'dynamic', overlaps="reels_creados,creator_user")
 
     # Relación con comisiones ganadas por el usuario
     commissions_earned = db.relationship('Commission', backref = 'user', lazy='dynamic')
