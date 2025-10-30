@@ -115,8 +115,8 @@
                                 {% if metadata.get('inactive_by') == 'subproducer' %}
                                     <form method="post" action="{{ url_for('subproducer.enable_avatar', avatar_id=avatar.id) }}" class="mt-2">
                                         <button type="submit" class="btn btn-outline-success btn-sm w-100">
-                                            <i class="fas fa-play-circle me-1"></i>
-                                            Reactivar avatar
+                                            <i class="fas fa-power-off me-1"></i>
+                                            Activar avatar
                                         </button>
                                     </form>
                                 {% else %}
