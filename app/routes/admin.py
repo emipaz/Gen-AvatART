@@ -254,6 +254,7 @@ def create_admin():
         return jsonify({'error': 'El email o username ya existe.'}), 400
     
     user = User(
+        is_owner   = False,
         email      = email,
         username   = username,
         first_name = first_name,
@@ -263,7 +264,7 @@ def create_admin():
         is_verified= True
     )
     
-    # user.set_password(password) # password configura al verificar el mail
+    user.set_password(password) # password configura al verificar el mail
     db.session.add(user)
     db.session.commit()
     return jsonify({'success': True, 'user_id': user.id})
@@ -461,6 +462,11 @@ def suspend_user(user_id):
     from app.models.producer import ProducerStatus
 
     user         = User.query.get_or_404(user_id)
+
+    if user.is_owner:
+        flash('No se puede suspender al dueño de la plataforma.', 'error')
+        return redirect(url_for('admin.user_detail', user_id=user_id))
+
 
     # Suspender al usuario
     user.status  = UserStatus.SUSPENDED

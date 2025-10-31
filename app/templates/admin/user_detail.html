@@ -155,196 +155,117 @@ Seguridad implementada:
         </ol>
       </nav>
       <!-- Header principal con avatar y datos básicos -->
-      <div class="d-flex align-items-center mb-3">
-        <div class="me-3">
-          <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width:56px;height:56px;">
-            <i class="fas fa-user fa-lg text-muted"></i>
-          </span>
-        </div>
-        <div>
-          <h3 class="mb-0">
-            {{ (user.first_name ~ ' ' ~ user.last_name)|trim if (user.first_name or user.last_name) else user.username }}
-          </h3>
-          <div class="text-muted">{{ user.email }}</div>
-        </div>
-      </div>
-      <!-- ...resto del contenido original... -->
-    
-    <!-- Card de rol del usuario -->
-    <!-- col-6 en mobile (50% ancho), col-md-3 en desktop (25% ancho) -->
-    <div class="col-6 col-md-3">
-      <!-- Card con altura completa para alineación uniforme -->
-      <!-- h-100 hace que todas las cards tengan la misma altura -->
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted small">Rol</div>
-          <div class="fw-semibold">
-            {% if user.is_owner %}
-              <span class="badge bg-dark">Dueño</span>
-            {% elif user.role.value == 'admin' %}
-              <span class="badge bg-danger">Admin</span>
-            {% else %}
-              <span class="badge bg-{{ 'primary' if user.role.value == 'producer' else 'success' if user.role.value == 'subproducer' else 'info' }}">
-                {{ user.role.value.title() }}
+
+      <!-- Tarjeta horizontal con avatar, datos, métricas y acciones -->
+      <div class="card mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex flex-column flex-lg-row align-items-stretch gap-4">
+            <!-- Columna: Avatar y datos principales -->
+            <div class="d-flex flex-row flex-lg-column align-items-center align-items-lg-start gap-3" style="min-width:220px;">
+              <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width:72px;height:72px;">
+                <i class="fas fa-user fa-2x text-muted"></i>
               </span>
-            {% endif %}
+              <div>
+                <h4 class="mb-1">
+                  {{ (user.first_name ~ ' ' ~ user.last_name)|trim if (user.first_name or user.last_name) else user.username }}
+                </h4>
+                <div class="text-muted small">{{ user.email }}</div>
+                <div class="mt-2">
+                  {% if user.is_owner %}
+                    <span class="badge bg-dark">Dueño</span>
+                  {% elif user.role.value == 'admin' %}
+                    <span class="badge bg-danger">Admin</span>
+                  {% else %}
+                    <span class="badge bg-{{ 'primary' if user.role.value == 'producer' else 'success' if user.role.value == 'subproducer' else 'info' }}">
+                      {{ user.role.value.title() }}
+                    </span>
+                  {% endif %}
+                  <span class="badge bg-light text-dark border ms-2">{{ user.status.value if user.status else '—' }}</span>
+                </div>
+                <div class="small text-muted mt-2">
+                  <i class="fas fa-calendar me-1"></i> Registro: {{ user.created_at.strftime('%d/%m/%Y %H:%M') if user.created_at else '—' }}<br>
+                  <i class="fas fa-sign-in-alt me-1"></i> Último acceso: {{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else '—' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Columna: Métricas -->
+            <div class="flex-grow-1 d-flex flex-wrap align-items-center justify-content-center gap-3">
+              <!-- Reels -->
+              <div class="text-center px-3">
+                <div class="text-muted small">Reels</div>
+                <div class="display-6">{{ stats.total_reels or 0 }}</div>
+                <div class="text-success small">{{ stats.completed_reels or 0 }} completados</div>
+              </div>
+              <!-- Comisiones -->
+              <div class="text-center px-3">
+                <div class="text-muted small">Comisiones</div>
+                <div class="display-6">{{ stats.total_commissions or 0 }}</div>
+                <div class="small">Pendientes: {{ stats.pending_earnings or 0 }}</div>
+              </div>
+              {% if user.is_producer() and user.producer_profile %}
+              <!-- Avatares -->
+              <div class="text-center px-3">
+                <div class="text-muted small">Avatares</div>
+                <div class="display-6">{{ stats.avatars_count or 0 }}</div>
+              </div>
+              <!-- API mensual -->
+              <div class="text-center px-3">
+                <div class="text-muted small">API (mes)</div>
+                <div class="display-6">{{ stats.api_calls_this_month or 0 }}</div>
+                <div class="small">Límite: {{ stats.monthly_api_limit or '—' }}</div>
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Columna: Acciones administrativas -->
+            <div class="d-flex flex-column align-items-center justify-content-center gap-2" style="min-width:220px;">
+              <div class="d-flex flex-column gap-2 w-100">
+                {% if current_user.is_owner %}
+                  <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+                    <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm w-100"
+                            {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
+                      <i class="fas fa-check me-1"></i> Aprobar
+                    </button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
+                    <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm w-100"
+                            {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
+                      <i class="fas fa-ban me-1"></i> Suspender
+                    </button>
+                  </form>
+                  {% if not user.is_owner and user.is_admin %}
+                    <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este administrador?');">
+                      <button class="btn btn-danger btn-sm w-100">
+                        <i class="fas fa-trash-alt me-1"></i> Eliminar
+                      </button>
+                    </form>
+                  {% endif %}
+                {% elif current_user.is_admin %}
+                  <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+                    <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm w-100"
+                            {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
+                      <i class="fas fa-check me-1"></i> Aprobar
+                    </button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
+                    <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm w-100"
+                            {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
+                      <i class="fas fa-ban me-1"></i> Suspender
+                    </button>
+                  </form>
+                {% endif %}
+                {% if user.role.value == 'final_user' and user.status.value == 'active' %}
+                  <button type="button" class="btn btn-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#promoteModal">
+                    <i class="fas fa-arrow-up me-1"></i> Promocionar a Productor
+                  </button>
+                {% endif %}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Card de estado del usuario -->
-    <div class="col-6 col-md-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <!-- Label para estado de la cuenta -->
-          <div class="text-muted small">Estado</div>
-          <!-- Valor del estado (active, pending, suspended) -->
-          <div class="fw-semibold">{{ user.status.value if user.status else '—' }}</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Card de fecha de registro -->
-    <div class="col-6 col-md-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <!-- Label para fecha de creación de cuenta -->
-          <div class="text-muted small">Registro</div>
-          <!-- Fecha formateada en formato DD/MM/YYYY HH:MM -->
-          <!-- strftime formatea la fecha según el patrón especificado -->
-          <div class="fw-semibold">{{ user.created_at.strftime('%d/%m/%Y %H:%M') if user.created_at else '—' }}</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Card de último acceso -->
-    <div class="col-6 col-md-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <!-- Label para último inicio de sesión -->
-          <div class="text-muted small">Último acceso</div>
-          <!-- Fecha de último login formateada -->
-          <!-- Muestra guión si nunca ha iniciado sesión -->
-          <div class="fw-semibold">{{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else '—' }}</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Grid de métricas de actividad y estadísticas del usuario -->
-  <!-- Sección centrada con números grandes para visualización rápida -->
-  <div class="row g-3 mb-4">
-    
-    <!-- Card de estadísticas de reels -->
-    <div class="col-6 col-md-3">
-      <div class="card h-100">
-        <!-- text-center centra todo el contenido de la card -->
-        <div class="card-body text-center">
-          <!-- Label descriptivo para la métrica -->
-          <div class="text-muted small">Reels</div>
-          <!-- Número principal con clase display-6 para tamaño grande -->
-          <!-- stats.total_reels viene del contexto con fallback a 0 -->
-          <div class="display-6">{{ stats.total_reels or 0 }}</div>
-          <!-- Información adicional con color de éxito -->
-          <!-- text-success aplica color verde para información positiva -->
-          <div class="text-success small">{{ stats.completed_reels or 0 }} completados</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Card de estadísticas de comisiones -->
-    <div class="col-6 col-md-3">
-      <div class="card h-100">
-        <div class="card-body text-center">
-          <!-- Label para comisiones generadas -->
-          <div class="text-muted small">Comisiones</div>
-          <!-- Total de comisiones con número grande -->
-          <div class="display-6">{{ stats.total_commissions or 0 }}</div>
-          <!-- Información adicional de ganancias pendientes -->
-          <div class="small">Pendientes: {{ stats.pending_earnings or 0 }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Métricas adicionales solo para productores -->
-    <!-- Condicional que verifica rol de productor Y existencia de perfil -->
-    {% if user.is_producer() and user.producer_profile %}
-    
-    <!-- Card de avatares creados -->
-    <div class="col-6 col-md-3">
-      <div class="card h-100">
-        <div class="card-body text-center">
-          <!-- Label para avatares/clones digitales -->
-          <div class="text-muted small">Avatares</div>
-          <!-- Número de avatares creados por el productor -->
-          <div class="display-6">{{ stats.avatars_count or 0 }}</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Card de uso de API mensual -->
-    <div class="col-6 col-md-3">
-      <div class="card h-100">
-        <div class="card-body text-center">
-          <!-- Label para llamadas API del mes actual -->
-          <div class="text-muted small">API (mes)</div>
-          <!-- Número de llamadas realizadas este mes -->
-          <div class="display-6">{{ stats.api_calls_this_month or 0 }}</div>
-          <!-- Información del límite mensual configurado -->
-          <div class="small">Límite: {{ stats.monthly_api_limit or '—' }}</div>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Sección de acciones administrativas rápidas -->
-  <!-- d-flex crea layout flexbox horizontal -->
-  <!-- gap-2 aplica espacio de 0.5rem entre elementos -->
-  <!-- flex-wrap permite que los botones se envuelvan en pantallas pequeñas -->
-  <div class="d-flex gap-2 flex-wrap">
-
-    {% if current_user.is_owner %}
-      <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
-        <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm"
-                {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
-          <i class="fas fa-check me-1"></i> Aprobar
-        </button>
-      </form>
-      <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
-        <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm"
-                {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
-          <i class="fas fa-ban me-1"></i> Suspender
-        </button>
-      </form>
-      {% if not user.is_owner and user.is_admin %}
-        <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este administrador?');">
-          <button class="btn btn-danger btn-sm">
-            <i class="fas fa-trash-alt me-1"></i> Eliminar
-          </button>
-        </form>
-      {% endif %}
-    {% elif current_user.is_admin %}
-      <form method="post" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
-        <button class="btn {% if user.status.value|lower in ['pending', 'suspended'] %}btn-success{% else %}btn-secondary disabled{% endif %} btn-sm"
-                {% if user.status.value|lower not in ['pending', 'suspended'] %}disabled aria-disabled="true"{% endif %}>
-          <i class="fas fa-check me-1"></i> Aprobar
-        </button>
-      </form>
-      <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}">
-        <button class="btn {% if user.status.value|lower == 'active' %}btn-warning{% else %}btn-secondary disabled{% endif %} btn-sm"
-                {% if user.status.value|lower != 'active' %}disabled aria-disabled="true"{% endif %}>
-          <i class="fas fa-ban me-1"></i> Suspender
-        </button>
-      </form>
-    {% endif %}
-    {% if user.role.value == 'final_user' and user.status.value == 'active' %}
-      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#promoteModal">
-        <i class="fas fa-arrow-up me-1"></i> Promocionar a Productor
-      </button>
-    {% endif %}
-  </div>
 
   <!-- Modal para promocionar a productor -->
   {% if user.role.value == 'final_user' and user.status.value == 'active' %}
