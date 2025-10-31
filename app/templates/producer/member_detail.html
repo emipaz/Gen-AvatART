@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil de Miembro del Equipo{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Perfil de {{ member.full_name }}</h4>
+                    <small class="text-light">@{{ member.username }}</small>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Rol</dt>
+                        <dd class="col-sm-8">{{ member_stats.role|title }}</dd>
+                        <dt class="col-sm-4">Estado</dt>
+                        <dd class="col-sm-8">{{ member_stats.status|title }}</dd>
+                        <dt class="col-sm-4">Fecha de ingreso</dt>
+                        <dd class="col-sm-8">{{ member_stats.join_date.strftime('%d/%m/%Y') }}</dd>
+                        <dt class="col-sm-4">Última actividad</dt>
+                        <dd class="col-sm-8">{{ member_stats.last_activity.strftime('%d/%m/%Y %H:%M') if member_stats.last_activity else 'Sin actividad reciente' }}</dd>
+                        <dt class="col-sm-4">Total de reels</dt>
+                        <dd class="col-sm-8">{{ member_stats.total_reels }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Actividad Reciente</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activity %}
+                        <ul class="list-group">
+                            {% for reel in recent_activity %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <strong>{{ reel.title }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ reel.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                    </span>
+                                    <a href="{{ url_for('user.view_reel', reel_id=reel.id) }}" class="btn btn-outline-primary btn-sm">Ver Reel</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="text-center text-muted">No hay actividad reciente.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-8 mx-auto text-center">
+            <a href="{{ url_for('producer.team') }}" class="btn btn-secondary">Volver al equipo</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
