@@ -413,6 +413,32 @@ Acciones disponibles:
             </a>
         </div>
     {% endif %}
+
+        {# --- Paginación al final de la galería de avatares --- #}
+        {% if avatars and avatars.pages > 1 %}
+        <nav aria-label="Paginación de avatares" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {# Botón anterior #}
+                <li class="page-item {% if not avatars.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('producer.avatars', page=avatars.prev_num, status=selected_status if selected_status != 'ALL' else None, language=request.args.get('language'), gender=request.args.get('gender')) }}" aria-label="Anterior">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {# Números de página #}
+                {% for p in range(1, avatars.pages + 1) %}
+                    <li class="page-item {% if p == avatars.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('producer.avatars', page=p, status=selected_status if selected_status != 'ALL' else None, language=request.args.get('language'), gender=request.args.get('gender')) }}">{{ p }}</a>
+                    </li>
+                {% endfor %}
+                {# Botón siguiente #}
+                <li class="page-item {% if not avatars.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('producer.avatars', page=avatars.next_num, status=selected_status if selected_status != 'ALL' else None, language=request.args.get('language'), gender=request.args.get('gender')) }}" aria-label="Siguiente">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
 </div>
 
 <!-- Modal de estadísticas de uso -->
