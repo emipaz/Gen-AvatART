@@ -419,56 +419,37 @@ Funcionalidades de paginación:
 
                         <!-- Sistema de paginación para navegación entre páginas -->
                         <!-- Solo se muestra cuando hay más de una página de resultados -->
-                        {% if reels.pages > 1 %}
-                            <!-- Navegación semántica para paginación con aria-label -->
-                            <nav aria-label="Paginación">
-                                <!-- Lista de paginación centrada horizontalmente -->
-                                <!-- justify-content-center centra los elementos de paginación -->
-                                <ul class="pagination justify-content-center">
-                                    <!-- Enlace a página anterior si existe -->
-                                    {% if reels.has_prev %}
-                                        <li class="page-item">
-                                            <!-- Enlace que preserva filtros actuales -->
-                                            <!-- **request.args mantiene parámetros de búsqueda -->
-                                            <a class="page-link" href="{{ url_for('admin.reels', page=reels.prev_num, **request.args) }}">Anterior</a>
-                                        </li>
-                                    {% endif %}
-                                    
-                                    <!-- Iteración sobre números de página disponibles -->
-                                    {% for page_num in reels.iter_pages() %}
-                                        {% if page_num %}
-                                            <!-- Enlace para páginas que no son la actual -->
-                                            {% if page_num != reels.page %}
-                                                <li class="page-item">
-                                                    <!-- Enlace a página específica preservando filtros -->
-                                                    <a class="page-link" href="{{ url_for('admin.reels', page=page_num, **request.args) }}">{{ page_num }}</a>
-                                                </li>
-                                            {% else %}
-                                                <!-- Página actual sin enlace pero destacada -->
-                                                <!-- active aplica estilo de página seleccionada -->
-                                                <li class="page-item active">
-                                                    <span class="page-link">{{ page_num }}</span>
-                                                </li>
-                                            {% endif %}
+                        <nav aria-label="Paginación">
+                            <ul class="pagination justify-content-center">
+                                {% if reels.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.reels', page=reels.prev_num, **request.args) }}">Anterior</a>
+                                    </li>
+                                {% endif %}
+                                {% for page_num in reels.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != reels.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('admin.reels', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                            </li>
                                         {% else %}
-                                            <!-- Separador de páginas con puntos suspensivos -->
-                                            <!-- disabled indica que no es interactivo -->
-                                            <li class="page-item disabled">
-                                                <span class="page-link">...</span>
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
                                             </li>
                                         {% endif %}
-                                    {% endfor %}
-                                    
-                                    <!-- Enlace a página siguiente si existe -->
-                                    {% if reels.has_next %}
-                                        <li class="page-item">
-                                            <!-- Enlace que preserva filtros y va a la siguiente página -->
-                                            <a class="page-link" href="{{ url_for('admin.reels', page=reels.next_num, **request.args) }}">Siguiente</a>
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
                                         </li>
                                     {% endif %}
-                                </ul>
-                            </nav>
-                        {% endif %}
+                                {% endfor %}
+                                {% if reels.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.reels', page=reels.next_num, **request.args) }}">Siguiente</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
                     {% else %}
                         <!-- Estado vacío cuando no hay reels disponibles -->
                         <!-- text-center centra todo el contenido del mensaje -->

@@ -64,7 +64,7 @@ class HeyGenService:
     def get_avatar(self, avatar_id: str) -> Optional[Dict]:
         """Obtiene información de un avatar específico"""
         try:
-            response = self.session.get(f"{self.base_url}/v1/avatars/{avatar_id}")
+            response = self.session.get(f"{self.base_url}/v2/avatars/{avatar_id}")
             if response.status_code == 200:
                 return response.json()
             return None

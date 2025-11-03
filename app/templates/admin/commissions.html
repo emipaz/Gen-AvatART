@@ -466,58 +466,37 @@ Validaciones JavaScript:
                         </div>
 
                         <!-- Sistema de paginación para navegación entre páginas -->
-                        <!-- Solo se muestra si hay más de una página -->
-                        {% if commissions.pages > 1 %}
-                            <!-- Navegación semántica para paginación -->
-                            <!-- aria-label mejora la accesibilidad -->
-                            <nav aria-label="Paginación">
-                                <!-- Lista de paginación centrada -->
-                                <!-- justify-content-center centra la paginación -->
-                                <ul class="pagination justify-content-center">
-                                    <!-- Enlace a página anterior si existe -->
-                                    {% if commissions.has_prev %}
-                                        <li class="page-item">
-                                            <!-- Enlace que preserva los filtros actuales -->
-                                            <!-- **request.args mantiene los parámetros de filtrado -->
-                                            <a class="page-link" href="{{ url_for('admin.commissions', page=commissions.prev_num, **request.args) }}">Anterior</a>
-                                        </li>
-                                    {% endif %}
-                                    
-                                    <!-- Iteración sobre números de página disponibles -->
-                                    {% for page_num in commissions.iter_pages() %}
-                                        {% if page_num %}
-                                            <!-- Enlace para páginas que no son la actual -->
-                                            {% if page_num != commissions.page %}
-                                                <li class="page-item">
-                                                    <!-- Enlace a página específica preservando filtros -->
-                                                    <a class="page-link" href="{{ url_for('admin.commissions', page=page_num, **request.args) }}">{{ page_num }}</a>
-                                                </li>
-                                            {% else %}
-                                                <!-- Página actual sin enlace pero resaltada -->
-                                                <!-- active aplica estilo de página seleccionada -->
-                                                <li class="page-item active">
-                                                    <span class="page-link">{{ page_num }}</span>
-                                                </li>
-                                            {% endif %}
+                        <nav aria-label="Paginación">
+                            <ul class="pagination justify-content-center">
+                                {% if commissions.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.commissions', page=commissions.prev_num, **request.args) }}">Anterior</a>
+                                    </li>
+                                {% endif %}
+                                {% for page_num in commissions.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != commissions.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('admin.commissions', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                            </li>
                                         {% else %}
-                                            <!-- Separador de páginas con puntos suspensivos -->
-                                            <!-- disabled indica que no es clickeable -->
-                                            <li class="page-item disabled">
-                                                <span class="page-link">...</span>
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
                                             </li>
                                         {% endif %}
-                                    {% endfor %}
-                                    
-                                    <!-- Enlace a página siguiente si existe -->
-                                    {% if commissions.has_next %}
-                                        <li class="page-item">
-                                            <!-- Enlace que preserva filtros y va a la siguiente página -->
-                                            <a class="page-link" href="{{ url_for('admin.commissions', page=commissions.next_num, **request.args) }}">Siguiente</a>
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
                                         </li>
                                     {% endif %}
-                                </ul>
-                            </nav>
-                        {% endif %}
+                                {% endfor %}
+                                {% if commissions.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.commissions', page=commissions.next_num, **request.args) }}">Siguiente</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
                     {% else %}
                         <!-- Estado vacío cuando no hay comisiones -->
                         <!-- text-center centra todo el contenido -->
