@@ -119,6 +119,9 @@ def create_admin_user():
         admin_user.set_password(password)
 
         # ✅ Guardar en base de datos con commit automático
+        print("Creando usuario administrador...y Dueño")
+        admin_user.is_owner = True  # Marcar como propietario principal
+
         db.session.add(admin_user)
         db.session.commit()
         
