@@ -1,3 +1,7 @@
+"""
+Script para verificar el email del productor del avatar solicitado
+"""
+
 import sqlite3
 
 conn = sqlite3.connect(r'instance\gem_avatart.db')

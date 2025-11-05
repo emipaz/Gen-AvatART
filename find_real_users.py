@@ -1,3 +1,7 @@
+"""
+script para encontrar usuarios con emails reales en la base de datos.
+"""
+
 import sqlite3
 
 conn = sqlite3.connect(r'instance\gem_avatart.db')

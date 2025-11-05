@@ -1,3 +1,7 @@
+"""
+Script para cambiar el email de Juan Martínez (productor) en la base de datos.
+"""
+
 import sqlite3
 
 conn = sqlite3.connect(r'instance\gem_avatart.db')

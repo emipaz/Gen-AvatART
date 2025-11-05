@@ -1,3 +1,8 @@
+"""
+Script para listar todos los usuarios en la base de datos junto con sus avatares.
+"""
+
+
 import sqlite3
 
 conn = sqlite3.connect(r'instance\gem_avatart.db')
