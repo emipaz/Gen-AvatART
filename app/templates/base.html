@@ -257,13 +257,21 @@ Bloques Jinja extendibles:
             {% if messages %}
                 {% for category, message in messages %}
                     <!-- Alert Bootstrap con categoría dinámica y botón de cierre -->
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert" data-auto-dismiss="true">
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
+        
+        <script>
+            // Auto-cerrar alertas después de 5 segundos
+            document.querySelectorAll('[data-auto-dismiss="true"]').forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                setTimeout(() => bsAlert.close(), 5000);
+            });
+        </script>
     </div>
 
     <!-- Contenedor principal para el contenido de cada página -->

@@ -83,10 +83,10 @@ class ProfileForm(FlaskForm):
     phone      = StringField('Teléfono', validators = [Optional(), Length(max=20)])
     avatar     = FileField('Avatar'    , validators = [FileAllowed(['jpg', 'png', 'jpeg'], 'Solo imágenes!')])
     
-    # Campos para cambiar contraseña
+    # Campos para cambiar contraseña - todos opcionales
     current_password = PasswordField('Contraseña Actual',          validators = [Optional()])
     new_password     = PasswordField('Nueva Contraseña' ,          validators = [Optional(), Length(min=6)])
-    confirm_password = PasswordField('Confirmar Nueva Contraseña', validators = [EqualTo('new_password', message = 'Las contraseñas deben coincidir')])
+    confirm_password = PasswordField('Confirmar Nueva Contraseña', validators = [Optional()])
     
     submit = SubmitField('Guardar Cambios')
 
@@ -267,6 +267,8 @@ def profile():
     
     if form.validate_on_submit():
         try:
+            cambios = []  # Rastrear qué cambió
+            
             # Actualizar datos básicos
             current_user.first_name = form.first_name.data
             current_user.last_name  = form.last_name.data
@@ -279,34 +281,43 @@ def profile():
                     flash('El email ya está en uso por otro usuario', 'error')
                     return render_template('user/profile.html', form=form)
                 current_user.email = form.email.data
+                cambios.append('email')
             
             # Procesar avatar si se subió uno nuevo
             if form.avatar.data:
-                print(f"DEBUG: Procesando avatar para usuario {current_user.id}")
                 avatar_url = save_avatar(form.avatar.data)
-                print(f"DEBUG: Avatar URL resultado: {avatar_url}")
                 if avatar_url:
                     current_user.avatar_url = avatar_url
-                    print(f"DEBUG: Avatar URL asignado a current_user: {current_user.avatar_url}")
+                    cambios.append('avatar')
             
-            # Cambiar contraseña si se proporcionó
-            if form.current_password.data:
-                if current_user.check_password(form.current_password.data):
-                    if form.new_password.data:
-                        current_user.set_password(form.new_password.data)
-                        flash('Contraseña actualizada correctamente', 'success')
-                    else:
-                        flash('Debe proporcionar una nueva contraseña', 'error')
-                        return render_template('user/profile.html', form=form)
-                else:
+            # Cambiar contraseña SOLO si el usuario proporciona nueva contraseña
+            if form.new_password.data:
+                # Si proporciona nueva contraseña, validar contraseña actual
+                if not form.current_password.data:
+                    flash('Debes proporcionar tu contraseña actual para cambiar la contraseña', 'error')
+                    return render_template('user/profile.html', form=form)
+                
+                if not current_user.check_password(form.current_password.data):
                     flash('Contraseña actual incorrecta', 'error')
                     return render_template('user/profile.html', form=form)
+                
+                if form.new_password.data != form.confirm_password.data:
+                    flash('Las nuevas contraseñas no coinciden', 'error')
+                    return render_template('user/profile.html', form=form)
+                
+                current_user.set_password(form.new_password.data)
+                cambios.append('contraseña')
             
-            # Guardar cambios
-            print(f"DEBUG: Antes del commit - user.avatar_url: {current_user.avatar_url}")
+            # Guardar cambios en la BD
             db.session.commit()
-            print(f"DEBUG: Después del commit - user.avatar_url: {current_user.avatar_url}")
-            flash('Perfil actualizado correctamente', 'success')
+            
+            # Mostrar UN solo mensaje con lo que se actualizó
+            if cambios:
+                cambios_texto = ', '.join(cambios)
+                flash(f'Perfil actualizado correctamente ({cambios_texto})', 'success')
+            else:
+                flash('Perfil actualizado correctamente', 'success')
+            
             return redirect(url_for('user.profile'))
             
         except Exception as e:

@@ -542,22 +542,16 @@ document.getElementById('avatar').addEventListener('change', function(e) {
         
         // Inicia la lectura del archivo como URL de datos (base64)
         reader.readAsDataURL(file);
-        
-        // Auto-enviar formulario después de seleccionar imagen
-        setTimeout(function() {
-            // Mostrar indicador de carga en el botón
-            const submitBtn = document.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando avatar...';
-                submitBtn.disabled = true;
-            }
-            
-            // Enviar formulario automáticamente
-            const form = document.querySelector('form');
-            if (form) {
-                form.submit();
-            }
-        }, 1000); // 1 segundo para que el usuario vea el preview
+    }
+});
+
+// Mostrar indicador de carga al enviar formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    // Mostrar indicador de carga en el botón
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando cambios...';
+        submitBtn.disabled = true;
     }
 });
 </script>

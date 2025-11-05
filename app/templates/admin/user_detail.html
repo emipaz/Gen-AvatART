@@ -162,9 +162,13 @@ Seguridad implementada:
           <div class="d-flex flex-column flex-lg-row align-items-stretch gap-4">
             <!-- Columna: Avatar y datos principales -->
             <div class="d-flex flex-row flex-lg-column align-items-center align-items-lg-start gap-3" style="min-width:220px;">
-              <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width:72px;height:72px;">
-                <i class="fas fa-user fa-2x text-muted"></i>
-              </span>
+              {% if user.avatar_url %}
+                <img src="{{ user.avatar_url }}" class="rounded-circle" style="width:72px;height:72px;object-fit:cover;">
+              {% else %}
+                <span class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width:72px;height:72px;">
+                  <i class="fas fa-user fa-2x text-muted"></i>
+                </span>
+              {% endif %}
               <div>
                 <h4 class="mb-1">
                   {{ (user.first_name ~ ' ' ~ user.last_name)|trim if (user.first_name or user.last_name) else user.username }}
