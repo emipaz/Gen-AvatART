@@ -359,8 +359,9 @@ def dashboard():
     if current_user.can_create_avatars():
         stats['avatars_count'] = current_user.created_avatars.count()
     
-    # Reels recientes
-    recent_reels = current_user.reels.order_by(db.desc('created_at')).limit(5).all()
+    # Reels recientes - usar Reel.query para orden correcto
+    from app.models.reel import Reel
+    recent_reels = Reel.query.filter_by(creator_id=current_user.id).order_by(Reel.created_at.desc()).limit(5).all()
     
     return render_template('user/dashboard.html', stats=stats, recent_reels=recent_reels)
 
