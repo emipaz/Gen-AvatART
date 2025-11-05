@@ -43,6 +43,18 @@ class AvatarStatus(Enum):
     PROCESSING  = "processing"   # En proceso de creación
     FAILED      = "failed"       # Si falló la creación
 
+class AvatarAccessType(Enum):
+    """
+    Tipos de acceso para el avatar:
+        - PUBLIC: cualquier usuario final puede usarlo
+        - PREMIUM: usuario final debe pedir permiso al productor
+        - PRIVATE: solo el team del productor puede usarlo
+    """
+    PUBLIC = "public"
+    PREMIUM = "premium"
+    PRIVATE = "private"
+
+
 class Avatar(db.Model):
     """
     Modelo de datos para avatares/clones digitales (CLONE según README).
@@ -108,8 +120,14 @@ class Avatar(db.Model):
     # Estado y configuración de acceso
     status     = db.Column(db.Enum(AvatarStatus), nullable = False, default = AvatarStatus.PROCESSING)
     
-    # is_public  = db.Column(db.Boolean, default=False)  # Si otros usuarios pueden usarlo
-    # is_premium = db.Column(db.Boolean, default=False)  # Si requiere plan premium
+    # access_type define el acceso: public, premium, private
+    access_type = db.Column(db.Enum(AvatarAccessType), nullable=False, default=AvatarAccessType.PRIVATE, index=True)
+
+    # Lógica esperada:
+    # - PUBLIC: cualquier usuario final puede usar el avatar para crear reels
+    # - PREMIUM: usuario final debe pedir permiso al productor para usarlo
+    # - PRIVATE: solo el team del productor puede usarlo
+    # - Cada productor debe tener al menos 1 avatar público (validar en backend al crear/editar avatares)
     
     # Configuración de límites y uso
     # max_daily_usage = db.Column(db.Integer, default=10)

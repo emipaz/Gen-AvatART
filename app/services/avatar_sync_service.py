@@ -20,8 +20,24 @@ SyncResult = Tuple[bool, str, str]
 
 def _extract_first(data: Dict, *keys: str, default: Optional[str] = None) -> Optional[str]:
     """Obtiene el primer valor disponible en `data` para los `keys` indicados."""
+    # Buscar keys exactas y variantes en minúsculas y con guion bajo
+    lowered = {k.lower(): v for k, v in data.items()}
     for key in keys:
+        # Buscar key exacta
         value = data.get(key)
+        if value not in (None, ""):
+            return value
+        # Buscar key en minúsculas
+        value = data.get(key.lower())
+        if value not in (None, ""):
+            return value
+        # Buscar key reemplazando guiones por guion bajo
+        key_snake = key.replace("-", "_").lower()
+        value = data.get(key_snake)
+        if value not in (None, ""):
+            return value
+        # Buscar en el dict lower
+        value = lowered.get(key_snake)
         if value not in (None, ""):
             return value
     return default
@@ -132,7 +148,7 @@ def sync_producer_heygen_avatars(producer: Producer) -> SyncResult:
             thumb_url = _extract_first(item, "preview_image_url", "thumbnail_url", "cover_image_url")
             language = _extract_first(item, "language", "default_language", default="es")
             avatar_type = _extract_first(item, "avatar_type", "category", "gender", default="video")
-            name = _extract_first(item, "name", "display_name", default=f"Avatar {avatar_id}")
+            name = _extract_first(item, "name", "avatar_name", "title", "label", default=f"Avatar {avatar_id}")
             description = _extract_first(item, "description", "bio")
             tags = item.get("tags") or item.get("labels") or []
 
