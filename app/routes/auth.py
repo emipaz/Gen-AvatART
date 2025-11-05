@@ -642,3 +642,141 @@ def validate_email():
     
     return jsonify({'valid': True, 'message': 'Email disponible'})
 
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """
+    Ruta para recuperación de contraseña olvidada.
+    
+    Permite a usuarios que olvidaron su contraseña solicitar un enlace
+    de recuperación que será enviado a su email registrado. El enlace
+    contiene un token temporal para validación de seguridad.
+    
+    Methods:
+        GET  : Muestra formulario para ingresar email
+        POST : Procesa solicitud y envía email de recuperación
+    
+    Form Data (POST):
+        email (str): Email registrado del usuario
+    
+    Returns:
+        GET : Template 'auth/forgot_password.html' con formulario
+        POST: Redirección a login con mensaje de confirmación
+    
+    Note:
+        - Validación de email registrado antes de enviar correo
+        - Token de recuperación generado automáticamente
+        - Email contiene enlace seguro con tiempo de expiración
+        - Redirección silenciosa si email no existe (seguridad)
+    """
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        
+        if not email:
+            flash('Debes proporcionar un email.', 'error')
+            return render_template('auth/forgot_password.html')
+        
+        # Buscar usuario por email
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Generar token de recuperación
+            token = user.generate_verification_token()
+            
+            # Construir enlace de recuperación
+            reset_link = url_for('auth.reset_password', token=token, _external=True)
+            
+            try:
+                from app.services.email_service import send_template_email
+                
+                send_template_email(
+                    template_name='password_reset',
+                    subject='Recupera tu contraseña en Gem-AvatART',
+                    recipients=[user.email],
+                    template_vars={
+                        'user_name': user.full_name,
+                        'reset_link': reset_link,
+                        'app_name': 'Gem-AvatART'
+                    }
+                )
+            except Exception as e:
+                flash(f'Error al enviar email: {str(e)}', 'error')
+                return render_template('auth/forgot_password.html')
+        
+        # Siempre mostrar este mensaje por seguridad (no revelar si email existe)
+        flash('Si el email está registrado, recibirás un enlace para recuperar tu contraseña.', 'info')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('auth/forgot_password.html')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """
+    Ruta para resetear contraseña con token de recuperación.
+    
+    Valida el token de recuperación y permite al usuario establecer
+    una nueva contraseña. El token debe ser válido y no haber expirado.
+    
+    Args:
+        token (str): Token de verificación generado por forgot_password
+    
+    Methods:
+        GET  : Muestra formulario para ingresar nueva contraseña
+        POST : Procesa cambio de contraseña
+    
+    Form Data (POST):
+        new_password (str): Nueva contraseña (mín. 6 caracteres)
+        confirm_password (str): Confirmación de nueva contraseña
+    
+    Returns:
+        GET : Template 'auth/reset_password.html' con formulario
+        POST: Redirección a login con mensaje de éxito o error
+    
+    Note:
+        - Validación de coincidencia entre contraseñas
+        - Encriptación automática de nueva contraseña
+        - Token se valida automáticamente (genera excepción si inválido)
+        - Redirección a login después de éxito
+    """
+    try:
+        # Validar token y obtener usuario
+        user_id = User.confirm_token(token)
+        if not user_id:
+            flash('El enlace de recuperación es inválido o ha expirado.', 'error')
+            return redirect(url_for('auth.login'))
+        
+        user = User.query.get(user_id)
+        if not user:
+            flash('Usuario no encontrado.', 'error')
+            return redirect(url_for('auth.login'))
+        
+        if request.method == 'POST':
+            new_password = request.form.get('new_password', '').strip()
+            confirm_password = request.form.get('confirm_password', '').strip()
+            
+            if not new_password or not confirm_password:
+                flash('Debes completar todos los campos.', 'error')
+                return render_template('auth/reset_password.html', token=token)
+            
+            if len(new_password) < 6:
+                flash('La contraseña debe tener al menos 6 caracteres.', 'error')
+                return render_template('auth/reset_password.html', token=token)
+            
+            if new_password != confirm_password:
+                flash('Las contraseñas no coinciden.', 'error')
+                return render_template('auth/reset_password.html', token=token)
+            
+            # Actualizar contraseña
+            user.set_password(new_password)
+            db.session.commit()
+            
+            flash('Tu contraseña ha sido actualizada exitosamente. Ahora puedes iniciar sesión.', 'success')
+            return redirect(url_for('auth.login'))
+        
+        return render_template('auth/reset_password.html', token=token)
+    
+    except Exception as e:
+        flash('Error al procesar la recuperación de contraseña.', 'error')
+        return redirect(url_for('auth.login'))
+
