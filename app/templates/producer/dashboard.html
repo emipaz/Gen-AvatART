@@ -334,6 +334,101 @@ Elementos interactivos:
         <!-- Columna lateral derecha con información adicional -->
         <!-- col-lg-4 ocupa 4/12 del ancho en pantallas grandes -->
         <div class="col-lg-4">
+            <!-- Card con solicitudes de permisos de avatares -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Solicitudes de Permiso</h5>
+                    <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary btn-sm">
+                        Gestionar
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if permission_requests %}
+                        <div class="list-group">
+                            {% for req in permission_requests[:5] %}
+                                <div class="list-group-item list-group-item-action mb-2 border rounded">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                <i class="fas fa-user text-primary"></i>
+                                                {{ req.user_name or 'Usuario desconocido' }}
+                                            </h6>
+                                            <p class="mb-1 text-muted small">
+                                                {{ req.user_email or 'Sin email' }}
+                                            </p>
+                                        </div>
+                                        {% set status = (req.status or 'pending') %}
+                                        {% if status == 'approved' %}
+                                            <span class="badge bg-success"><i class="fas fa-check"></i> Aprobada</span>
+                                        {% elif status == 'rejected' %}
+                                            <span class="badge bg-danger"><i class="fas fa-ban"></i> Rechazada</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark"><i class="fas fa-hourglass-half"></i> Pendiente</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('producer.avatar_detail', avatar_id=req.avatar_id) }}" class="text-decoration-none fw-semibold">
+                                            <i class="fas fa-id-badge"></i>
+                                            {{ req.avatar_name }}
+                                        </a>
+                                        {% if req.requested_at %}
+                                            <div class="text-muted small">
+                                                <i class="fas fa-clock"></i>
+                                                {{ req.requested_at }}
+                                            </div>
+                                        {% endif %}
+                                        {% if req.reason %}
+                                            <div class="alert alert-light border mt-2 mb-0 py-2">
+                                                <small class="text-muted">Motivo:</small><br>
+                                                {{ req.reason }}
+                                            </div>
+                                        {% endif %}
+                                        {% if status == 'pending' and req.request_id %}
+                                            <div class="d-flex gap-2 mt-3">
+                                                <form method="post" action="{{ url_for('producer.handle_permission_request', avatar_id=req.avatar_id, request_id=req.request_id) }}">
+                                                    <input type="hidden" name="action" value="approve">
+                                                    <button type="submit" class="btn btn-success btn-sm">
+                                                        <i class="fas fa-check"></i> Aprobar
+                                                    </button>
+                                                </form>
+                                                <form method="post" action="{{ url_for('producer.handle_permission_request', avatar_id=req.avatar_id, request_id=req.request_id) }}">
+                                                    <input type="hidden" name="action" value="reject">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        <i class="fas fa-times"></i> Rechazar
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        {% elif status == 'approved' and req.reviewed_at %}
+                                            <div class="text-muted small mt-2">
+                                                <i class="fas fa-check-circle text-success"></i>
+                                                Actualizado el {{ req.reviewed_at }}
+                                            </div>
+                                        {% elif status == 'rejected' and req.reviewed_at %}
+                                            <div class="text-muted small mt-2">
+                                                <i class="fas fa-ban text-danger"></i>
+                                                Revisado el {{ req.reviewed_at }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if permission_requests|length > 5 %}
+                            <div class="text-center mt-3">
+                                <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-secondary btn-sm">
+                                    Ver todas las solicitudes
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-envelope-open-text fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No hay solicitudes pendientes</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- Card con resumen de comisiones -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">

@@ -17,9 +17,9 @@
         <div class="mb-3">
             <label class="form-label fw-semibold">Avatar</label>
             <select name="avatar_id" class="form-select">
-                <option value="">— Seleccionar avatar —</option>
-                {% for avatar in avatars %}
-                    <option value="{{ avatar.id }}">{{ avatar.name }}</option>
+        <option value="">— Seleccionar avatar —</option>
+        {% for avatar in avatars %}
+          <option value="{{ avatar.id }}" {% if selected_avatar_id and selected_avatar_id|string == avatar.id|string %}selected{% endif %}>{{ avatar.name }}</option>
                 {% endfor %}
             </select>
         </div>

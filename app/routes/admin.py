@@ -45,6 +45,7 @@ from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission, CommissionStatus
 from app.services.avatar_sync_service import sync_producer_heygen_avatars
+from app.services.email_service import send_template_email
 
 # Importación del modelo de solicitudes de productor
 from app.models.producer_request import ProducerRequest, ProducerRequestStatus
@@ -643,8 +644,29 @@ def create_producer():
         db.session.add(producer)
         db.session.commit()
         
+        # Enviar email de bienvenida al productor recién creado
+        try:
+            login_url = url_for('auth.login', _external=True)
+            send_template_email(
+                template_name='producer_welcome',
+                subject='Bienvenido a Gem-AvatART - Cuenta de Productor Creada',
+                recipients=[email],
+                template_vars={
+                    'user_name': f'{first_name} {last_name}',
+                    'admin_name': current_user.full_name,
+                    'email': email,
+                    'username': username,
+                    'temp_password': password,
+                    'login_url': login_url,
+                    'company_name': company_name or 'tu empresa'
+                }
+            )
+        except Exception as e:
+            # Log error pero no fallar la creación
+            flash(f'Productor creado pero no se pudo enviar el email: {str(e)}', 'warning')
+        
         flash(
-            f'Productor {username} creado exitosamente. El productor debe configurar su API key desde su panel.',
+            f'Productor {username} creado exitosamente. Se ha enviado un email con las credenciales de acceso.',
             'success'
         )
         return redirect(url_for('admin.user_detail', user_id=user.id))

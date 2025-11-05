@@ -50,9 +50,9 @@ class AvatarAccessType(Enum):
         - PREMIUM: usuario final debe pedir permiso al productor
         - PRIVATE: solo el team del productor puede usarlo
     """
-    PUBLIC = "public"
-    PREMIUM = "premium"
-    PRIVATE = "private"
+    PUBLIC = "PUBLIC"
+    PREMIUM = "PREMIUM"
+    PRIVATE = "PRIVATE"
 
 
 class Avatar(db.Model):

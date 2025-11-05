@@ -37,8 +37,10 @@ from app import db
 from app.models.user import User
 from app.models.producer_request import ProducerRequest, ProducerRequestStatus
 from app.models.reel import Reel, ReelStatus
+from app.models.avatar import Avatar, AvatarAccessType, AvatarStatus
 import os
 from PIL import Image
+from uuid import uuid4
 
 # Crear el blueprint
 user_bp = Blueprint('user', __name__, url_prefix='/user')
@@ -154,6 +156,77 @@ def save_avatar(form_avatar):
         # Manejo elegante de errores de procesamiento
         flash(f'Error al procesar la imagen: {str(e)}', 'error')
         return None
+
+
+def has_approved_avatar_permission(user, avatar):
+    """Retorna True si el usuario tiene permiso aprobado para un avatar premium."""
+    if not avatar or not avatar.meta_data:
+        return False
+
+    for request_data in avatar.meta_data.get('permission_requests', []):
+        if request_data.get('user_id') == user.id and request_data.get('status') == 'approved':
+            return True
+
+    return False
+
+
+def get_user_permission_status(user, avatar):
+    """Obtiene información de estado de permiso para un avatar dado.
+    Devuelve la solicitud más reciente del usuario para este avatar.
+    Prioriza estados: approved > rejected > pending (si hay múltiples).
+    """
+    status_data = {
+        'status': None,
+        'request_id': None,
+        'reason': None,
+        'requested_at': None,
+    }
+
+    if not avatar or not avatar.meta_data:
+        return status_data
+
+    # Buscar todas las solicitudes del usuario para este avatar
+    user_requests = [
+        req for req in avatar.meta_data.get('permission_requests', [])
+        if req.get('user_id') == user.id
+    ]
+
+    if not user_requests:
+        return status_data
+
+    # Si hay solicitudes, priorizar: approved > rejected > pending
+    # Y entre iguales, tomar la más reciente
+    status_priority = {'approved': 0, 'rejected': 1, 'pending': 2}
+    
+    best_request = None
+    for req in user_requests:
+        status = req.get('status', 'pending')
+        if best_request is None:
+            best_request = req
+        else:
+            # Comparar por prioridad
+            current_priority = status_priority.get(status, 999)
+            best_priority = status_priority.get(best_request.get('status', 'pending'), 999)
+            
+            if current_priority < best_priority:
+                best_request = req
+            elif current_priority == best_priority:
+                # Si tienen igual prioridad, tomar el más reciente
+                try:
+                    current_date = req.get('requested_at', '')
+                    best_date = best_request.get('requested_at', '')
+                    if current_date > best_date:
+                        best_request = req
+                except:
+                    pass
+
+    if best_request:
+        status_data['status'] = best_request.get('status')
+        status_data['request_id'] = best_request.get('request_id')
+        status_data['reason'] = best_request.get('reason')
+        status_data['requested_at'] = best_request.get('requested_at')
+
+    return status_data
 
 @user_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -397,13 +470,30 @@ def reels():
 @user_bp.route('/reels/create', methods=['GET', 'POST'])
 @login_required
 def create_reel():
-    # Solo pueden crear: admin / productor / subproductor
-    if not (current_user.is_producer() or current_user.is_subproducer() or current_user.is_admin()):
-        flash('No tenés permisos para crear reels.', 'error')
-        return redirect(url_for('user.reels'))
-
+    """
+    Permite crear reels a todos los usuarios:
+    - Admin/Producer/Subproducer: pueden crear con cualquier avatar
+    - Usuario final: solo puede crear con avatares públicos
+    """
     from app.models.avatar import Avatar  # <- asegurar import
-    avatars = Avatar.query.order_by(Avatar.name).all()  # para el <select>
+    
+    # Determinar qué avatares puede ver el usuario
+    selected_avatar_id = request.args.get('avatar_id')
+
+    if current_user.is_admin() or current_user.is_producer() or current_user.is_subproducer():
+        # Admin, productores y subproductores ven todos los avatares
+        avatars = Avatar.query.order_by(Avatar.name).all()
+    else:
+        # Usuarios finales: avatares públicos + premium con permiso aprobado
+        candidate_avatars = Avatar.query.filter(
+            Avatar.status == AvatarStatus.ACTIVE,
+            Avatar.access_type.in_([AvatarAccessType.PUBLIC, AvatarAccessType.PREMIUM])
+        ).order_by(Avatar.name).all()
+
+        avatars = [
+            avatar for avatar in candidate_avatars
+            if avatar.access_type == AvatarAccessType.PUBLIC or has_approved_avatar_permission(current_user, avatar)
+        ]
 
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
@@ -412,7 +502,7 @@ def create_reel():
 
         if not title or not script:
             flash('Título y guion son obligatorios.', 'error')
-            return render_template('user/reel_create.html', title=title, script=script, avatars=avatars)
+            return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
 
         # Si eligieron un avatar, validarlo y convertirlo a int
         avatar_id = None
@@ -421,11 +511,22 @@ def create_reel():
                 avatar = Avatar.query.get(int(avatar_id_raw))
                 if not avatar:
                     flash('El avatar seleccionado no existe.', 'error')
-                    return render_template('user/reel_create.html', title=title, script=script, avatars=avatars)
+                    return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
+                
+                # Usuario final solo puede usar avatares públicos o premium aprobados
+                if not (current_user.is_admin() or current_user.is_producer() or current_user.is_subproducer()):
+                    if avatar.access_type == AvatarAccessType.PREMIUM:
+                        if not has_approved_avatar_permission(current_user, avatar):
+                            flash('Necesitás la aprobación del productor para usar este avatar premium.', 'error')
+                            return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
+                    elif avatar.access_type != AvatarAccessType.PUBLIC:
+                        flash('No tenés permiso para usar este avatar.', 'error')
+                        return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
+                
                 avatar_id = avatar.id
             except ValueError:
                 flash('Avatar inválido.', 'error')
-                return render_template('user/reel_create.html', title=title, script=script, avatars=avatars)
+                return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
 
         r = Reel(
             title=title,
@@ -444,7 +545,7 @@ def create_reel():
         flash('Reel creado correctamente.', 'success')
         return redirect(url_for('user.reels'))
 
-    return render_template('user/reel_create.html', avatars=avatars)
+    return render_template('user/reel_create.html', avatars=avatars, selected_avatar_id=selected_avatar_id)
 
 # ver reel
 @user_bp.route('/reels/<int:reel_id>')
@@ -466,4 +567,125 @@ def view_reel(reel_id):
         return redirect(url_for("user.reels"))
 
     return render_template('user/reel_view.html', reel=reel)
+
+@user_bp.route('/avatares')
+@login_required
+def avatares():
+    """
+    Lista de avatares disponibles para usuarios finales.
+    Muestra avatares públicos y premium con opción de solicitar permisos.
+    """
+    # Query base: avatares activos que no sean privados
+    query = Avatar.query.filter(
+        Avatar.status == AvatarStatus.ACTIVE,
+        Avatar.access_type.in_([AvatarAccessType.PUBLIC, AvatarAccessType.PREMIUM])
+    )
+    
+    # Aplicar filtro por nombre (búsqueda)
+    search = request.args.get('search', '').strip()
+    if search:
+        query = query.filter(Avatar.name.ilike(f'%{search}%'))
+    
+    # Aplicar filtro por tipo de acceso
+    access_type = request.args.get('access_type', '').upper()
+    if access_type == 'PUBLIC':
+        query = query.filter(Avatar.access_type == AvatarAccessType.PUBLIC)
+    elif access_type == 'PREMIUM':
+        query = query.filter(Avatar.access_type == AvatarAccessType.PREMIUM)
+    
+    avatars = query.order_by(Avatar.name).all()
+
+    # Forzar refresh de datos desde la BD para obtener meta_data actualizado
+    permission_status = {}
+    for avatar in avatars:
+        db.session.refresh(avatar)  # Recarga meta_data desde BD
+        permission_status[avatar.id] = get_user_permission_status(current_user, avatar)
+
+    return render_template('user/avatares.html', avatars=avatars, permission_status=permission_status)
+
+@user_bp.route('/avatares/<int:avatar_id>/request-permission', methods=['POST'])
+@login_required
+def request_avatar_permission(avatar_id):
+    """
+    Procesa la solicitud de permiso para usar un avatar premium.
+    Guarda la solicitud en meta_data del avatar y notifica al productor.
+    """
+    avatar = Avatar.query.get_or_404(avatar_id)
+    
+    # Validar que sea premium
+    if avatar.access_type != AvatarAccessType.PREMIUM:
+        flash('Solo puedes solicitar permisos para avatares premium.', 'error')
+        return redirect(url_for('user.avatares'))
+    
+    reason = request.form.get('reason', '').strip()
+    
+    # Guardar solicitud en meta_data
+    if not avatar.meta_data:
+        avatar.meta_data = {}
+
+    permission_requests = avatar.meta_data.setdefault('permission_requests', [])
+
+    request_entry = None
+    for existing in permission_requests:
+        if existing.get('user_id') == current_user.id and existing.get('status', 'pending') == 'pending':
+            existing['reason'] = reason
+            existing['requested_at'] = datetime.utcnow().isoformat()
+            existing['request_id'] = existing.get('request_id') or uuid4().hex
+            request_entry = existing
+            break
+
+    if not request_entry:
+        request_entry = {
+            'request_id': uuid4().hex,
+            'user_id': current_user.id,
+            'user_name': current_user.full_name,
+            'user_email': current_user.email,
+            'producer_id': avatar.producer_id,
+            'reason': reason,
+            'requested_at': datetime.utcnow().isoformat(),
+            'status': 'pending'
+        }
+        permission_requests.append(request_entry)
+
+    # Marcar como modificado para que SQLAlchemy detecte el cambio en JSON
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(avatar, 'meta_data')
+    
+    db.session.commit()
+    
+    # Enviar email al productor notificando la solicitud
+    try:
+        from app.services.email_service import send_template_email
+        
+        # Obtener el productor propietario del avatar
+        producer = avatar.created_by  # El creador del avatar
+        
+        if producer and producer.email:
+            # Links directos al panel de productor (el decorador se encargará de pedir login si es necesario)
+            producer_dashboard = url_for('producer.dashboard', _external=True)
+            avatar_detail = url_for('producer.avatar_detail', avatar_id=avatar.id, _external=True)
+
+            send_template_email(
+                template_name='avatar_permission_request',
+                subject=f'🙋 Nueva solicitud de permiso para tu avatar "{avatar.name}"',
+                recipients=[producer.email],
+                template_vars={
+                    'producer_name': producer.full_name,
+                    'user_name': current_user.full_name,
+                    'user_email': current_user.email,
+                    'avatar_name': avatar.name,
+                    'avatar_thumbnail': avatar.thumbnail_url,
+                    'reason': reason if reason else 'No especificado',
+                    'request_date': datetime.utcnow().strftime('%d/%m/%Y %H:%M'),
+                    'avatar_detail_link': avatar_detail,
+                    'dashboard_link': producer_dashboard,
+                    'current_year': datetime.utcnow().year
+                }
+            )
+    except Exception as e:
+        # Log error pero no interrumpir el flujo
+        current_app.logger.error(f'Error enviando email de solicitud de permiso: {str(e)}')
+    
+    flash(f'Solicitud enviada para el avatar "{avatar.name}". El productor será notificado.', 'success')
+    return redirect(url_for('user.avatares'))
 

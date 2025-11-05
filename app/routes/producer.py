@@ -36,7 +36,7 @@ Características técnicas:
 """
 
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, logout_user
 from functools import wraps
 from sqlalchemy import or_
 from app import db
@@ -78,9 +78,15 @@ def producer_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_producer():
-            flash('Acceso denegado. Permisos de productor requeridos.', 'error')
-            return redirect(url_for('main.index'))
+        if not current_user.is_authenticated:
+            flash('Acceso denegado. Debe iniciar sesión como productor.', 'error')
+            return redirect(url_for('auth.login', next=request.url))
+
+        if not current_user.is_producer():
+            flash('Debes iniciar sesión con una cuenta de productor para acceder.', 'warning')
+            logout_user()
+            return redirect(url_for('auth.login', next=request.url))
+
         if not current_user.ensure_producer_profile():
             flash('Acceso denegado. Perfil de productor no disponible.', 'error')
             return redirect(url_for('main.index'))
@@ -214,6 +220,66 @@ def dashboard():
         User.invited_by_id == current_user.id,
         Reel.status        == ReelStatus.PENDING
     ).all()
+
+    # Solicitudes de permiso para avatares premium
+    permission_requests = []
+    avatars_modified = False
+    
+    for avatar in producer.avatars:
+        meta = avatar.meta_data or {}
+        requests = meta.get('permission_requests', [])
+        for req in requests:
+            status_value = (req or {}).get('status', '').lower()
+            if status_value in {'pending', 'approved', 'rejected'}:
+                # Garantizar que request_id exista; si no, generar uno
+                request_id = req.get('request_id')
+                if not request_id:
+                    request_id = uuid4().hex
+                    req['request_id'] = request_id
+                    avatars_modified = True
+
+                requested_at_str = req.get('requested_at')
+                requested_at_fmt = None
+                if requested_at_str:
+                    try:
+                        requested_at_fmt = datetime.fromisoformat(requested_at_str).strftime('%d/%m/%Y %H:%M')
+                    except ValueError:
+                        requested_at_fmt = requested_at_str
+
+                reviewed_at_str = req.get('reviewed_at')
+                reviewed_at_fmt = None
+                if reviewed_at_str:
+                    try:
+                        reviewed_at_fmt = datetime.fromisoformat(reviewed_at_str).strftime('%d/%m/%Y %H:%M')
+                    except ValueError:
+                        reviewed_at_fmt = reviewed_at_str
+
+                permission_requests.append({
+                    'avatar': avatar,
+                    'avatar_id': avatar.id,
+                    'avatar_name': avatar.name,
+                    'avatar_thumbnail': avatar.thumbnail_url,
+                    'user_id': req.get('user_id'),
+                    'user_name': req.get('user_name'),
+                    'user_email': req.get('user_email'),
+                    'reason': req.get('reason'),
+                    'status': status_value or 'pending',
+                    'request_id': request_id,
+                    'requested_at': requested_at_fmt,
+                    'reviewed_at': reviewed_at_fmt,
+                    'raw_requested_at': req.get('requested_at')
+                })
+
+    # Guardar cambios si se generaron nuevos request_id
+    if avatars_modified:
+        from sqlalchemy.orm.attributes import flag_modified
+        for avatar in producer.avatars:
+            flag_modified(avatar, 'meta_data')
+        db.session.commit()
+
+    # Ordenar por fecha (más recientes primero) y priorizar pendientes
+    permission_requests.sort(key=lambda r: r.get('raw_requested_at') or '', reverse=True)
+    permission_requests.sort(key=lambda r: 0 if (r.get('status') or 'pending') == 'pending' else 1)
     
     # Obtener lista de subproductores para la sección "Mi Equipo" del dashboard
     subproducers = User.query.filter_by(
@@ -225,11 +291,58 @@ def dashboard():
     return render_template('producer/dashboard.html',
                          stats           = stats,
                          team_stats      = stats,  # Alias para compatibilidad con template
-                         recent_reels    = recent_reels,
-                         recent_avatars  = recent_avatars,
-                         pending_avatars = pending_avatars,
-                         pending_reels   = pending_reels,
-                         subproducers    = subproducers)
+                         recent_reels        = recent_reels,
+                         recent_avatars      = recent_avatars,
+                         pending_avatars     = pending_avatars,
+                         pending_reels       = pending_reels,
+                         subproducers        = subproducers,
+                         permission_requests = permission_requests)
+
+
+@producer_bp.route('/permission-requests/<int:avatar_id>/<request_id>', methods=['POST'])
+@login_required
+@producer_required
+def handle_permission_request(avatar_id, request_id):
+    """Permite al productor aprobar o rechazar una solicitud de permiso para un avatar premium."""
+    action = (request.form.get('action') or '').lower()
+    if action not in {'approve', 'reject'}:
+        flash('Acción inválida para la solicitud de permiso.', 'error')
+        return redirect(url_for('producer.dashboard'))
+
+    avatar = Avatar.query.get_or_404(avatar_id)
+
+    if avatar.producer_id != current_user.producer_profile.id:
+        flash('No tenés permisos para gestionar esta solicitud.', 'error')
+        return redirect(url_for('producer.dashboard'))
+
+    meta = avatar.meta_data or {}
+    permission_requests = meta.get('permission_requests', [])
+    target_request = None
+
+    for req in permission_requests:
+        if req.get('request_id') == request_id:
+            target_request = req
+            break
+
+    if not target_request:
+        flash('No se encontró la solicitud seleccionada.', 'error')
+        return redirect(url_for('producer.dashboard'))
+
+    new_status = 'approved' if action == 'approve' else 'rejected'
+    target_request['status'] = new_status
+    target_request['reviewed_at'] = datetime.utcnow().isoformat()
+    target_request['reviewed_by'] = current_user.id
+
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(avatar, 'meta_data')
+    db.session.commit()
+
+    status_label = 'aprobada' if new_status == 'approved' else 'rechazada'
+    flash(f'Solicitud {status_label} correctamente.', 'success' if new_status == 'approved' else 'warning')
+
+    # TODO: enviar notificación por email al usuario solicitante
+
+    return redirect(url_for('producer.dashboard'))
 
 @producer_bp.route('/avatars')
 @login_required

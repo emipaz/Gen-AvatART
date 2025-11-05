@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de Permiso para Avatar</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            margin: -30px -30px 20px -30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+        .alert-info {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .user-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .user-info p {
+            margin: 5px 0;
+        }
+        .user-info strong {
+            color: #667eea;
+        }
+        .reason-box {
+            background-color: #fff9e6;
+            border: 1px solid #ffd700;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .reason-box h3 {
+            margin-top: 0;
+            color: #f57c00;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 10px 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            color: #ffffff !important;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: #ffffff !important;
+        }
+        .actions {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .avatar-preview {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .avatar-preview img {
+            max-width: 200px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🙋 Nueva Solicitud de Permiso</h1>
+            <p>Un usuario quiere usar tu avatar premium</p>
+        </div>
+
+        <p>Hola <strong>{{ producer_name }}</strong>,</p>
+
+        <div class="alert-info">
+            <strong>{{ user_name }}</strong> ha solicitado permiso para usar tu avatar premium <strong>{{ avatar_name }}</strong> en sus reels.
+        </div>
+
+        {% if avatar_thumbnail %}
+        <div class="avatar-preview">
+            <img src="{{ avatar_thumbnail }}" alt="{{ avatar_name }}">
+        </div>
+        {% endif %}
+
+        <div class="user-info">
+            <h3>📋 Información del Solicitante</h3>
+            <p><strong>Nombre:</strong> {{ user_name }}</p>
+            <p><strong>Email:</strong> {{ user_email }}</p>
+            <p><strong>Fecha de solicitud:</strong> {{ request_date }}</p>
+        </div>
+
+        {% if reason %}
+        <div class="reason-box">
+            <h3>💬 Motivo de la solicitud</h3>
+            <p>{{ reason }}</p>
+        </div>
+        {% endif %}
+
+        <div class="actions">
+            <a href="{{ dashboard_link }}" class="btn" style="color: #ffffff !important;">
+                Ver Solicitudes Pendientes
+            </a>
+            <a href="{{ avatar_detail_link }}" class="btn btn-secondary" style="color: #ffffff !important;">
+                Ver Detalles del Avatar
+            </a>
+        </div>
+
+        <p style="color: #666; font-size: 14px;">
+            💡 <em>Puedes gestionar las solicitudes de permisos desde tu panel de productor en la sección de avatares.</em>
+        </p>
+
+        <div class="footer">
+            <p>Este es un email automático de <strong>Gem-AvatART</strong></p>
+            <p>Si tienes preguntas, contacta a soporte.</p>
+            <p style="color: #999; font-size: 12px; margin-top: 10px;">
+                © {{ current_year }} Gem-AvatART. Todos los derechos reservados.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Explorar Avatares - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            
+            <!-- Header de la página -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="fas fa-search"></i> Explorar Avatares</h1>
+                    <p class="text-muted">Avatares disponibles para crear tus reels</p>
+                </div>
+            </div>
+
+            <!-- Filtros y búsqueda -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Buscar por nombre</label>
+                            <input type="text" class="form-control" name="search" 
+                                   value="{{ request.args.get('search', '') }}" 
+                                   placeholder="Buscar avatar...">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tipo de acceso</label>
+                            <select name="access_type" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="PUBLIC" {{ 'selected' if request.args.get('access_type', '').upper() == 'PUBLIC' }}>Público</option>
+                                <option value="PREMIUM" {{ 'selected' if request.args.get('access_type', '').upper() == 'PREMIUM' }}>Premium</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Grid de avatares -->
+            {% if avatars %}
+                <div class="row g-4">
+                    {% for avatar in avatars %}
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <!-- Imagen del avatar -->
+                            {% if avatar.thumbnail_url %}
+                                <img src="{{ avatar.thumbnail_url }}" class="card-img-top" alt="{{ avatar.name }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                    <i class="fas fa-user-circle fa-5x text-muted"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="card-body d-flex flex-column">
+                                {% set perm = permission_status.get(avatar.id) if permission_status else None %}
+                                <h5 class="card-title">{{ avatar.name }}</h5>
+                                
+                                <!-- Badge de tipo de acceso -->
+                                <div class="mb-2">
+                                    {% if avatar.access_type.value == 'PUBLIC' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-globe"></i> Público
+                                        </span>
+                                    {% elif avatar.access_type.value == 'PREMIUM' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-star"></i> Premium
+                                        </span>
+                                        {% if perm and perm.status == 'approved' %}
+                                            <span class="badge bg-success ms-1">
+                                                <i class="fas fa-check"></i> Acceso concedido
+                                            </span>
+                                        {% elif perm and perm.status == 'pending' %}
+                                            <span class="badge bg-secondary text-white ms-1">
+                                                <i class="fas fa-hourglass-half"></i> Solicitud pendiente
+                                            </span>
+                                        {% elif perm and perm.status == 'rejected' %}
+                                            <span class="badge bg-danger ms-1">
+                                                <i class="fas fa-ban"></i> Solicitud rechazada
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Descripción -->
+                                {% if avatar.description %}
+                                    <p class="card-text text-muted small">
+                                        {{ avatar.description[:100] }}{% if avatar.description|length > 100 %}...{% endif %}
+                                    </p>
+                                {% endif %}
+                                
+                                <!-- Info del productor -->
+                                <p class="card-text small text-muted mb-3">
+                                    <i class="fas fa-user"></i> Creado por: {{ avatar.created_by.full_name if avatar.created_by else 'Desconocido' }}
+                                </p>
+                                
+                                <!-- Botones de acción -->
+                                <div class="mt-auto">
+                                    {% if avatar.access_type.value == 'PUBLIC' %}
+                                        <!-- Avatares públicos: usar directamente -->
+                                        <a href="{{ url_for('user.create_reel') }}?avatar_id={{ avatar.id }}" class="btn btn-primary w-100">
+                                            <i class="fas fa-video"></i> Crear Reel
+                                        </a>
+                                    {% elif avatar.access_type.value == 'PREMIUM' %}
+                                        {% if perm and perm.status == 'approved' %}
+                                            <a href="{{ url_for('user.create_reel') }}?avatar_id={{ avatar.id }}" class="btn btn-success w-100">
+                                                <i class="fas fa-video"></i> Usar avatar premium
+                                            </a>
+                                        {% elif perm and perm.status == 'pending' %}
+                                            <button class="btn btn-secondary w-100" disabled>
+                                                <i class="fas fa-hourglass-half"></i> Solicitud enviada
+                                            </button>
+                                        {% else %}
+                                            <!-- Avatares premium: solicitar permiso -->
+                                            <button class="btn btn-warning w-100" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#requestModal{{ avatar.id }}">
+                                                <i class="fas fa-hand-paper"></i> Solicitar Permiso
+                                            </button>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Modal de solicitud de permiso -->
+                    {% if avatar.access_type.value == 'PREMIUM' %}
+                    <div class="modal fade" id="requestModal{{ avatar.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Solicitar Permiso - {{ avatar.name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST" action="{{ url_for('user.request_avatar_permission', avatar_id=avatar.id) }}">
+                                    <div class="modal-body">
+                                        <p>Estás solicitando permiso para usar el avatar <strong>{{ avatar.name }}</strong> en tus reels.</p>
+                                        
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i>
+                                            El productor <strong>{{ avatar.created_by.full_name }}</strong> revisará tu solicitud y te notificará cuando esté aprobada.
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Motivo de la solicitud (opcional)</label>
+                                            <textarea name="reason" class="form-control" rows="3" 
+                                                      placeholder="Describe brevemente por qué necesitas este avatar..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-warning">
+                                            <i class="fas fa-paper-plane"></i> Enviar Solicitud
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% endfor %}
+                </div>
+            {% else %}
+                <!-- Estado vacío -->
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-user-circle fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No hay avatares disponibles</h4>
+                        <p class="text-muted">Por el momento no hay avatares públicos o premium para usar.</p>
+                    </div>
+                </div>
+            {% endif %}
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
