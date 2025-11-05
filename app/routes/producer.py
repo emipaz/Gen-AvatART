@@ -1610,6 +1610,53 @@ def avatar_access(avatar_id):
     return jsonify({'success': True, 'updated': updated})
 
 
+@producer_bp.route('/avatar/<int:avatar_id>/change-access', methods=['POST'])
+@login_required
+@producer_required
+def change_avatar_access(avatar_id):
+    """
+    Cambia el tipo de acceso de un avatar (PUBLIC, PREMIUM, PRIVATE).
+    
+    El productor puede cambiar entre:
+    - PUBLIC: Disponible para todos los usuarios finales
+    - PREMIUM: Disponible solo para usuarios con permiso aprobado
+    - PRIVATE: Disponible solo para el equipo del productor
+    
+    Args:
+        avatar_id (int): ID del avatar a modificar
+    
+    Returns:
+        JSON: Respuesta con resultado de la operación
+    """
+    from app.models.avatar import AvatarAccessType
+    
+    producer = current_user.producer_profile
+    avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
+    
+    # Obtener el nuevo tipo de acceso del request
+    data = request.get_json(force=True) if request.is_json else request.form
+    new_access_type = data.get('access_type', '').upper()
+    
+    # Validar que sea un tipo de acceso válido
+    valid_types = ['PUBLIC', 'PREMIUM', 'PRIVATE']
+    if new_access_type not in valid_types:
+        return jsonify({'success': False, 'error': f'Tipo de acceso inválido. Debe ser uno de: {", ".join(valid_types)}'}), 400
+    
+    try:
+        # Cambiar el tipo de acceso
+        avatar.access_type = AvatarAccessType[new_access_type]
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Avatar "{avatar.name}" cambiado a {new_access_type}',
+            'access_type': new_access_type
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @producer_bp.route('/team/member/<int:member_id>/toggle_status', methods=['POST'])
 @login_required
 @producer_required

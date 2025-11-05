@@ -317,6 +317,56 @@ Acciones disponibles:
                             {% endif %}
                         </div>
 
+                        <!-- Control de tipo de acceso -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-lock"></i> Acceso:
+                            </label>
+                            <div class="btn-group w-100" role="group">
+                                <!-- Botón PUBLIC -->
+                                <input type="radio" class="btn-check access-toggle" 
+                                       name="access_{{ avatar.id }}" 
+                                       id="public_{{ avatar.id }}" 
+                                       value="PUBLIC"
+                                       {% if avatar.access_type.value == 'public' %}checked{% endif %}
+                                       data-avatar-id="{{ avatar.id }}">
+                                <label class="btn btn-outline-success" for="public_{{ avatar.id }}" title="Público: Disponible para todos">
+                                    <i class="fas fa-globe"></i> Público
+                                </label>
+                                
+                                <!-- Botón PREMIUM -->
+                                <input type="radio" class="btn-check access-toggle" 
+                                       name="access_{{ avatar.id }}" 
+                                       id="premium_{{ avatar.id }}" 
+                                       value="PREMIUM"
+                                       {% if avatar.access_type.value == 'premium' %}checked{% endif %}
+                                       data-avatar-id="{{ avatar.id }}">
+                                <label class="btn btn-outline-warning" for="premium_{{ avatar.id }}" title="Premium: Requiere permiso aprobado">
+                                    <i class="fas fa-star"></i> Premium
+                                </label>
+                                
+                                <!-- Botón PRIVATE -->
+                                <input type="radio" class="btn-check access-toggle" 
+                                       name="access_{{ avatar.id }}" 
+                                       id="private_{{ avatar.id }}" 
+                                       value="PRIVATE"
+                                       {% if avatar.access_type.value == 'private' %}checked{% endif %}
+                                       data-avatar-id="{{ avatar.id }}">
+                                <label class="btn btn-outline-danger" for="private_{{ avatar.id }}" title="Privado: Solo para tu equipo">
+                                    <i class="fas fa-lock"></i> Privado
+                                </label>
+                            </div>
+                            <small class="d-block text-muted mt-1">
+                                {% if avatar.access_type.value == 'public' %}
+                                    <i class="fas fa-check-circle text-success"></i> Disponible para todos
+                                {% elif avatar.access_type.value == 'premium' %}
+                                    <i class="fas fa-star text-warning"></i> Requiere aprobación
+                                {% else %}
+                                    <i class="fas fa-lock text-danger"></i> Solo tu equipo
+                                {% endif %}
+                            </small>
+                        </div>
+
                         <!-- Estadísticas de uso -->
                         <div class="row text-center mb-3">
                             <div class="col-6">
@@ -504,7 +554,87 @@ document.addEventListener('DOMContentLoaded', () => {
             manageAccess(avatarId);
         });
     });
+
+    // Event listeners para cambiar tipo de acceso
+    document.querySelectorAll('.access-toggle').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const avatarId = this.dataset.avatarId;
+            const newAccessType = this.value;
+            changeAvatarAccess(avatarId, newAccessType);
+        });
+    });
 });
+
+// Cambiar tipo de acceso del avatar
+function changeAvatarAccess(avatarId, accessType) {
+    const button = document.querySelector(`label[for="${accessType.toLowerCase()}_${avatarId}"]`);
+    
+    // Mostrar indicador de carga
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch(`/producer/avatar/${avatarId}/change-access`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ access_type: accessType })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+            
+            // Mostrar notificación de éxito
+            showNotification(`Avatar cambiado a ${accessType}`, 'success');
+            
+            // Actualizar el icono descriptivo
+            const card = button.closest('.card');
+            const descriptionSmall = card.querySelector('.text-muted');
+            if (accessType === 'PUBLIC') {
+                descriptionSmall.innerHTML = '<i class="fas fa-check-circle text-success"></i> Disponible para todos';
+            } else if (accessType === 'PREMIUM') {
+                descriptionSmall.innerHTML = '<i class="fas fa-star text-warning"></i> Requiere aprobación';
+            } else if (accessType === 'PRIVATE') {
+                descriptionSmall.innerHTML = '<i class="fas fa-lock text-danger"></i> Solo tu equipo';
+            }
+        } else {
+            button.innerHTML = originalText;
+            button.disabled = false;
+            showNotification(`Error: ${data.error}`, 'error');
+            // Revertir el cambio
+            document.querySelector(`input[value="${accessType}"][data-avatar-id="${avatarId}"]`).checked = false;
+        }
+    })
+    .catch(error => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+        showNotification('Error al cambiar el tipo de acceso', 'error');
+        // Revertir el cambio
+        document.querySelector(`input[value="${accessType}"][data-avatar-id="${avatarId}"]`).checked = false;
+    });
+}
+
+// Mostrar notificación temporal
+function showNotification(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 80px; right: 20px; z-index: 1050; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-cerrar después de 3 segundos
+    setTimeout(() => {
+        const bsAlert = new bootstrap.Alert(alertDiv);
+        bsAlert.close();
+    }, 3000);
+}
 
 // Mostrar estadísticas de uso de avatar
 function showUsageStats(avatarId) {
