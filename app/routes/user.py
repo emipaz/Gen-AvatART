@@ -333,6 +333,66 @@ def profile():
     
     return render_template('user/profile.html', form=form)
 
+
+def get_available_avatars_for_user(user):
+    """
+    Obtiene lista de avatares disponibles para un usuario específico.
+    
+    Incluye avatares públicos activos y avatares premium para los cuales
+    el usuario tiene permisos aprobados.
+    
+    Args:
+        user (User): Usuario para el cual obtener avatares
+    
+    Returns:
+        list: Lista de objetos Avatar disponibles para el usuario
+    
+    Logic:
+        - Avatares públicos: access_type='public', activos y habilitados
+        - Avatares premium: access_type='premium' con permiso aprobado
+        - Avatares privados: solo si el usuario es el creador
+    """
+    # Avatares públicos activos
+    public_avatars = Avatar.query.filter_by(
+        access_type=AvatarAccessType.PUBLIC,
+        status=AvatarStatus.ACTIVE,
+        enabled_by_admin=True,
+        enabled_by_producer=True,
+        enabled_by_subproducer=True
+    ).all()
+    
+    # Avatares premium con permisos aprobados
+    premium_avatars = Avatar.query.filter_by(
+        access_type=AvatarAccessType.PREMIUM,
+        status=AvatarStatus.ACTIVE,
+        enabled_by_admin=True,
+        enabled_by_producer=True,
+        enabled_by_subproducer=True
+    ).all()
+    
+    # Filtrar premium avatares con permisos aprobados
+    approved_premium = []
+    for avatar in premium_avatars:
+        if has_approved_avatar_permission(user, avatar):
+            approved_premium.append(avatar)
+    
+    # Avatares privados propios (solo si es creador)
+    private_avatars = []
+    if user.can_create_avatars():
+        private_avatars = Avatar.query.filter_by(
+            access_type=AvatarAccessType.PRIVATE,
+            created_by_id=user.id,
+            status=AvatarStatus.ACTIVE,
+            enabled_by_admin=True,
+            enabled_by_producer=True,
+            enabled_by_subproducer=True
+        ).all()
+    
+    # Combinar todas las listas y eliminar duplicados
+    all_avatars = public_avatars + approved_premium + private_avatars
+    return list(set(all_avatars))  # Eliminar duplicados potenciales
+
+
 @user_bp.route('/dashboard')
 @login_required
 def dashboard():
@@ -351,7 +411,9 @@ def dashboard():
             - reels_count (int)                : Número total de reels creados
             - commissions_count (int)          : Comisiones ganadas totales
             - avatars_count (int, condicional) : Avatares creados (solo si puede crearlos)
+            - available_avatars_count (int)    : Avatares disponibles para usar
             - recent_reels (list)              : Lista de los 5 reels más recientes del usuario
+            - available_avatars (list)         : Lista de avatares disponibles para preview
     
     Note:
         - Estadísticas se adaptan según el rol del usuario
@@ -359,6 +421,7 @@ def dashboard():
         - Reels ordenados por fecha de creación descendente
         - Dashboard proporciona acceso rápido a funcionalidades principales
         - Diseño responsive para diferentes dispositivos
+        - Available avatars incluye públicos y premium con permisos aprobados
     """
     # Estadísticas básicas
     stats = {
@@ -370,11 +433,42 @@ def dashboard():
     if current_user.can_create_avatars():
         stats['avatars_count'] = current_user.created_avatars.count()
     
+    # Obtener avatares disponibles para el usuario
+    available_avatars = get_available_avatars_for_user(current_user)
+    stats['available_avatars_count'] = len(available_avatars)
+    
     # Reels recientes - usar Reel.query para orden correcto
     from app.models.reel import Reel
     recent_reels = Reel.query.filter_by(creator_id=current_user.id).order_by(Reel.created_at.desc()).limit(5).all()
     
-    return render_template('user/dashboard.html', stats=stats, recent_reels=recent_reels)
+    return render_template('user/dashboard.html', 
+                         stats=stats, 
+                         recent_reels=recent_reels, 
+                         available_avatars=available_avatars)
+
+
+@user_bp.route('/avatars')
+@login_required
+def avatars():
+    """
+    Vista de todos los avatares disponibles para el usuario.
+    
+    Muestra una página completa con todos los avatares que el usuario
+    puede utilizar, incluyendo públicos, premium con permisos y privados propios.
+    
+    Returns:
+        Template: 'user/avatars.html' con lista completa de avatares
+    
+    Context Variables:
+        - available_avatars (list): Lista completa de avatares disponibles
+        - avatar_count (int): Número total de avatares disponibles
+    """
+    available_avatars = get_available_avatars_for_user(current_user)
+    
+    return render_template('user/avatars.html', 
+                         available_avatars=available_avatars,
+                         avatar_count=len(available_avatars))
+
 
 @user_bp.route('/request-producer', methods=['GET', 'POST'])
 @login_required

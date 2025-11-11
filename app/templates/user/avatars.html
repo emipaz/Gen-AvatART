@@ -1,0 +1,273 @@
+{#
+Template de vista completa de avatares disponibles para usuario final.
+
+Este template muestra todos los avatares que el usuario puede utilizar,
+incluyendo públicos, premium con permisos aprobados y privados propios.
+Proporciona una vista grid responsive con información detallada de cada avatar.
+
+El template incluye:
+    - Grid responsive de avatares con thumbnails
+    - Información de tipo de acceso (público, premium, privado)
+    - Enlaces a preview de video cuando están disponibles
+    - Filtrado visual por tipo de acceso
+    - Información de estado y disponibilidad
+    - Botones de acción según permisos
+
+Clases Bootstrap utilizadas:
+    - Layout: container, row, col-*, d-flex, justify-content-between
+    - Cards: card, card-body, card-header, card-img-top, h-100
+    - Buttons: btn, btn-outline-*, btn-sm, w-100
+    - Badges: badge, bg-success, bg-warning, bg-info
+    - Typography: text-center, text-muted, mb-*, mt-*
+    - Spacing: p-*, mb-*, py-*
+
+Variables Jinja utilizadas:
+    - available_avatars: Lista de avatares disponibles para el usuario
+    - avatar_count: Número total de avatares disponibles
+
+Iconografía Font Awesome:
+    - fas fa-user-circle: Avatares y placeholders
+    - fas fa-play: Preview de video
+    - fas fa-eye-slash: Sin preview disponible
+    - fas fa-crown: Acceso premium
+    - fas fa-globe: Acceso público
+    - fas fa-lock: Acceso privado
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Avatares Disponibles - Gem-AvatART{% endblock %}
+
+{% block content %}
+<!-- Contenedor principal centrado -->
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            
+            <!-- ===== HEADER DE AVATARES ===== -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-user-circle"></i> Avatares Disponibles</h1>
+                <div class="text-muted">
+                    {{ avatar_count }} avatares disponibles
+                </div>
+            </div>
+
+            <!-- ===== FILTROS Y ESTADÍSTICAS ===== -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Contador por tipo -->
+                                <div class="col-md-4">
+                                    <h6><i class="fas fa-globe text-success"></i> Públicos</h6>
+                                    <p class="text-muted mb-0">
+                                        {{ available_avatars | selectattr('access_type.value', 'equalto', 'public') | list | length }} avatares
+                                    </p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6><i class="fas fa-crown text-warning"></i> Premium</h6>
+                                    <p class="text-muted mb-0">
+                                        {{ available_avatars | selectattr('access_type.value', 'equalto', 'premium') | list | length }} avatares
+                                    </p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6><i class="fas fa-lock text-info"></i> Privados</h6>
+                                    <p class="text-muted mb-0">
+                                        {{ available_avatars | selectattr('access_type.value', 'equalto', 'private') | list | length }} avatares
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== GRID DE AVATARES ===== -->
+            {% if available_avatars %}
+                <div class="row">
+                    {% for avatar in available_avatars %}
+                    <div class="col-md-4 col-lg-3 mb-4">
+                        <div class="card h-100">
+                            
+                            <!-- Imagen thumbnail del avatar -->
+                            {% if avatar.thumbnail_url %}
+                                <img src="{{ avatar.thumbnail_url }}" 
+                                     class="card-img-top" 
+                                     alt="{{ avatar.name }}"
+                                     style="height: 200px; object-fit: cover;">
+                            {% else %}
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                     style="height: 200px;">
+                                    <i class="fas fa-user-circle fa-4x text-muted"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Información del avatar -->
+                            <div class="card-body d-flex flex-column">
+                                
+                                <!-- Nombre y tipo -->
+                                <div class="mb-2">
+                                    <h5 class="card-title mb-1">{{ avatar.name }}</h5>
+                                    <span class="badge bg-{{ 'success' if avatar.access_type.value == 'public' else 'warning' if avatar.access_type.value == 'premium' else 'info' }}">
+                                        <i class="fas fa-{{ 'globe' if avatar.access_type.value == 'public' else 'crown' if avatar.access_type.value == 'premium' else 'lock' }}"></i>
+                                        {{ avatar.access_type.value.title() }}
+                                    </span>
+                                </div>
+                                
+                                <!-- Descripción si existe -->
+                                {% if avatar.description %}
+                                    <p class="card-text text-muted small mb-2">
+                                        {{ avatar.description[:80] }}{% if avatar.description|length > 80 %}...{% endif %}
+                                    </p>
+                                {% endif %}
+                                
+                                <!-- Información adicional -->
+                                <div class="mb-2 small text-muted">
+                                    <div><strong>Tipo:</strong> {{ avatar.avatar_type or 'Video' }}</div>
+                                    <div><strong>Idioma:</strong> {{ avatar.language or 'Español' }}</div>
+                                    {% if avatar.producer %}
+                                        <div><strong>Productor:</strong> {{ avatar.producer.display_name }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Botones de acción en la parte inferior -->
+                                <div class="mt-auto">
+                                    <div class="btn-group w-100" role="group">
+                                        <!-- Botón de preview -->
+                                        {% if avatar.preview_video_url %}
+                                            <button type="button" 
+                                                    class="btn btn-outline-primary btn-sm" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#previewModal"
+                                                    data-avatar-name="{{ avatar.name }}"
+                                                    data-preview-url="{{ avatar.preview_video_url }}">
+                                                <i class="fas fa-play"></i> Preview
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                                <i class="fas fa-eye-slash"></i> Sin Preview
+                                            </button>
+                                        {% endif %}
+                                        
+                                        <!-- Botón para usar en reel -->
+                                        {% if current_user.can_create_reels() %}
+                                            <a href="{{ url_for('user.create_reel', avatar_id=avatar.id) }}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="fas fa-video"></i> Usar
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+            <!-- Estado vacío -->
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-user-circle fa-5x text-muted mb-4"></i>
+                    <h3 class="text-muted">No tienes avatares disponibles</h3>
+                    <p class="text-muted mb-4">
+                        Los avatares públicos y aquellos para los que tengas permisos aparecerán aquí.
+                        <br>También puedes solicitar permisos para avatares premium o convertirte en Productor.
+                    </p>
+                    
+                    <!-- CTAs -->
+                    <div class="btn-group" role="group">
+                        {% if not current_user.is_producer() %}
+                            <a href="{{ url_for('user.request_producer') }}" class="btn btn-warning">
+                                <i class="fas fa-crown"></i> Solicitar ser Productor
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+            
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL DE PREVISUALIZACIÓN ===== -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">
+                    <i class="fas fa-play"></i> Preview de Avatar: <span id="avatarName"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="videoContainer">
+                    <!-- El video se cargará aquí dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+                <a href="#" id="openExternalLink" target="_blank" class="btn btn-outline-primary">
+                    <i class="fas fa-external-link-alt"></i> Abrir en nueva pestaña
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const previewModal = document.getElementById('previewModal');
+    const avatarNameSpan = document.getElementById('avatarName');
+    const videoContainer = document.getElementById('videoContainer');
+    const externalLink = document.getElementById('openExternalLink');
+    
+    // Limpiar video al cerrar modal
+    previewModal.addEventListener('hidden.bs.modal', function() {
+        videoContainer.innerHTML = '';
+    });
+    
+    // Configurar modal cuando se abre
+    previewModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const avatarName = button.getAttribute('data-avatar-name');
+        const previewUrl = button.getAttribute('data-preview-url');
+        
+        // Actualizar título
+        avatarNameSpan.textContent = avatarName;
+        
+        // Actualizar enlace externo
+        externalLink.href = previewUrl;
+        
+        // Crear elemento de video
+        videoContainer.innerHTML = `
+            <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        `;
+        
+        // Cargar video después de un breve delay para mostrar el loading
+        setTimeout(() => {
+            videoContainer.innerHTML = `
+                <video controls autoplay muted style="max-width: 100%; height: auto; max-height: 400px;" poster="">
+                    <source src="${previewUrl}" type="video/mp4">
+                    <p class="text-muted">
+                        Tu navegador no soporta el elemento video. 
+                        <a href="${previewUrl}" target="_blank">Haz clic aquí para ver el video</a>
+                    </p>
+                </video>
+            `;
+        }, 500);
+    });
+});
+</script>
+
+{% endblock %}
