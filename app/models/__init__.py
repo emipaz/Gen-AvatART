@@ -38,6 +38,9 @@ from .clone_permission import ClonePermission, PermissionSubjectType, Permission
 # Modelo de solicitudes para convertirse en productor
 from .producer_request import ProducerRequest, ProducerRequestStatus
 
+# Modelo de solicitudes para crear reels
+from .reel_request import ReelRequest, ReelRequestStatus
+
 # Lista explícita de todos los símbolos exportados por este módulo
 # Esto controla qué elementos están disponibles cuando se hace:
 # from app.models import *
@@ -57,6 +60,8 @@ __all__ = [
     'PermissionStatus',
     'ProducerRequest',
     'ProducerRequestStatus',
+    'ReelRequest',
+    'ReelRequestStatus',
     'AvatarSnapshot',
     'AvatarSnapshotStatus'
 ]

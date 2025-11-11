@@ -1,0 +1,231 @@
+{#
+Template para solicitar creación de reel con avatar específico.
+
+Este template permite a usuarios finales crear una solicitud formal para
+generar un reel usando un avatar disponible. La solicitud requiere aprobación
+del productor propietario del avatar antes de proceder.
+
+El template incluye:
+    - Información del avatar seleccionado
+    - Formulario completo de solicitud de reel
+    - Advertencia sobre proceso de aprobación
+    - Vista previa de configuraciones
+    - Información del productor que revisará
+
+Variables Jinja utilizadas:
+    - form: Formulario de solicitud (ReelRequestForm)
+    - avatar: Información del avatar seleccionado
+    - producer: Productor propietario que debe aprobar
+    - current_user: Usuario autenticado
+
+Flujo UX:
+    1. Usuario selecciona avatar desde vista de avatares
+    2. Ve información del avatar y productor
+    3. Llena formulario con título, script, configuraciones
+    4. Recibe advertencia sobre aprobación requerida
+    5. Envía solicitud y recibe confirmación
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Solicitar Reel: {{ avatar.name }} - Gem-AvatART{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <!-- ===== HEADER CON INFORMACIÓN DEL AVATAR ===== -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-video"></i> 
+                        Solicitar Reel con: {{ avatar.name }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Avatar Preview -->
+                        <div class="col-md-4">
+                            {% if avatar.thumbnail_url %}
+                                <img src="{{ avatar.thumbnail_url }}" 
+                                     class="img-fluid rounded" 
+                                     alt="{{ avatar.name }}"
+                                     style="max-height: 200px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                     style="height: 200px;">
+                                    <i class="fas fa-user-circle fa-4x text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Avatar Info -->
+                        <div class="col-md-8">
+                            <h5>{{ avatar.name }}</h5>
+                            {% if avatar.description %}
+                                <p class="text-muted">{{ avatar.description }}</p>
+                            {% endif %}
+                            
+                            <div class="row mb-3">
+                                <div class="col-sm-6">
+                                    <strong>Tipo de acceso:</strong>
+                                    <span class="badge bg-{{ 'success' if avatar.access_type.value == 'public' else 'warning' if avatar.access_type.value == 'premium' else 'info' }}">
+                                        {{ avatar.access_type.value.title() }}
+                                    </span>
+                                </div>
+                                <div class="col-sm-6">
+                                    <strong>Idioma:</strong> {{ avatar.language or 'Español' }}
+                                </div>
+                            </div>
+                            
+                            <!-- Información del Productor -->
+                            <div class="alert alert-info">
+                                <h6 class="mb-2">
+                                    <i class="fas fa-user-tie"></i> 
+                                    Productor: {{ producer.display_name }}
+                                </h6>
+                                <p class="mb-0 small">
+                                    Tu solicitud será revisada por {{ producer.display_name }}. 
+                                    Recibirás una notificación cuando sea aprobada o rechazada.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ===== ADVERTENCIA DE APROBACIÓN ===== -->
+            <div class="alert alert-warning mb-4">
+                <h5 class="alert-heading">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Solicitud Requiere Aprobación
+                </h5>
+                <p class="mb-2">
+                    <strong>Este reel debe ser aprobado por {{ producer.display_name }} antes de ser creado.</strong>
+                </p>
+                <p class="mb-0 small">
+                    • La solicitud será enviada al productor para revisión<br>
+                    • Recibirás una notificación cuando sea aprobada o rechazada<br>
+                    • Si es aprobada, el reel se creará automáticamente<br>
+                    • Puedes ver el estado de tus solicitudes en tu dashboard
+                </p>
+            </div>
+            
+            <!-- ===== FORMULARIO DE SOLICITUD ===== -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit"></i> 
+                        Información del Reel Solicitado
+                    </h5>
+                </div>
+                <div class="card-body">
+                    
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        {{ form.avatar_id() }}
+                        
+                        <!-- Título del Reel -->
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+                            {% if form.title.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.title.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Un título descriptivo para tu reel (3-200 caracteres)
+                            </div>
+                        </div>
+                        
+                        <!-- Script del Avatar -->
+                        <div class="mb-3">
+                            {{ form.script.label(class="form-label") }}
+                            {{ form.script(class="form-control" + (" is-invalid" if form.script.errors else ""), rows="4", placeholder="Escribe aquí el texto que quieres que diga el avatar...") }}
+                            {% if form.script.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.script.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                El texto que pronunciará el avatar en el video (10-2000 caracteres)
+                            </div>
+                        </div>
+                        
+                        <!-- Configuraciones del Video -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.resolution.label(class="form-label") }}
+                                {{ form.resolution(class="form-select") }}
+                                <div class="form-text">
+                                    Calidad del video generado
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.background_url.label(class="form-label") }}
+                                {{ form.background_url(class="form-control" + (" is-invalid" if form.background_url.errors else ""), placeholder="https://ejemplo.com/fondo.jpg") }}
+                                {% if form.background_url.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.background_url.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    URL de imagen para el fondo (opcional)
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Notas para el Productor -->
+                        <div class="mb-4">
+                            {{ form.user_notes.label(class="form-label") }}
+                            {{ form.user_notes(class="form-control", rows="3", placeholder="Información adicional para el productor (opcional)...") }}
+                            <div class="form-text">
+                                Comparte detalles adicionales, contexto o instrucciones especiales para el productor
+                            </div>
+                        </div>
+                        
+                        <!-- Botones de Acción -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('user.avatars') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver a Avatares
+                            </a>
+                            
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                        </div>
+                        
+                    </form>
+                    
+                </div>
+            </div>
+            
+            <!-- ===== INFORMACIÓN ADICIONAL ===== -->
+            <div class="mt-4">
+                <div class="card border-light">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">
+                            <i class="fas fa-info-circle"></i> 
+                            ¿Qué sucede después?
+                        </h6>
+                        <ol class="text-muted small mb-0">
+                            <li>Tu solicitud será enviada a {{ producer.display_name }}</li>
+                            <li>El productor revisará tu solicitud y la aprobará o rechazará</li>
+                            <li>Recibirás una notificación por email con la decisión</li>
+                            <li>Si es aprobada, el reel se creará automáticamente</li>
+                            <li>Podrás descargar tu reel desde tu dashboard una vez completado</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

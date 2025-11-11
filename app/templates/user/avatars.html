@@ -152,9 +152,9 @@ Iconografía Font Awesome:
                                         
                                         <!-- Botón para usar en reel -->
                                         {% if current_user.can_create_reels() %}
-                                            <a href="{{ url_for('user.create_reel', avatar_id=avatar.id) }}" 
+                                            <a href="{{ url_for('user.request_reel', avatar_id=avatar.id) }}" 
                                                class="btn btn-primary btn-sm">
-                                                <i class="fas fa-video"></i> Usar
+                                                <i class="fas fa-video"></i> Solicitar Reel
                                             </a>
                                         {% endif %}
                                     </div>

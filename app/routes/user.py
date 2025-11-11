@@ -38,6 +38,7 @@ from app.models.user import User
 from app.models.producer_request import ProducerRequest, ProducerRequestStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.avatar import Avatar, AvatarAccessType, AvatarStatus
+from app.models.reel_request import ReelRequest, ReelRequestStatus
 import os
 from PIL import Image
 from uuid import uuid4
@@ -48,7 +49,7 @@ user_bp = Blueprint('user', __name__, url_prefix='/user')
 # Formulario para el perfil
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, FileField
+from wtforms import StringField, PasswordField, SubmitField, FileField, TextAreaField, SelectField, HiddenField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional
 
 class ProfileForm(FlaskForm):
@@ -89,6 +90,43 @@ class ProfileForm(FlaskForm):
     confirm_password = PasswordField('Confirmar Nueva Contraseña', validators = [Optional()])
     
     submit = SubmitField('Guardar Cambios')
+
+
+class ReelRequestForm(FlaskForm):
+    """
+    Formulario para solicitud de creación de reel.
+    
+    Formulario WTF que maneja la solicitud de creación de un reel usando
+    un avatar específico. Incluye validaciones y campos necesarios para
+    que el productor pueda revisar y aprobar la solicitud.
+    
+    Attributes:
+        avatar_id (HiddenField)     : ID del avatar a usar (oculto)
+        title (StringField)         : Título del reel (3-200 caracteres)
+        script (TextAreaField)      : Texto que dirá el avatar (requerido)
+        background_url (StringField): URL del fondo personalizado (opcional)
+        resolution (SelectField)   : Resolución del video
+        user_notes (TextAreaField)  : Notas para el productor (opcional)
+        submit (SubmitField)        : Botón de envío de solicitud
+    
+    Note:
+        - La solicitud requiere aprobación del productor propietario del avatar
+        - Todos los campos son validados antes de crear la solicitud
+        - El avatar_id se pasa como parámetro oculto desde la vista
+    """
+    
+    avatar_id      = HiddenField('Avatar ID', validators=[DataRequired()])
+    title          = StringField('Título del Reel', validators=[DataRequired(), Length(min=3, max=200)])
+    script         = TextAreaField('Script (Texto que dirá el avatar)', validators=[DataRequired(), Length(min=10, max=2000)])
+    background_url = StringField('URL del Fondo (opcional)', validators=[Optional(), Length(max=500)])
+    resolution     = SelectField('Resolución', choices=[
+        ('720p', '720p (HD)'),
+        ('1080p', '1080p (Full HD)'),
+        ('4K', '4K (Ultra HD)')
+    ], default='1080p')
+    user_notes     = TextAreaField('Notas para el Productor (opcional)', validators=[Optional(), Length(max=500)])
+    
+    submit = SubmitField('Solicitar Reel')
 
 def save_avatar(form_avatar):
     """
@@ -354,20 +392,20 @@ def get_available_avatars_for_user(user):
     """
     # Avatares públicos activos
     public_avatars = Avatar.query.filter_by(
-        access_type=AvatarAccessType.PUBLIC,
-        status=AvatarStatus.ACTIVE,
-        enabled_by_admin=True,
-        enabled_by_producer=True,
-        enabled_by_subproducer=True
+        access_type           = AvatarAccessType.PUBLIC,
+        status                = AvatarStatus.ACTIVE,
+        enabled_by_admin      = True,
+        enabled_by_producer   = True,
+        enabled_by_subproducer = True
     ).all()
     
     # Avatares premium con permisos aprobados
     premium_avatars = Avatar.query.filter_by(
-        access_type=AvatarAccessType.PREMIUM,
-        status=AvatarStatus.ACTIVE,
-        enabled_by_admin=True,
-        enabled_by_producer=True,
-        enabled_by_subproducer=True
+        access_type = AvatarAccessType.PREMIUM,
+        status      = AvatarStatus.ACTIVE,
+        enabled_by_admin       = True,
+        enabled_by_producer    = True,
+        enabled_by_subproducer = True
     ).all()
     
     # Filtrar premium avatares con permisos aprobados
@@ -380,12 +418,12 @@ def get_available_avatars_for_user(user):
     private_avatars = []
     if user.can_create_avatars():
         private_avatars = Avatar.query.filter_by(
-            access_type=AvatarAccessType.PRIVATE,
-            created_by_id=user.id,
-            status=AvatarStatus.ACTIVE,
-            enabled_by_admin=True,
-            enabled_by_producer=True,
-            enabled_by_subproducer=True
+            access_type            = AvatarAccessType.PRIVATE,
+            created_by_id          = user.id,
+            status                 = AvatarStatus.ACTIVE,
+            enabled_by_admin       = True,
+            enabled_by_producer    = True,
+            enabled_by_subproducer = True
         ).all()
     
     # Combinar todas las listas y eliminar duplicados
@@ -468,6 +506,106 @@ def avatars():
     return render_template('user/avatars.html', 
                          available_avatars=available_avatars,
                          avatar_count=len(available_avatars))
+
+
+@user_bp.route('/request-reel/<int:avatar_id>', methods=['GET', 'POST'])
+@login_required
+def request_reel(avatar_id):
+    """
+    Ruta para solicitar creación de un reel con un avatar específico.
+    
+    Permite a los usuarios finales solicitar la creación de un reel usando
+    un avatar disponible. La solicitud requiere aprobación del productor
+    propietario del avatar antes de proceder con la creación.
+    
+    Args:
+        avatar_id (int): ID del avatar a usar para el reel
+    
+    Returns:
+        GET : Template con formulario de solicitud de reel
+        POST: Redirección con mensaje de confirmación tras crear solicitud
+    
+    Context Variables:
+        - form (ReelRequestForm): Formulario de solicitud de reel
+        - avatar (Avatar): Información del avatar seleccionado
+        - producer (Producer): Productor propietario del avatar
+    
+    Note:
+        - Verifica que el usuario puede usar el avatar
+        - Requiere aprobación del productor propietario
+        - Crea notificación para el productor
+        - Aplica para avatares públicos y premium con permisos
+    """
+    # Verificar que el avatar existe y está disponible para el usuario
+    
+    avatar            = Avatar.query.get_or_404(avatar_id)
+    available_avatars = get_available_avatars_for_user(current_user)
+    
+    if avatar not in available_avatars:
+        flash('No tienes permisos para usar este avatar.', 'error')
+        return redirect(url_for('user.avatars'))
+    
+    # Verificar que el avatar tiene un productor propietario
+    if not avatar.producer:
+        flash('Este avatar no tiene un productor asignado.', 'error')
+        return redirect(url_for('user.avatars'))
+    
+    form = ReelRequestForm()
+    
+    if form.validate_on_submit():
+        # Verificar si ya tiene una solicitud pendiente para este avatar
+        existing_request = ReelRequest.query.filter_by(
+            user_id      = current_user.id,
+            avatar_id    = avatar_id,
+            status       = ReelRequestStatus.PENDING
+        ).first()
+        
+        if existing_request:
+            flash('Ya tienes una solicitud pendiente para este avatar.', 'warning')
+            return redirect(url_for('user.avatars'))
+        
+        try:
+            # Crear la solicitud de reel
+            reel_request       = ReelRequest(
+                user_id        = current_user.id,
+                avatar_id      = avatar_id,
+                producer_id    = avatar.producer.id,
+                title          = form.title.data,
+                script         = form.script.data,
+                background_url = form.background_url.data if form.background_url.data else None,
+                resolution     = form.resolution.data,
+                user_notes     = form.user_notes.data,
+                status         = ReelRequestStatus.PENDING,
+                config_data    = {
+                    'requested_via': 'web_interface',
+                    'user_agent'   : request.headers.get('User-Agent', 'Unknown')
+                }
+            )
+            
+            db.session.add(reel_request)
+            db.session.commit()
+            
+            flash(
+                f'Tu solicitud de reel ha sido enviada a {avatar.producer.display_name}. '
+                f'Recibirás una notificación cuando sea revisada.',
+                'success'
+            )
+            
+            # TODO: Enviar notificación al productor (email, push, etc.)
+            
+            return redirect(url_for('user.dashboard'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear la solicitud: {str(e)}', 'error')
+    
+    # Pre-llenar el avatar_id en el formulario
+    form.avatar_id.data = avatar_id
+    
+    return render_template('user/request_reel.html', 
+                         form     = form, 
+                         avatar   = avatar, 
+                         producer = avatar.producer)
 
 
 @user_bp.route('/request-producer', methods=['GET', 'POST'])
@@ -635,15 +773,15 @@ def create_reel():
                 return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
 
         r = Reel(
-            title=title,
-            script=script,
-            creator_id=current_user.id,
-            owner_id=current_user.id,
-            avatar_id=avatar_id,              # <- queda NULL si no eligieron
-            status=ReelStatus.PENDING,
-            is_public=False,
-            resolution='1080p',
-            background_type='default'
+            title       = title,
+            script      = script,
+            creator_id  = current_user.id,
+            owner_id    = current_user.id,
+            avatar_id   = avatar_id,              # <- queda NULL si no eligieron
+            status      = ReelStatus.PENDING,
+            is_public   = False,
+            resolution  = '1080p',
+            background_type = 'default'
         )
         db.session.add(r)
         db.session.commit()
@@ -657,7 +795,15 @@ def create_reel():
 @user_bp.route('/reels/<int:reel_id>')
 @login_required
 def view_reel(reel_id):
-    """Vista detallada de un reel individual."""
+    """
+    Vista detallada de un reel individual
+    
+    Arguments:
+        reel_id (int): ID del reel a visualizar
+    Returns:
+        Template con detalles del reel si tiene permiso de acceso
+    
+    """
     from app.models.reel import Reel
 
     reel = Reel.query.get_or_404(reel_id)
@@ -742,14 +888,14 @@ def request_avatar_permission(avatar_id):
 
     if not request_entry:
         request_entry = {
-            'request_id': uuid4().hex,
-            'user_id': current_user.id,
-            'user_name': current_user.full_name,
-            'user_email': current_user.email,
-            'producer_id': avatar.producer_id,
-            'reason': reason,
+            'request_id'  : uuid4().hex,
+            'user_id'     : current_user.id,
+            'user_name'   : current_user.full_name,
+            'user_email'  : current_user.email,
+            'producer_id' : avatar.producer_id,
+            'reason'      : reason,
             'requested_at': datetime.utcnow().isoformat(),
-            'status': 'pending'
+            'status'      : 'pending'
         }
         permission_requests.append(request_entry)
 
@@ -774,18 +920,18 @@ def request_avatar_permission(avatar_id):
             send_template_email(
                 template_name='avatar_permission_request',
                 subject=f'🙋 Nueva solicitud de permiso para tu avatar "{avatar.name}"',
-                recipients=[producer.email],
+                recipients = [producer.email],
                 template_vars={
-                    'producer_name': producer.full_name,
-                    'user_name': current_user.full_name,
-                    'user_email': current_user.email,
-                    'avatar_name': avatar.name,
+                    'producer_name'   : producer.full_name,
+                    'user_name'       : current_user.full_name,
+                    'user_email'      : current_user.email,
+                    'avatar_name'     : avatar.name,
                     'avatar_thumbnail': avatar.thumbnail_url,
-                    'reason': reason if reason else 'No especificado',
-                    'request_date': datetime.utcnow().strftime('%d/%m/%Y %H:%M'),
+                    'reason'            : reason if reason else 'No especificado',
+                    'request_date'      : datetime.utcnow().strftime('%d/%m/%Y %H:%M'),
                     'avatar_detail_link': avatar_detail,
-                    'dashboard_link': producer_dashboard,
-                    'current_year': datetime.utcnow().year
+                    'dashboard_link'    : producer_dashboard,
+                    'current_year'      : datetime.utcnow().year
                 }
             )
     except Exception as e:

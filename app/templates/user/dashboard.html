@@ -195,7 +195,7 @@ Estados de reel manejados:
                                 <!-- Acción condicional: Crear reel -->
                                 {% if current_user.can_create_reels() %}
                                 <div class="col-md-3">
-                                    <a href="{{ url_for('user.create_reel') }}" class="btn btn-outline-primary btn-lg w-100">
+                                    <a href="{{ url_for('user.avatars') }}" class="btn btn-outline-primary btn-lg w-100">
                                         <i class="fas fa-plus-circle"></i><br>
                                         Crear Reel
                                     </a>
@@ -410,7 +410,7 @@ Estados de reel manejados:
                                     
                                     <!-- CTA condicional para crear primer reel -->
                                     {% if current_user.can_create_reels() %}
-                                        <a href="{{ url_for('user.create_reel') }}" class="btn btn-primary">
+                                        <a href="{{ url_for('user.avatars') }}" class="btn btn-primary">
                                             <i class="fas fa-plus"></i> Crear mi primer Reel
                                         </a>
                                     {% endif %}

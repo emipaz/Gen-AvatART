@@ -45,6 +45,7 @@ from app.models.producer import Producer
 from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission, CommissionStatus
+from app.models.reel_request import ReelRequest, ReelRequestStatus
 from app.services.heygen_service import HeyGenService
 from app.services.snapshot_service import save_avatar_snapshot, load_avatar_snapshot
 from app.services.avatar_sync_service import sync_producer_heygen_avatars
@@ -255,19 +256,19 @@ def dashboard():
                         reviewed_at_fmt = reviewed_at_str
 
                 permission_requests.append({
-                    'avatar': avatar,
-                    'avatar_id': avatar.id,
-                    'avatar_name': avatar.name,
-                    'avatar_thumbnail': avatar.thumbnail_url,
-                    'user_id': req.get('user_id'),
-                    'user_name': req.get('user_name'),
-                    'user_email': req.get('user_email'),
-                    'reason': req.get('reason'),
-                    'status': status_value or 'pending',
-                    'request_id': request_id,
-                    'requested_at': requested_at_fmt,
-                    'reviewed_at': reviewed_at_fmt,
-                    'raw_requested_at': req.get('requested_at')
+                    'avatar'           : avatar,
+                    'avatar_id'        : avatar.id,
+                    'avatar_name'      : avatar.name,
+                    'avatar_thumbnail' : avatar.thumbnail_url,
+                    'user_id'          : req.get('user_id'),
+                    'user_name'        : req.get('user_name'),
+                    'user_email'       : req.get('user_email'),
+                    'reason'           : req.get('reason'),
+                    'status'           : status_value or 'pending',
+                    'request_id'       : request_id,
+                    'requested_at'     : requested_at_fmt,
+                    'reviewed_at'      : reviewed_at_fmt,
+                    'raw_requested_at' : req.get('requested_at')
                 })
 
     # Guardar cambios si se generaron nuevos request_id
@@ -288,6 +289,12 @@ def dashboard():
         status        = UserStatus.ACTIVE
     ).all()
     
+    # Contar solicitudes de reel pendientes para avatares del productor
+    pending_reel_requests_count = ReelRequest.query.join(Avatar).filter(
+        Avatar.producer_id == producer.id,
+        ReelRequest.status == ReelRequestStatus.PENDING
+    ).count()
+    
     return render_template('producer/dashboard.html',
                          stats           = stats,
                          team_stats      = stats,  # Alias para compatibilidad con template
@@ -296,7 +303,8 @@ def dashboard():
                          pending_avatars     = pending_avatars,
                          pending_reels       = pending_reels,
                          subproducers        = subproducers,
-                         permission_requests = permission_requests)
+                         permission_requests = permission_requests,
+                         pending_count      = pending_reel_requests_count)
 
 
 @producer_bp.route('/permission-requests/<int:avatar_id>/<request_id>', methods=['POST'])
@@ -1677,3 +1685,167 @@ def toggle_member_status(member_id):
         flash(f'{member.first_name} ha sido suspendido.', 'warning')
     db.session.commit()
     return redirect(url_for('producer.team'))
+
+
+@producer_bp.route('/reel-requests')
+@login_required
+@producer_required
+def reel_requests():
+    """
+    Vista de todas las solicitudes de reel para avatares del productor.
+    
+    Muestra una lista paginada de todas las solicitudes de reel para avatares
+    propiedad del productor actual. Permite filtrar por estado y gestionar
+    las solicitudes pendientes.
+    
+    Returns:
+        Template: 'producer/reel_requests.html' con lista de solicitudes
+    
+    Context Variables:
+        - requests (Pagination): Solicitudes paginadas
+        - pending_count (int): Número de solicitudes pendientes
+        - total_count (int): Total de solicitudes
+    """
+    # Filtro por estado
+    status_filter = request.args.get('status', 'pending')
+    
+    # Query base: solicitudes para avatares del productor
+    query = ReelRequest.query.join(Avatar).filter(
+        Avatar.producer_id == current_user.producer_profile.id
+    )
+    
+    # Aplicar filtro de estado
+    if status_filter and status_filter != 'all':
+        if status_filter == 'pending':
+            query = query.filter(ReelRequest.status == ReelRequestStatus.PENDING)
+        elif status_filter == 'approved':
+            query = query.filter(ReelRequest.status == ReelRequestStatus.APPROVED)
+        elif status_filter == 'rejected':
+            query = query.filter(ReelRequest.status == ReelRequestStatus.REJECTED)
+    
+    # Ordenar por fecha de creación (más recientes primero)
+    query = query.order_by(ReelRequest.created_at.desc())
+    
+    # Paginación
+    page = request.args.get('page', 1, type=int)
+    requests_paginated = query.paginate(
+        page=page, 
+        per_page=15, 
+        error_out=False
+    )
+    
+    # Estadísticas
+    pending_count = ReelRequest.query.join(Avatar).filter(
+        Avatar.producer_id == current_user.producer_profile.id,
+        ReelRequest.status == ReelRequestStatus.PENDING
+    ).count()
+    
+    total_count = ReelRequest.query.join(Avatar).filter(
+        Avatar.producer_id == current_user.producer_profile.id
+    ).count()
+    
+    return render_template('producer/reel_requests.html',
+                         requests=requests_paginated,
+                         pending_count=pending_count,
+                         total_count=total_count,
+                         status_filter=status_filter)
+
+
+@producer_bp.route('/reel-requests/<int:request_id>/approve', methods=['POST'])
+@login_required
+@producer_required
+def approve_reel_request(request_id):
+    """
+    Aprueba una solicitud de reel y crea el reel correspondiente.
+    
+    Args:
+        request_id (int): ID de la solicitud de reel a aprobar
+        
+    Returns:
+        Redirect: Vuelve a la lista de solicitudes con mensaje de confirmación
+    """
+    reel_request = ReelRequest.query.get_or_404(request_id)
+    
+    # Verificar que la solicitud pertenece a un avatar del productor
+    if reel_request.producer_id != current_user.producer_profile.id:
+        flash('No tienes permisos para aprobar esta solicitud.', 'error')
+        return redirect(url_for('producer.reel_requests'))
+    
+    # Verificar que la solicitud esté pendiente
+    if reel_request.status != ReelRequestStatus.PENDING:
+        flash('Esta solicitud ya fue procesada.', 'warning')
+        return redirect(url_for('producer.reel_requests'))
+    
+    try:
+        # Obtener notas del productor del formulario
+        producer_notes = request.form.get('producer_notes', '')
+        
+        # Aprobar la solicitud (esto crea automáticamente el reel)
+        created_reel = reel_request.approve(current_user, producer_notes)
+        
+        db.session.commit()
+        
+        flash(
+            f'Solicitud de reel "{reel_request.title}" aprobada. '
+            f'Reel creado con ID {created_reel.id}.',
+            'success'
+        )
+        
+        # TODO: Enviar notificación al usuario solicitante
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al aprobar la solicitud: {str(e)}', 'error')
+    
+    return redirect(url_for('producer.reel_requests'))
+
+
+@producer_bp.route('/reel-requests/<int:request_id>/reject', methods=['POST'])
+@login_required
+@producer_required
+def reject_reel_request(request_id):
+    """
+    Rechaza una solicitud de reel con una razón específica.
+    
+    Args:
+        request_id (int): ID de la solicitud de reel a rechazar
+        
+    Returns:
+        Redirect: Vuelve a la lista de solicitudes con mensaje de confirmación
+    """
+    reel_request = ReelRequest.query.get_or_404(request_id)
+    
+    # Verificar que la solicitud pertenece a un avatar del productor
+    if reel_request.producer_id != current_user.producer_profile.id:
+        flash('No tienes permisos para rechazar esta solicitud.', 'error')
+        return redirect(url_for('producer.reel_requests'))
+    
+    # Verificar que la solicitud esté pendiente
+    if reel_request.status != ReelRequestStatus.PENDING:
+        flash('Esta solicitud ya fue procesada.', 'warning')
+        return redirect(url_for('producer.reel_requests'))
+    
+    # Verificar que se proporcione una razón
+    producer_notes = request.form.get('producer_notes', '').strip()
+    if not producer_notes:
+        flash('Debes proporcionar una razón para rechazar la solicitud.', 'error')
+        return redirect(url_for('producer.reel_requests'))
+    
+    try:
+        # Rechazar la solicitud
+        reel_request.reject(current_user, producer_notes)
+        
+        db.session.commit()
+        
+        flash(
+            f'Solicitud de reel "{reel_request.title}" rechazada.',
+            'info'
+        )
+        
+        # TODO: Enviar notificación al usuario solicitante
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al rechazar la solicitud: {str(e)}', 'error')
+    
+    return redirect(url_for('producer.reel_requests'))
