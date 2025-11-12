@@ -89,23 +89,35 @@ Elementos interactivos:
     <!-- d-flex con justify-content-between distribuye elementos en extremos -->
     <!-- align-items-center centra verticalmente el contenido -->
     <!-- mb-4 aplica margen inferior de 1.5rem -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <!-- Sección de bienvenida con información del productor -->
-        <div>
-            <!-- Título principal con icono representativo -->
-            <!-- fas fa-industry representa producción y gestión empresarial -->
-            <h1 class="mb-1"><i class="fas fa-industry text-primary"></i> Dashboard Productor</h1>
-            
-            <!-- Saludo personalizado con nombre del usuario -->
-            <!-- text-muted aplica color gris para información secundaria -->
-            <p class="text-muted mb-0">Bienvenido, {{ current_user.full_name }}</p>
-        </div>
+    <!-- Header del dashboard con bienvenida -->
+    <div class="mb-3">
+        <!-- Título principal con icono representativo -->
+        <h1 class="mb-1"><i class="fas fa-industry text-primary"></i> Dashboard Productor</h1>
         
-        <!-- Botón de acción rápida para invitar miembros -->
-        <!-- btn-primary aplica el color principal del tema -->
-        <a href="{{ url_for('producer.invite_member') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Invitar Miembro
-        </a>
+        <!-- Saludo personalizado con nombre del usuario -->
+        <p class="text-muted mb-0">Bienvenido, {{ current_user.full_name }}</p>
+    </div>
+
+    <!-- Barra de acciones rápidas horizontal -->
+    <!-- Botones compactos con estilo outline para menor contraste visual -->
+    <div class="mb-4">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('producer.reel_requests') }}" class="btn btn-outline-warning btn-sm">
+                <i class="fas fa-file-video"></i> Solicitudes de Reel
+                {% if pending_count and pending_count > 0 %}
+                    <span class="badge bg-danger ms-1">{{ pending_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{{ url_for('producer.invite_member') }}" class="btn btn-outline-purple btn-sm" style="--bs-btn-color: #6f42c1; --bs-btn-border-color: #6f42c1; --bs-btn-hover-bg: #6f42c1; --bs-btn-hover-border-color: #6f42c1; --bs-btn-hover-color: #fff;">
+                <i class="fas fa-plus"></i> Invitar Miembro
+            </a>
+            <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-user-circle"></i> Gestionar Avatars
+            </a>
+            <a href="{{ url_for('producer.settings') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-cog"></i> Configuración
+            </a>
+        </div>
     </div>
 
     <!-- Fila de estadísticas principales en cards -->
@@ -487,32 +499,6 @@ Elementos interactivos:
                             <p class="text-muted mb-0">No hay avatars disponibles</p>
                         </div>
                     {% endif %}
-                </div>
-            </div>
-
-            <!-- Card con acciones rápidas -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Acciones Rápidas</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('producer.reel_requests') }}" class="btn btn-warning">
-                            <i class="fas fa-file-video"></i> Solicitudes de Reel
-                            {% if pending_count and pending_count > 0 %}
-                                <span class="badge bg-danger">{{ pending_count }}</span>
-                            {% endif %}
-                        </a>
-                        <a href="{{ url_for('producer.invite_member') }}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Invitar Miembro
-                        </a>
-                        <a href="{{ url_for('producer.avatars') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-user-circle"></i> Gestionar Avatars
-                        </a>
-                        <a href="{{ url_for('producer.settings') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-cog"></i> Configuración
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
