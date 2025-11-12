@@ -192,9 +192,17 @@ Estados de reel manejados:
                             <!-- Grid de botones de acciones principales -->
                             <div class="row">
                                 
+                                <!-- Acción: Mis Reels -->
+                                <div class="col-md-3 mb-3">
+                                    <a href="{{ url_for('user.my_reels') }}" class="btn btn-outline-success btn-lg w-100">
+                                        <i class="fas fa-video"></i><br>
+                                        Mis Reels
+                                    </a>
+                                </div>
+                                
                                 <!-- Acción condicional: Crear reel -->
                                 {% if current_user.can_create_reels() %}
-                                <div class="col-md-3">
+                                <div class="col-md-3 mb-3">
                                     <a href="{{ url_for('user.avatars') }}" class="btn btn-outline-primary btn-lg w-100">
                                         <i class="fas fa-plus-circle"></i><br>
                                         Crear Reel
@@ -232,7 +240,7 @@ Estados de reel manejados:
                                 
                                 <!-- Acción: Ver estadísticas -->
                                 <div class="col-md-3">
-                                    <a href="{{ url_for('user.reels') }}" class="btn btn-outline-secondary btn-lg w-100">
+                                    <a href="{{ url_for('user.my_reels') }}" class="btn btn-outline-secondary btn-lg w-100">
                                         <i class="fas fa-chart-bar"></i><br>
                                         Ver Reels
                                     </a>

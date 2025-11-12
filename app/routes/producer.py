@@ -49,6 +49,7 @@ from app.models.reel_request import ReelRequest, ReelRequestStatus
 from app.services.heygen_service import HeyGenService
 from app.services.snapshot_service import save_avatar_snapshot, load_avatar_snapshot
 from app.services.avatar_sync_service import sync_producer_heygen_avatars
+from app.services.email_service import send_reel_request_approved_notification, send_reel_request_rejected_notification
 from app.utils.date_utils import get_current_month_range
 from datetime import datetime
 from uuid import uuid4
@@ -311,36 +312,60 @@ def dashboard():
 @login_required
 @producer_required
 def handle_permission_request(avatar_id, request_id):
-    """Permite al productor aprobar o rechazar una solicitud de permiso para un avatar premium."""
+    """
+    Permite al productor aprobar o rechazar una solicitud de 
+    permiso para un avatar premium.
+
+    Argumentos:
+        avatar_id (int): ID del avatar para el cual se solicita el permiso
+        request_id (str): ID única de la solicitud de permiso
+
+    Methods:
+        POST : Procesa la solicitud de permiso
+        
+    Returns:
+        Redirect: Redirección al dashboard del productor con mensaje flash
+    Nota: 
+        TODO envia mail de notificación al usuario solicitante
+    
+    """
+    # Validar acción
     action = (request.form.get('action') or '').lower()
     if action not in {'approve', 'reject'}:
         flash('Acción inválida para la solicitud de permiso.', 'error')
         return redirect(url_for('producer.dashboard'))
-
+    # Buscar el avatar y verificar pertenencia
     avatar = Avatar.query.get_or_404(avatar_id)
 
+    # Verificar que el avatar pertenezca al productor actual
     if avatar.producer_id != current_user.producer_profile.id:
         flash('No tenés permisos para gestionar esta solicitud.', 'error')
         return redirect(url_for('producer.dashboard'))
-
-    meta = avatar.meta_data or {}
+    
+    # Verificar que la solicitud exista
+    meta                = avatar.meta_data or {}
+    # Obtener las solicitudes de permiso
     permission_requests = meta.get('permission_requests', [])
-    target_request = None
-
+    target_request      = None
+    
+    # Buscar la solicitud por request_id
     for req in permission_requests:
         if req.get('request_id') == request_id:
             target_request = req
             break
 
+    # Verificar que se haya encontrado la solicitud
     if not target_request:
         flash('No se encontró la solicitud seleccionada.', 'error')
         return redirect(url_for('producer.dashboard'))
 
+    # Actualizar el estado de la solicitud
     new_status = 'approved' if action == 'approve' else 'rejected'
-    target_request['status'] = new_status
+    target_request['status']      = new_status
     target_request['reviewed_at'] = datetime.utcnow().isoformat()
     target_request['reviewed_by'] = current_user.id
 
+    # Guardar cambios en la base de datos
     from sqlalchemy.orm.attributes import flag_modified
     flag_modified(avatar, 'meta_data')
     db.session.commit()
@@ -349,6 +374,7 @@ def handle_permission_request(avatar_id, request_id):
     flash(f'Solicitud {status_label} correctamente.', 'success' if new_status == 'approved' else 'warning')
 
     # TODO: enviar notificación por email al usuario solicitante
+
 
     return redirect(url_for('producer.dashboard'))
 
@@ -564,33 +590,6 @@ def archive_avatar(avatar_id):
     flash('Avatar archivado.', 'success')
     return redirect(url_for('producer.avatars'))
 
-# --- NUEVO: Reactivar avatar (solo si no fue desactivado por el subproductor) ---
-# @producer_bp.route('/avatar/<int:avatar_id>/activate', methods=['POST'])
-# @login_required
-# @producer_required
-# def activate_avatar(avatar_id):
-#     """Permite al productor reactivar un avatar si no fue desactivado por el subproductor."""
-#     producer = current_user.producer_profile
-#     avatar = Avatar.query.filter_by(id=avatar_id, producer_id=producer.id).first_or_404()
-
-#     # Solo permitir si está inactivo y NO fue desactivado por el subproductor
-#     if avatar.status != AvatarStatus.INACTIVE:
-#         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-#             return jsonify({'success': False, 'message': 'El avatar no está archivado.', 'status': avatar.status.value.lower()})
-#         flash('El avatar no está archivado.', 'info')
-#         return redirect(url_for('producer.avatars'))
-
-#     if hasattr(avatar, 'enabled_by_subproducer') and not avatar.enabled_by_subproducer:
-#         avatar.status = AvatarStatus.ACTIVE
-#         db.session.commit()
-#         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-#             return jsonify({'success': True, 'message': 'Avatar reactivado correctamente.', 'status': 'active'})
-#         flash('Avatar reactivado correctamente.', 'success')
-#     else:
-#         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-#             return jsonify({'success': False, 'message': 'No se puede reactivar: el subproductor lo desactivó.', 'status': 'inactive'})
-#         flash('No se puede reactivar: el subproductor lo desactivó.', 'warning')
-#     return redirect(url_for('producer.avatars'))
 
 @producer_bp.route('/avatar/<int:avatar_id>/reactivate', methods=['POST'])
 @login_required
@@ -1524,38 +1523,6 @@ def avatar_stats(avatar_id):
     })
 
 
-# @producer_bp.route('/avatar/<int:avatar_id>/access')
-# @login_required
-# @producer_required
-# def avatar_access(avatar_id):
-#     """Devuelve información de acceso para el avatar (simulado)."""
-#     producer = current_user.producer_profile
-#     avatar = Avatar.query.get_or_404(avatar_id)
-#     if avatar.producer_id != producer.id:
-#         return jsonify({'error': 'No autorizado'}), 403
-
-#     # Simulación: lista de usuarios con acceso (puedes adaptar a tu modelo real)
-#     # Aquí se asume que hay una relación avatar.access_users o similar
-#     # Si no existe, se devuelve una lista vacía o de ejemplo
-#     access_users = []
-#     if hasattr(avatar, 'access_users'):
-#         for user in avatar.access_users:
-#             access_users.append({
-#                 'id': user.id,
-#                 'name': user.full_name,
-#                 'role': user.role.value
-#             })
-#     # Ejemplo si no existe la relación
-#     else:
-#         access_users = [
-#             {'id': 1, 'name': 'Demo User', 'role': 'SUBPRODUCER'}
-#         ]
-
-#     return jsonify({
-#         'avatar_id': avatar.id,
-#         'access_users': access_users
-#     })
-
 from app.models.clone_permission import ClonePermission, PermissionStatus, PermissionSubjectType
 # GET y POST: gestión de acceso granular a un avatar
 @producer_bp.route('/avatar/<int:avatar_id>/access', methods=['GET', 'POST'])
@@ -1709,9 +1676,10 @@ def reel_requests():
     # Filtro por estado
     status_filter = request.args.get('status', 'pending')
     
-    # Query base: solicitudes para avatares del productor
+    # Query base: solicitudes para avatares del productor (excluir DRAFT)
     query = ReelRequest.query.join(Avatar).filter(
-        Avatar.producer_id == current_user.producer_profile.id
+        Avatar.producer_id == current_user.producer_profile.id,
+        ReelRequest.status != ReelRequestStatus.DRAFT  # Excluir borradores
     )
     
     # Aplicar filtro de estado
@@ -1741,7 +1709,8 @@ def reel_requests():
     ).count()
     
     total_count = ReelRequest.query.join(Avatar).filter(
-        Avatar.producer_id == current_user.producer_profile.id
+        Avatar.producer_id == current_user.producer_profile.id,
+        ReelRequest.status != ReelRequestStatus.DRAFT  # Excluir borradores del total
     ).count()
     
     return render_template('producer/reel_requests.html',
@@ -1791,7 +1760,17 @@ def approve_reel_request(request_id):
             'success'
         )
         
-        # TODO: Enviar notificación al usuario solicitante
+        # Enviar notificación al usuario solicitante
+        try:
+            success = send_reel_request_approved_notification(
+                user=reel_request.user,
+                reel_request=reel_request,
+                producer_notes=producer_notes if producer_notes else None
+            )
+            if not success:
+                flash('Reel aprobado pero no se pudo enviar el email de notificación.', 'warning')
+        except Exception as email_error:
+            flash(f'Reel aprobado pero error en email: {str(email_error)}', 'warning')
         
     except Exception as e:
         db.session.rollback()
@@ -1842,7 +1821,17 @@ def reject_reel_request(request_id):
             'info'
         )
         
-        # TODO: Enviar notificación al usuario solicitante
+        # Enviar notificación al usuario solicitante
+        try:
+            success = send_reel_request_rejected_notification(
+                user=reel_request.user,
+                reel_request=reel_request,
+                producer_notes=producer_notes
+            )
+            if not success:
+                flash('Solicitud rechazada pero no se pudo enviar el email de notificación.', 'warning')
+        except Exception as email_error:
+            flash(f'Solicitud rechazada pero error en email: {str(email_error)}', 'warning')
         
     except Exception as e:
         db.session.rollback()

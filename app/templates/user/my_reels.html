@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% set title = "Mis Reels" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-video text-primary"></i> Mis Reels</h2>
+            <p class="text-muted mb-0">Gestiona tus solicitudes de reels y borradores</p>
+        </div>
+        <div>
+            <a href="{{ url_for('user.avatars') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Crear Nuevo Reel
+            </a>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ drafts|length }}</h3>
+                            <p class="card-text">Borradores</p>
+                        </div>
+                        <i class="fas fa-edit fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ sent|selectattr('status', 'equalto', sent[0].status.__class__.PENDING)|list|length if sent else 0 }}</h3>
+                            <p class="card-text">Pendientes</p>
+                        </div>
+                        <i class="fas fa-clock fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ sent|selectattr('status', 'equalto', sent[0].status.__class__.APPROVED)|list|length if sent else 0 }}</h3>
+                            <p class="card-text">Aprobados</p>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="card-title">{{ sent|selectattr('status', 'equalto', sent[0].status.__class__.REJECTED)|list|length if sent else 0 }}</h3>
+                            <p class="card-text">Rechazados</p>
+                        </div>
+                        <i class="fas fa-times-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegación por pestañas -->
+    <ul class="nav nav-tabs" id="reelTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="drafts-tab" data-bs-toggle="tab" data-bs-target="#drafts" type="button" role="tab">
+                <i class="fas fa-edit"></i> Borradores ({{ drafts|length }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="sent-tab" data-bs-toggle="tab" data-bs-target="#sent" type="button" role="tab">
+                <i class="fas fa-paper-plane"></i> Enviados ({{ sent|length }})
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="reelTabContent">
+        <!-- Tab de Borradores -->
+        <div class="tab-pane fade show active" id="drafts" role="tabpanel">
+            <div class="mt-3">
+                {% if drafts %}
+                    <div class="row">
+                        {% for draft in drafts %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">{{ draft.title }}</h6>
+                                    <span class="badge bg-info">Borrador</span>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="fas fa-user-circle"></i> {{ draft.avatar.name }}<br>
+                                            <i class="fas fa-tv"></i> {{ draft.resolution }}<br>
+                                            <i class="fas fa-calendar"></i> {{ draft.created_at.strftime('%d/%m/%Y') }}
+                                        </small>
+                                    </p>
+                                    <div class="script-preview">
+                                        <h6>Script:</h6>
+                                        <p class="text-muted small">{{ draft.script[:100] }}{% if draft.script|length > 100 %}...{% endif %}</p>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <div class="btn-group w-100" role="group">
+                                        <a href="{{ url_for('user.edit_reel_request', request_id=draft.id) }}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        <form method="POST" action="{{ url_for('user.send_reel_request', request_id=draft.id) }}" 
+                                              class="d-inline send-form">
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="fas fa-paper-plane"></i> Enviar
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('user.delete_reel_request', request_id=draft.id) }}" 
+                                              class="d-inline delete-form">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-edit fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No tienes borradores</h4>
+                        <p class="text-muted mb-4">Crea tu primera solicitud de reel para comenzar</p>
+                        <a href="{{ url_for('user.avatars') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Crear Nuevo Reel
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tab de Enviados -->
+        <div class="tab-pane fade" id="sent" role="tabpanel">
+            <div class="mt-3">
+                {% if sent %}
+                    <div class="row">
+                        {% for request in sent %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">{{ request.title }}</h6>
+                                    {% if request.status.name == 'PENDING' %}
+                                        <span class="badge bg-warning">Pendiente</span>
+                                    {% elif request.status.name == 'APPROVED' %}
+                                        <span class="badge bg-success">Aprobado</span>
+                                    {% elif request.status.name == 'REJECTED' %}
+                                        <span class="badge bg-danger">Rechazado</span>
+                                    {% endif %}
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="fas fa-user-circle"></i> {{ request.avatar.name }}<br>
+                                            <i class="fas fa-tv"></i> {{ request.resolution }}<br>
+                                            <i class="fas fa-calendar"></i> {{ request.created_at.strftime('%d/%m/%Y') }}<br>
+                                            <i class="fas fa-user-tie"></i> {{ request.producer.display_name }}
+                                        </small>
+                                    </p>
+                                    <div class="script-preview">
+                                        <h6>Script:</h6>
+                                        <p class="text-muted small">{{ request.script[:100] }}{% if request.script|length > 100 %}...{% endif %}</p>
+                                    </div>
+                                    
+                                    {% if request.producer_notes %}
+                                    <div class="producer-notes mt-2">
+                                        <h6>Notas del Productor:</h6>
+                                        <p class="text-muted small">{{ request.producer_notes }}</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if request.status.name == 'APPROVED' and request.reel %}
+                                    <div class="reel-info mt-2">
+                                        <h6>Reel Creado:</h6>
+                                        <a href="{{ url_for('user.reel_detail', reel_id=request.reel.id) }}" 
+                                           class="btn btn-primary btn-sm">
+                                            <i class="fas fa-play"></i> Ver Reel
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer">
+                                    <small class="text-muted">
+                                        Enviado: {{ request.updated_at.strftime('%d/%m/%Y %H:%M') if request.updated_at else request.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-paper-plane fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No has enviado solicitudes</h4>
+                        <p class="text-muted mb-4">Crea un borrador y envíalo cuando estés listo</p>
+                        <a href="{{ url_for('user.avatars') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Crear Nuevo Reel
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Confirmación para enviar solicitudes
+    const sendForms = document.querySelectorAll('.send-form');
+    sendForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (confirm('¿Enviar esta solicitud al productor? Una vez enviada no podrás editarla y te comprometes al pago.')) {
+                this.submit();
+            }
+        });
+    });
+    
+    // Confirmación para eliminar borradores
+    const deleteForms = document.querySelectorAll('.delete-form');
+    deleteForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (confirm('¿Eliminar este borrador? Esta acción no se puede deshacer.')) {
+                this.submit();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

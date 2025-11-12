@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Solicitud de Reel</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            margin: -30px -30px 20px -30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+        .alert-info {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #856404;
+        }
+        .user-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .user-info h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .button:hover {
+            opacity: 0.9;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .reel-details {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .reel-details dt {
+            font-weight: bold;
+            color: #495057;
+        }
+        .reel-details dd {
+            margin-bottom: 8px;
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Nueva Solicitud de Reel</h1>
+            <p>Requiere tu aprobación</p>
+        </div>
+        
+        <h2>¡Hola {{ producer.display_name }}!</h2>
+        
+        <p>Has recibido una nueva solicitud de reel que requiere tu aprobación.</p>
+        
+        <div class="alert-info">
+            <strong>⏰ Acción requerida:</strong> Un usuario solicita crear un reel con uno de tus avatares.
+        </div>
+        
+        <div class="user-info">
+            <h3>👤 Información del Solicitante</h3>
+            <dl>
+                <dt>Nombre:</dt>
+                <dd>{{ user.full_name }}</dd>
+                <dt>Email:</dt>
+                <dd>{{ user.email }}</dd>
+                {% if user.phone %}
+                <dt>Teléfono:</dt>
+                <dd>{{ user.phone }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+        
+        <div class="reel-details">
+            <h3>🎥 Detalles de la Solicitud</h3>
+            <dl>
+                <dt>Título del Reel:</dt>
+                <dd><strong>{{ reel_request.title }}</strong></dd>
+                <dt>Avatar Solicitado:</dt>
+                <dd>{{ reel_request.avatar.name }}</dd>
+                <dt>Resolución:</dt>
+                <dd>{{ reel_request.resolution }}</dd>
+                <dt>Fecha de Solicitud:</dt>
+                <dd>{{ reel_request.created_at.strftime('%d/%m/%Y a las %H:%M') }}</dd>
+            </dl>
+        </div>
+        
+        {% if reel_request.description %}
+        <div class="user-info">
+            <h3>📝 Descripción del Usuario</h3>
+            <p>"{{ reel_request.description }}"</p>
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{ dashboard_url }}" class="button">
+                🎯 Revisar y Aprobar en Dashboard
+            </a>
+        </div>
+        
+        <div class="alert-info">
+            <p><strong>💡 Recordatorio:</strong> Puedes aprobar o rechazar esta solicitud desde tu panel de productor. Si la apruebas, el reel se creará automáticamente.</p>
+        </div>
+        
+        <div class="footer">
+            <p>Este email fue enviado automáticamente por {{ app_name }}</p>
+            <p>No responder a este email</p>
+        </div>
+    </div>
+</body>
+</html>

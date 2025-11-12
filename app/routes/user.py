@@ -39,9 +39,14 @@ from app.models.producer_request import ProducerRequest, ProducerRequestStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.avatar import Avatar, AvatarAccessType, AvatarStatus
 from app.models.reel_request import ReelRequest, ReelRequestStatus
+from app.services.email_service import send_avatar_reel_request_notification
 import os
+import logging
 from PIL import Image
 from uuid import uuid4
+
+# Configurar logger para este módulo
+logger = logging.getLogger(__name__)
 
 # Crear el blueprint
 user_bp = Blueprint('user', __name__, url_prefix='/user')
@@ -553,19 +558,20 @@ def request_reel(avatar_id):
     form = ReelRequestForm()
     
     if form.validate_on_submit():
+        # TEMPORALMENTE DESHABILITADO PARA PRUEBAS DE EMAIL
         # Verificar si ya tiene una solicitud pendiente para este avatar
-        existing_request = ReelRequest.query.filter_by(
-            user_id      = current_user.id,
-            avatar_id    = avatar_id,
-            status       = ReelRequestStatus.PENDING
-        ).first()
+        # existing_request = ReelRequest.query.filter_by(
+        #     user_id      = current_user.id,
+        #     avatar_id    = avatar_id,
+        #     status       = ReelRequestStatus.PENDING
+        # ).first()
         
-        if existing_request:
-            flash('Ya tienes una solicitud pendiente para este avatar.', 'warning')
-            return redirect(url_for('user.avatars'))
+        # if existing_request:
+        #     flash('Ya tienes una solicitud pendiente para este avatar.', 'warning')
+        #     return redirect(url_for('user.avatars'))
         
         try:
-            # Crear la solicitud de reel
+            # Crear la solicitud de reel como borrador
             reel_request       = ReelRequest(
                 user_id        = current_user.id,
                 avatar_id      = avatar_id,
@@ -575,7 +581,7 @@ def request_reel(avatar_id):
                 background_url = form.background_url.data if form.background_url.data else None,
                 resolution     = form.resolution.data,
                 user_notes     = form.user_notes.data,
-                status         = ReelRequestStatus.PENDING,
+                status         = ReelRequestStatus.DRAFT,  # Ahora se crea como borrador
                 config_data    = {
                     'requested_via': 'web_interface',
                     'user_agent'   : request.headers.get('User-Agent', 'Unknown')
@@ -586,14 +592,13 @@ def request_reel(avatar_id):
             db.session.commit()
             
             flash(
-                f'Tu solicitud de reel ha sido enviada a {avatar.producer.display_name}. '
-                f'Recibirás una notificación cuando sea revisada.',
+                f'Tu borrador de reel "{form.title.data}" ha sido guardado. '
+                f'Puedes editarlo y enviarlo al productor cuando estés listo.',
                 'success'
             )
             
-            # TODO: Enviar notificación al productor (email, push, etc.)
-            
-            return redirect(url_for('user.dashboard'))
+            # Redirigir a la lista de mis reels para que pueda gestionar
+            return redirect(url_for('user.my_reels'))
             
         except Exception as e:
             db.session.rollback()
@@ -689,26 +694,27 @@ def request_producer():
     return render_template('user/request_producer.html', 
                          approved=approved, existing=existing)
 
+# RUTA COMENTADA TEMPORALMENTE - USAR my_reels EN SU LUGAR
 # listar reels
-@user_bp.route('/reels')
-@login_required
-def reels():
-    """
-    Lista los reels visibles para el usuario actual.
-    - Admin: ve todos
-    - Producer/Subproducer: ve los creados por sí mismo
-    - Final user: ve los propios y los públicos
-    """
-    if current_user.is_admin():
-        reels = Reel.query.order_by(Reel.created_at.desc()).all()
-    elif current_user.is_producer() or current_user.is_subproducer():
-        reels = Reel.query.filter_by(creator_id=current_user.id).order_by(Reel.created_at.desc()).all()
-    else:
-        reels = Reel.query.filter(
-            (Reel.owner_id == current_user.id) | (Reel.is_public == True)
-        ).order_by(Reel.created_at.desc()).all()
-
-    return render_template('user/reels.html', reels=reels)
+# @user_bp.route('/reels')
+# @login_required
+# def reels():
+#     """
+#     Lista los reels visibles para el usuario actual.
+#     - Admin: ve todos
+#     - Producer/Subproducer: ve los creados por sí mismo
+#     - Final user: ve los propios y los públicos
+#     """
+#     if current_user.is_admin():
+#         reels = Reel.query.order_by(Reel.created_at.desc()).all()
+#     elif current_user.is_producer() or current_user.is_subproducer():
+#         reels = Reel.query.filter_by(creator_id=current_user.id).order_by(Reel.created_at.desc()).all()
+#     else:
+#         reels = Reel.query.filter(
+#             (Reel.owner_id == current_user.id) | (Reel.is_public == True)
+#         ).order_by(Reel.created_at.desc()).all()
+# 
+#     return render_template('user/reels.html', reels=reels)
 
 # crear reel
 @user_bp.route('/reels/create', methods=['GET', 'POST'])
@@ -718,8 +724,25 @@ def create_reel():
     Permite crear reels a todos los usuarios:
     - Admin/Producer/Subproducer: pueden crear con cualquier avatar
     - Usuario final: solo puede crear con avatares públicos
+
+    Methods:
+        GET  : Muestra el formulario de creación de reel
+        POST : Procesa la creación del reel
+    
+    Form Data (POST):
+        title (str)       : Título del reel (requerido)
+        script (str)      : Texto que dirá el avatar (requerido)
+        avatar_id (int)   : ID del avatar a usar (opcional)
+
+    Returns:
+        GET : Template 'user/reel_create.html' con formulario
+        POST: Redirección a lista de reels con mensaje de confirmación  
+    
+    Context Variables:
+        - avatars (list): Lista de avatares disponibles para selección
+        - selected_avatar_id (int): ID del avatar seleccionado (si aplica)
+            
     """
-    from app.models.avatar import Avatar  # <- asegurar import
     
     # Determinar qué avatares puede ver el usuario
     selected_avatar_id = request.args.get('avatar_id')
@@ -740,13 +763,17 @@ def create_reel():
         ]
 
     if request.method == 'POST':
-        title = request.form.get('title', '').strip()
-        script = request.form.get('script', '').strip()
+        title         = request.form.get('title', '').strip()
+        script        = request.form.get('script', '').strip()
         avatar_id_raw = request.form.get('avatar_id')  # '' si no eligen nada
 
         if not title or not script:
             flash('Título y guion son obligatorios.', 'error')
-            return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
+            return render_template('user/reel_create.html', 
+                                   title              = title, 
+                                   script             = script,
+                                   avatars            = avatars, 
+                                   selected_avatar_id = avatar_id_raw)
 
         # Si eligieron un avatar, validarlo y convertirlo a int
         avatar_id = None
@@ -755,22 +782,40 @@ def create_reel():
                 avatar = Avatar.query.get(int(avatar_id_raw))
                 if not avatar:
                     flash('El avatar seleccionado no existe.', 'error')
-                    return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
-                
+                    return render_template('user/reel_create.html', 
+                                           title              = title, 
+                                           script             = script, 
+                                           avatars            = avatars, 
+                                           selected_avatar_id = avatar_id_raw)
+
                 # Usuario final solo puede usar avatares públicos o premium aprobados
                 if not (current_user.is_admin() or current_user.is_producer() or current_user.is_subproducer()):
                     if avatar.access_type == AvatarAccessType.PREMIUM:
+                        
                         if not has_approved_avatar_permission(current_user, avatar):
                             flash('Necesitás la aprobación del productor para usar este avatar premium.', 'error')
-                            return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
+                            return render_template('user/reel_create.html', 
+                                                   title              = title, 
+                                                   script             = script, 
+                                                   avatars            = avatars, 
+                                                   selected_avatar_id = avatar_id_raw)
+                    
                     elif avatar.access_type != AvatarAccessType.PUBLIC:
                         flash('No tenés permiso para usar este avatar.', 'error')
-                        return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
-                
+                        return render_template('user/reel_create.html', 
+                                               title              = title, 
+                                               script             = script, 
+                                               avatars            = avatars, 
+                                               selected_avatar_id = avatar_id_raw)
+
                 avatar_id = avatar.id
             except ValueError:
                 flash('Avatar inválido.', 'error')
-                return render_template('user/reel_create.html', title=title, script=script, avatars=avatars, selected_avatar_id=avatar_id_raw)
+                return render_template('user/reel_create.html', 
+                                       title              = title, 
+                                       script             = script, 
+                                       avatars            = avatars, 
+                                       selected_avatar_id = avatar_id_raw)
 
         r = Reel(
             title       = title,
@@ -787,9 +832,11 @@ def create_reel():
         db.session.commit()
 
         flash('Reel creado correctamente.', 'success')
-        return redirect(url_for('user.reels'))
+        return redirect(url_for('user.my_reels'))
 
-    return render_template('user/reel_create.html', avatars=avatars, selected_avatar_id=selected_avatar_id)
+    return render_template('user/reel_create.html', 
+                           avatars            = avatars, 
+                           selected_avatar_id = selected_avatar_id)
 
 # ver reel
 @user_bp.route('/reels/<int:reel_id>')
@@ -800,9 +847,9 @@ def view_reel(reel_id):
     
     Arguments:
         reel_id (int): ID del reel a visualizar
+    
     Returns:
         Template con detalles del reel si tiene permiso de acceso
-    
     """
     from app.models.reel import Reel
 
@@ -826,6 +873,9 @@ def avatares():
     """
     Lista de avatares disponibles para usuarios finales.
     Muestra avatares públicos y premium con opción de solicitar permisos.
+
+    Returns:
+        Template: 'user/avatares.html' con lista de avatares y estado de permisos
     """
     # Query base: avatares activos que no sean privados
     query = Avatar.query.filter(
@@ -853,7 +903,9 @@ def avatares():
         db.session.refresh(avatar)  # Recarga meta_data desde BD
         permission_status[avatar.id] = get_user_permission_status(current_user, avatar)
 
-    return render_template('user/avatares.html', avatars=avatars, permission_status=permission_status)
+    return render_template('user/avatares.html', 
+                           avatars           = avatars, 
+                           permission_status = permission_status)
 
 @user_bp.route('/avatares/<int:avatar_id>/request-permission', methods=['POST'])
 @login_required
@@ -861,6 +913,16 @@ def request_avatar_permission(avatar_id):
     """
     Procesa la solicitud de permiso para usar un avatar premium.
     Guarda la solicitud en meta_data del avatar y notifica al productor.
+    
+    Methods:
+        POST : Procesa la solicitud de permiso
+    
+    Args:
+        avatar_id (int): ID del avatar premium para el cual se solicita permiso
+    
+    Returns:
+        Redirección a la lista de avatares con mensaje de confirmación
+    
     """
     avatar = Avatar.query.get_or_404(avatar_id)
     
@@ -880,10 +942,10 @@ def request_avatar_permission(avatar_id):
     request_entry = None
     for existing in permission_requests:
         if existing.get('user_id') == current_user.id and existing.get('status', 'pending') == 'pending':
-            existing['reason'] = reason
+            existing['reason']       = reason
             existing['requested_at'] = datetime.utcnow().isoformat()
-            existing['request_id'] = existing.get('request_id') or uuid4().hex
-            request_entry = existing
+            existing['request_id']   = existing.get('request_id') or uuid4().hex
+            request_entry            = existing
             break
 
     if not request_entry:
@@ -940,4 +1002,168 @@ def request_avatar_permission(avatar_id):
     
     flash(f'Solicitud enviada para el avatar "{avatar.name}". El productor será notificado.', 'success')
     return redirect(url_for('user.avatares'))
+
+
+# ============================================================================
+# GESTIÓN DE REELS DEL USUARIO
+# ============================================================================
+
+@user_bp.route('/my-reels')
+@login_required
+def my_reels():
+    """
+    Vista para gestionar los reels del usuario (borradores y enviados).
+    """
+    # Obtener todos los reel requests del usuario
+    reel_requests = ReelRequest.query.filter_by(user_id=current_user.id).order_by(ReelRequest.created_at.desc()).all()
+    
+    # Separar por estado
+    drafts = [r for r in reel_requests if r.status == ReelRequestStatus.DRAFT]
+    sent = [r for r in reel_requests if r.status != ReelRequestStatus.DRAFT]
+    
+    return render_template('user/my_reels.html', 
+                         drafts=drafts, 
+                         sent=sent,
+                         total_requests=len(reel_requests))
+
+
+@user_bp.route('/reel-request/<int:request_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_reel_request(request_id):
+    """
+    Edita una solicitud de reel en borrador.
+    """
+    reel_request = ReelRequest.query.get_or_404(request_id)
+    
+    # Verificar que es del usuario y que puede editarse
+    if reel_request.user_id != current_user.id:
+        flash('No tienes permisos para editar esta solicitud.', 'error')
+        return redirect(url_for('user.my_reels'))
+    
+    if not reel_request.can_be_edited():
+        flash('Esta solicitud ya no puede editarse.', 'warning')
+        return redirect(url_for('user.my_reels'))
+    
+    form = ReelRequestForm()
+    
+    if form.validate_on_submit():
+        try:
+            # Actualizar campos
+            reel_request.title = form.title.data
+            reel_request.script = form.script.data
+            reel_request.background_url = form.background_url.data if form.background_url.data else None
+            reel_request.resolution = form.resolution.data
+            reel_request.user_notes = form.user_notes.data
+            reel_request.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            
+            flash(f'Borrador "{reel_request.title}" actualizado.', 'success')
+            return redirect(url_for('user.my_reels'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar: {str(e)}', 'error')
+    
+    # Pre-llenar el formulario con datos existentes
+    if request.method == 'GET':
+        form.title.data = reel_request.title
+        form.script.data = reel_request.script
+        form.background_url.data = reel_request.background_url
+        form.resolution.data = reel_request.resolution
+        form.user_notes.data = reel_request.user_notes
+        form.avatar_id.data = reel_request.avatar_id
+    
+    return render_template('user/edit_reel_request.html', 
+                         form=form, 
+                         reel_request=reel_request,
+                         avatar=reel_request.avatar)
+
+
+@user_bp.route('/reel-request/<int:request_id>/delete', methods=['POST'])
+@login_required
+def delete_reel_request(request_id):
+    """
+    Elimina una solicitud de reel en borrador.
+    """
+    reel_request = ReelRequest.query.get_or_404(request_id)
+    
+    # Verificar permisos
+    if reel_request.user_id != current_user.id:
+        flash('No tienes permisos para eliminar esta solicitud.', 'error')
+        return redirect(url_for('user.my_reels'))
+    
+    if not reel_request.can_be_deleted():
+        flash('Esta solicitud ya no puede eliminarse.', 'warning')
+        return redirect(url_for('user.my_reels'))
+    
+    try:
+        title = reel_request.title
+        db.session.delete(reel_request)
+        db.session.commit()
+        
+        flash(f'Borrador "{title}" eliminado.', 'info')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar: {str(e)}', 'error')
+    
+    return redirect(url_for('user.my_reels'))
+
+
+@user_bp.route('/reel-request/<int:request_id>/send', methods=['POST'])
+@login_required
+def send_reel_request(request_id):
+    """
+    Envía una solicitud de reel al productor para su revisión.
+    """
+    reel_request = ReelRequest.query.get_or_404(request_id)
+    
+    # Verificar permisos
+    if reel_request.user_id != current_user.id:
+        flash('No tienes permisos para enviar esta solicitud.', 'error')
+        return redirect(url_for('user.my_reels'))
+    
+    if reel_request.status != ReelRequestStatus.DRAFT:
+        flash('Solo se pueden enviar borradores.', 'warning')
+        return redirect(url_for('user.my_reels'))
+    
+    try:
+        # Marcar como enviado
+        reel_request.send_to_producer(current_user)
+        db.session.commit()
+        
+        # Enviar email al productor
+        email_sent = False
+        try:
+            success = send_avatar_reel_request_notification(
+                producer=reel_request.producer,
+                reel_request=reel_request
+            )
+            if success:
+                email_sent = True
+            else:
+                logger.warning(f"Error enviando email de solicitud de reel a {reel_request.producer.user.email}")
+        except Exception as e:
+            logger.error(f"Excepción enviando email de solicitud de reel: {str(e)}")
+        
+        # Mensaje de éxito con información del email
+        if email_sent:
+            flash(
+                f'Solicitud "{reel_request.title}" enviada a {reel_request.producer.company_name}. '
+                f'Recibirás una notificación cuando sea revisada.',
+                'success'
+            )
+        else:
+            flash(
+                f'Solicitud "{reel_request.title}" enviada a {reel_request.producer.company_name}. '
+                f'La solicitud fue guardada pero no se pudo enviar la notificación por email.',
+                'warning'
+            )
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al enviar la solicitud: {str(e)}', 'error')
+    
+    return redirect(url_for('user.my_reels'))
 

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de Reel Revisada</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            margin: -30px -30px 20px -30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+        .alert-warning {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #721c24;
+        }
+        .producer-notes {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #dc3545;
+        }
+        .producer-notes h4 {
+            margin-top: 0;
+            color: #333;
+        }
+        .producer-message {
+            background: #fff;
+            border-radius: 4px;
+            padding: 15px;
+            color: #555;
+            font-style: italic;
+            border: 1px solid #dee2e6;
+        }
+        .tips {
+            background-color: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #0c5460;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .button:hover {
+            opacity: 0.9;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .reel-details {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .reel-details dt {
+            font-weight: bold;
+            color: #495057;
+        }
+        .reel-details dd {
+            margin-bottom: 8px;
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Solicitud Revisada</h1>
+            <p>Información importante sobre tu solicitud</p>
+        </div>
+        
+        <h2>Hola {{ user.full_name }},</h2>
+        
+        <p>Tu solicitud de reel "<strong>{{ reel_request.title }}</strong>" ha sido revisada por {{ producer.display_name }}.</p>
+        
+        <div class="alert-warning">
+            <h3 style="margin-top: 0;">❌ Solicitud no aprobada</h3>
+            <p style="margin: 0;">
+                Lamentablemente, tu solicitud no fue aprobada en esta ocasión.
+            </p>
+        </div>
+        
+        <div class="producer-notes">
+            <h4>💬 Comentarios del Productor:</h4>
+            <div class="producer-message">
+                "{{ producer_notes }}"
+            </div>
+        </div>
+        
+        <div class="reel-details">
+            <h3>📋 Detalles de la Solicitud</h3>
+            <dl>
+                <dt>Avatar Solicitado:</dt>
+                <dd>{{ reel_request.avatar.name }}</dd>
+                <dt>Resolución:</dt>
+                <dd>{{ reel_request.resolution }}</dd>
+                <dt>Fecha de Solicitud:</dt>
+                <dd>{{ reel_request.created_at.strftime('%d/%m/%Y a las %H:%M') }}</dd>
+                <dt>Fecha de Revisión:</dt>
+                <dd>{{ reel_request.updated_at.strftime('%d/%m/%Y a las %H:%M') }}</dd>
+            </dl>
+        </div>
+        
+        <div class="tips">
+            <h4 style="margin-top: 0;">💡 ¿Qué puedes hacer ahora?</h4>
+            <ul style="margin: 0; padding-left: 20px;">
+                <li>Revisa los comentarios del productor cuidadosamente</li>
+                <li>Ajusta tu solicitud según las sugerencias recibidas</li>
+                <li>Puedes crear una nueva solicitud cuando estés listo</li>
+                <li>Contacta al productor si tienes dudas específicas</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{ avatars_url }}" class="button">
+                🎬 Crear Nueva Solicitud
+            </a>
+        </div>
+        
+        <div style="text-align: center; margin: 10px 0;">
+            <a href="{{ dashboard_url }}" style="color: #666; text-decoration: none;">
+                Ver Dashboard
+            </a>
+        </div>
+        
+        <div class="footer">
+            <p>Este email fue enviado automáticamente por {{ app_name }}</p>
+            <p>No responder a este email</p>
+        </div>
+    </div>
+</body>
+</html>

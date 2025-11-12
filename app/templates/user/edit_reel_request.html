@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Reel - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">✏️ Editar Reel</h1>
+                    <small class="text-muted">Modifica tu borrador antes de enviarlo al productor</small>
+                </div>
+                <a href="{{ url_for('user.my_reels') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+
+            <!-- Información del avatar -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            {% if reel_request.avatar.avatar_url %}
+                                <img src="{{ reel_request.avatar.avatar_url }}" 
+                                     alt="{{ reel_request.avatar.name }}" 
+                                     class="img-fluid rounded-circle"
+                                     style="width: 80px; height: 80px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 80px; height: 80px;">
+                                    <i class="fas fa-user fa-2x text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h5 class="mb-1">{{ reel_request.avatar.name }}</h5>
+                            <p class="text-muted mb-1">
+                                <i class="fas fa-building"></i> 
+                                {{ reel_request.producer.display_name }}
+                            </p>
+                            <small class="text-muted">
+                                Creado el: {{ reel_request.created_at.strftime('%d/%m/%Y a las %H:%M') }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario de edición -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Título -->
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {{ form.title(class="form-control") }}
+                            {% if form.title.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.title.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Un título descriptivo para tu reel</div>
+                        </div>
+
+                        <!-- Script -->
+                        <div class="mb-3">
+                            {{ form.script.label(class="form-label") }}
+                            {{ form.script(class="form-control", rows="6") }}
+                            {% if form.script.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.script.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                El texto que dirá el avatar. Escribe de forma natural y clara.
+                            </div>
+                        </div>
+
+                        <!-- Resolución -->
+                        <div class="mb-3">
+                            {{ form.resolution.label(class="form-label") }}
+                            {{ form.resolution(class="form-select") }}
+                            {% if form.resolution.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.resolution.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Calidad del video final</div>
+                        </div>
+
+                        <!-- URL de fondo -->
+                        <div class="mb-3">
+                            {{ form.background_url.label(class="form-label") }}
+                            {{ form.background_url(class="form-control") }}
+                            {% if form.background_url.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.background_url.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                URL de una imagen de fondo (opcional). Debe ser una URL pública.
+                            </div>
+                        </div>
+
+                        <!-- Notas para el productor -->
+                        <div class="mb-4">
+                            {{ form.user_notes.label(class="form-label") }}
+                            {{ form.user_notes(class="form-control", rows="3") }}
+                            {% if form.user_notes.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.user_notes.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Comentarios adicionales o instrucciones especiales para el productor (opcional)
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('user.my_reels') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <div>
+                                <button type="submit" class="btn btn-success me-2">
+                                    <i class="fas fa-save"></i> Guardar Cambios
+                                </button>
+                                <a href="{{ url_for('user.my_reels') }}" class="btn btn-primary" 
+                                   onclick="return confirm('¿Quieres guardar los cambios primero?')">
+                                    <i class="fas fa-paper-plane"></i> Guardar y Enviar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="card border-0 shadow-sm mt-4 bg-light">
+                <div class="card-body">
+                    <h6 class="mb-3">💡 Consejos para tu reel</h6>
+                    <ul class="small text-muted mb-0">
+                        <li>Escribe el script de forma natural, como si fueras a hablarlo</li>
+                        <li>Evita palabras técnicas complejas o nombres difíciles de pronunciar</li>
+                        <li>El avatar hablará en el idioma que hayas configurado</li>
+                        <li>Puedes usar puntuación para controlar las pausas</li>
+                        <li>Una vez enviado al productor, no podrás editar la solicitud</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Contador de caracteres para el script
+    const scriptTextarea = document.querySelector('#script');
+    if (scriptTextarea) {
+        const maxLength = 1000; // Ajusta según tus necesidades
+        const counterDiv = document.createElement('div');
+        counterDiv.className = 'form-text text-end';
+        scriptTextarea.parentNode.appendChild(counterDiv);
+        
+        function updateCounter() {
+            const remaining = maxLength - scriptTextarea.value.length;
+            counterDiv.textContent = `${scriptTextarea.value.length}/${maxLength} caracteres`;
+            counterDiv.className = remaining < 100 ? 'form-text text-end text-warning' : 'form-text text-end';
+        }
+        
+        scriptTextarea.addEventListener('input', updateCounter);
+        updateCounter();
+    }
+
+    // Validación del formulario
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const title = document.querySelector('#title').value.trim();
+        const script = document.querySelector('#script').value.trim();
+        
+        if (!title || !script) {
+            e.preventDefault();
+            alert('Por favor completa al menos el título y el script.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de Reel Aprobada</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            margin: -30px -30px 20px -30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #155724;
+        }
+        .producer-notes {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }
+        .reel-details {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .reel-details dt {
+            font-weight: bold;
+            color: #495057;
+        }
+        .reel-details dd {
+            margin-bottom: 8px;
+            margin-left: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .button:hover {
+            opacity: 0.9;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .tips {
+            background-color: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ ¡Solicitud Aprobada!</h1>
+            <p>Tu reel está en proceso</p>
+        </div>
+        
+        <h2>¡Excelentes noticias, {{ user.full_name }}!</h2>
+        
+        <p>Tu solicitud de reel "<strong>{{ reel_request.title }}</strong>" ha sido <strong>aprobada</strong> por {{ producer.display_name }}.</p>
+        
+        <div class="alert-success">
+            <h3 style="margin-top: 0;">🎬 Tu reel está en proceso</h3>
+            <p style="margin: 0;">
+                Hemos comenzado a crear tu reel con el avatar <strong>{{ reel_request.avatar.name }}</strong>. 
+                Recibirás otra notificación cuando esté listo para descargar.
+            </p>
+        </div>
+        
+        {% if producer_notes %}
+        <div class="producer-notes">
+            <h3 style="margin-top: 0;">💬 Mensaje del Productor:</h3>
+            <p style="margin: 0; font-style: italic;">"{{ producer_notes }}"</p>
+        </div>
+        {% endif %}
+        
+        <div class="reel-details">
+            <h3>📋 Detalles del Reel</h3>
+            <dl>
+                <dt>Avatar:</dt>
+                <dd>{{ reel_request.avatar.name }}</dd>
+                <dt>Resolución:</dt>
+                <dd>{{ reel_request.resolution }}</dd>
+                <dt>Productor:</dt>
+                <dd>{{ producer.display_name }}</dd>
+                <dt>Fecha de Aprobación:</dt>
+                <dd>{{ reel_request.updated_at.strftime('%d/%m/%Y a las %H:%M') }}</dd>
+            </dl>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{ dashboard_url }}" class="button">
+                🎯 Ver en Mi Dashboard
+            </a>
+        </div>
+        
+        <div class="tips">
+            <h4 style="margin-top: 0;">💡 ¿Qué sigue ahora?</h4>
+            <ul style="margin: 0; padding-left: 20px;">
+                <li>El reel se está creando automáticamente</li>
+                <li>Recibirás un email cuando esté listo</li>
+                <li>Podrás descargarlo desde tu dashboard</li>
+                <li>El proceso puede tomar unos minutos</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p>Este email fue enviado automáticamente por {{ app_name }}</p>
+            <p>No responder a este email</p>
+        </div>
+    </div>
+</body>
+</html>

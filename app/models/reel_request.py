@@ -34,11 +34,13 @@ class ReelRequestStatus(Enum):
     Enumeración que define los estados posibles de una solicitud de reel.
     
     Estados disponibles:
+        DRAFT    : Borrador creado por usuario, aún no enviado
         PENDING  : Solicitud creada, pendiente de revisión del productor
         APPROVED : Solicitud aprobada, reel será/fue creado
         REJECTED : Solicitud rechazada por el productor
         EXPIRED  : Solicitud expirada sin respuesta
     """
+    DRAFT    = "draft"     # Borrador no enviado aún
     PENDING  = "pending"   # Solicitud pendiente de revisión
     APPROVED = "approved"  # Solicitud aprobada por productor
     REJECTED = "rejected"  # Solicitud rechazada por productor
@@ -115,7 +117,7 @@ class ReelRequest(db.Model):
     user_notes  = db.Column(db.Text)
     
     # Estado y gestión
-    status      = db.Column(db.Enum(ReelRequestStatus), default=ReelRequestStatus.PENDING, nullable=False)
+    status      = db.Column(db.Enum(ReelRequestStatus), default=ReelRequestStatus.DRAFT, nullable=False)
     created_at  = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at  = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -162,7 +164,7 @@ class ReelRequest(db.Model):
             script           = self.script,
             background_url   = self.background_url,
             resolution       = self.resolution,
-            config_data      = self.config_data,
+            meta_data        = self.config_data,
             status           = ReelStatus.PENDING,
             created_at       = datetime.utcnow()
         )
@@ -243,11 +245,41 @@ class ReelRequest(db.Model):
     def status_badge_class(self):
         """Clase CSS para el badge de estado."""
         return {
+            ReelRequestStatus.DRAFT: 'secondary',
             ReelRequestStatus.PENDING: 'warning',
             ReelRequestStatus.APPROVED: 'success',
             ReelRequestStatus.REJECTED: 'danger',
             ReelRequestStatus.EXPIRED: 'secondary'
         }.get(self.status, 'secondary')
+    
+    def send_to_producer(self, user):
+        """
+        Envía el borrador al productor para su revisión.
+        
+        Args:
+            user (User): Usuario que envía la solicitud
+        """
+        if self.status != ReelRequestStatus.DRAFT:
+            raise ValueError("Solo se pueden enviar borradores")
+        
+        self.status = ReelRequestStatus.PENDING
+        self.sent_at = datetime.utcnow()
+        
+        # La notificación por email se manejará en la ruta
+    
+    def can_be_edited(self):
+        """
+        Determina si la solicitud puede ser editada.
+        Solo se pueden editar borradores.
+        """
+        return self.status == ReelRequestStatus.DRAFT
+    
+    def can_be_deleted(self):
+        """
+        Determina si la solicitud puede ser eliminada.
+        Solo se pueden eliminar borradores.
+        """
+        return self.status == ReelRequestStatus.DRAFT
     
     def __repr__(self):
         return f'<ReelRequest {self.id}: {self.title} by {self.requestor_name} ({self.status.value})>'

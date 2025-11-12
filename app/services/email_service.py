@@ -404,6 +404,39 @@ def send_stripe_connect_setup_notification(user_email: str, user_name: str,
         }
     )
 
+
+def send_reel_permission_request_notification(producer_email: str, 
+                                             producer_name: str,
+                                             user_email: str,
+                                             user_name: str,
+                                             reel_title: str) -> bool:
+    """
+    Notifica a un productor sobre una solicitud de permiso para usar un reel.
+    
+    Args:
+        producer_email (str) : Email del productor
+        producer_name (str)  : Nombre del productor
+        user_email (str)     : Email del usuario que solicita el permiso
+        user_name (str)      : Nombre del usuario que solicita el permiso
+        reel_title (str)     : Título del reel solicitado
+    
+    Returns:
+        bool: True si se envió correctamente
+    """
+    return send_template_email(
+        template_name = "reel_permission_request",
+        subject       = f"📽️ Solicitud de Permiso para el Reel '{reel_title}'",
+        recipients    = [producer_email],
+        template_vars = {
+            "producer_name" : producer_name,
+            "user_name"     : user_name,
+            "reel_title"   : reel_title,
+            "approve_link"  : f"{current_app.config['FRONTEND_URL']}/approve-reel/{reel_title}",
+            "deny_link"     : f"{current_app.config['FRONTEND_URL']}/deny-reel/{reel_title}"
+        }
+    )
+
+
 # ============================================================================
 # EMAILS ADMINISTRATIVOS
 # ============================================================================
@@ -518,6 +551,218 @@ def test_email_connection() -> bool:
         return False
 
 # ============================================================================
+# EMAILS ESPECÍFICOS DE FLUJO DE TRABAJO DE REELS
+# ============================================================================
+
+def send_avatar_reel_request_notification(producer, reel_request):
+    """
+    Notifica a un productor sobre una nueva solicitud de reel para su avatar.
+    
+    Args:
+        producer (Producer): Objeto productor propietario del avatar
+        reel_request (ReelRequest): Objeto de solicitud de reel
+    
+    Returns:
+        bool: True si se envió correctamente
+    """
+    try:
+        # Obtener información necesaria
+        user = reel_request.user
+        
+        # Construir URL para gestionar la solicitud
+        dashboard_url = f"{current_app.config.get('FRONTEND_URL', 'http://localhost:5000')}/producer/dashboard"
+        
+        # Crear el contenido del email usando template
+        subject = f"🎬 Nueva solicitud de reel: {reel_request.title}"
+        
+        # Renderizar template HTML
+        html_content = render_template('emails/reel_request_notification.html',
+                                     producer      = producer,
+                                     user          = user,
+                                     reel_request  = reel_request,
+                                     dashboard_url = dashboard_url,
+                                     app_name      = current_app.config.get('APP_NAME', 'Gem-AvatART'))
+        
+        # Contenido de texto plano
+        text_content = f"""
+Nueva Solicitud de Reel - Gem-AvatART
+
+¡Hola {producer.company_name}!
+
+Has recibido una nueva solicitud de reel que requiere tu aprobación.
+
+⏰ ACCIÓN REQUERIDA: Un usuario solicita crear un reel con uno de tus avatares.
+
+👤 INFORMACIÓN DEL SOLICITANTE:
+- Nombre: {user.full_name}
+- Email: {user.email}
+{f'- Teléfono: {user.phone}' if user.phone else ''}
+
+🎥 DETALLES DE LA SOLICITUD:
+- Título: {reel_request.title}
+- Avatar: {reel_request.avatar.name}
+- Resolución: {reel_request.resolution}
+- Solicitado: {reel_request.created_at.strftime('%d/%m/%Y a las %H:%M')}
+
+{f'📝 NOTAS DEL USUARIO: "{reel_request.user_notes}"' if reel_request.user_notes else ''}
+
+Revisa y aprueba desde tu dashboard:
+{dashboard_url}
+
+💡 RECORDATORIO: Puedes aprobar o rechazar esta solicitud desde tu panel de productor.
+
+---
+Este email fue enviado automáticamente por Gem-AvatART
+        """
+        
+        # Enviar el email
+        return send_email(
+            subject    = subject,
+            recipients = [producer.user.email],
+            body       = text_content,
+            html       = html_content
+        )
+        
+    except Exception as e:
+        logger.error(f"Error enviando notificación de solicitud de reel: {str(e)}")
+        return False
+
+
+def send_reel_request_approved_notification(user, reel_request, producer_notes=None):
+    """
+    Notifica al usuario que su solicitud de reel fue aprobada y el reel se está creando.
+    
+    Args:
+        user (User): Usuario que solicitó el reel
+        reel_request (ReelRequest): Objeto de solicitud aprobada
+        producer_notes (str): Notas del productor (opcional)
+    
+    Returns:
+        bool: True si se envió correctamente
+    """
+    try:
+        producer = reel_request.producer
+        
+        subject = f"✅ Solicitud aprobada: {reel_request.title}"
+        
+        # URLs
+        dashboard_url = f"{current_app.config.get('FRONTEND_URL', 'http://localhost:5000')}/user/dashboard"
+        
+        # Renderizar template HTML
+        html_content = render_template('emails/reel_request_approved.html',
+                                     user         = user,
+                                     reel_request = reel_request,
+                                     producer     = producer,
+                                     producer_notes = producer_notes,
+                                     dashboard_url  = dashboard_url,
+                                     app_name       = current_app.config.get('APP_NAME', 'Gem-AvatART'))
+        
+        text_content = f"""
+¡Solicitud Aprobada! - Gem-AvatART
+
+¡Excelentes noticias, {user.full_name}!
+
+Tu solicitud de reel "{reel_request.title}" ha sido APROBADA por {producer.company_name}.
+
+🎬 TU REEL ESTÁ EN PROCESO
+Tu reel con el avatar {reel_request.avatar.name} está siendo creado. 
+Recibirás otra notificación cuando esté listo para descargar.
+
+{f'💬 MENSAJE DEL PRODUCTOR: "{producer_notes}"' if producer_notes else ''}
+
+📋 DETALLES DEL REEL:
+- Avatar: {reel_request.avatar.name}
+- Resolución: {reel_request.resolution}
+- Productor: {producer.company_name}
+
+Ve a tu dashboard para seguir el progreso:
+{dashboard_url}
+
+---
+Este email fue enviado automáticamente por Gem-AvatART
+        """
+        
+        return send_email(
+            subject    = subject,
+            recipients = [user.email],
+            body       = text_content,
+            html       = html_content
+        )
+        
+    except Exception as e:
+        logger.error(f"Error enviando notificación de aprobación de reel: {str(e)}")
+        return False
+
+def send_reel_request_rejected_notification(user, reel_request, producer_notes):
+    """
+    Notifica al usuario que su solicitud de reel fue rechazada.
+    
+    Args:
+        user (User): Usuario que solicitó el reel
+        reel_request (ReelRequest): Objeto de solicitud rechazada
+        producer_notes (str): Razón del rechazo
+    
+    Returns:
+        bool: True si se envió correctamente
+    """
+    try:
+        producer = reel_request.producer
+        
+        subject = f"❌ Solicitud no aprobada: {reel_request.title}"
+        
+        # URLs
+        dashboard_url = f"{current_app.config.get('FRONTEND_URL', 'http://localhost:5000')}/user/dashboard"
+        avatars_url = f"{current_app.config.get('FRONTEND_URL', 'http://localhost:5000')}/user/avatars"
+        
+        # Renderizar template HTML
+        html_content = render_template('emails/reel_request_rejected.html',
+                                     user           = user,
+                                     reel_request   = reel_request,
+                                     producer       = producer,
+                                     producer_notes = producer_notes,
+                                     dashboard_url  = dashboard_url,
+                                     avatars_url    = avatars_url,
+                                     app_name       = current_app.config.get('APP_NAME', 'Gem-AvatART'))
+        
+        text_content = f"""
+Solicitud Revisada - Gem-AvatART
+
+Hola {user.full_name},
+
+Tu solicitud de reel "{reel_request.title}" ha sido revisada por {producer.company_name}.
+
+❌ SOLICITUD NO APROBADA
+Lamentablemente, tu solicitud no fue aprobada en esta ocasión.
+
+💬 COMENTARIOS DEL PRODUCTOR:
+"{producer_notes}"
+
+💡 ¿QUÉ PUEDES HACER AHORA?
+- Revisa los comentarios del productor
+- Ajusta tu solicitud según las sugerencias  
+- Puedes crear una nueva solicitud cuando estés listo
+- Contacta al productor si tienes dudas
+
+Crear nueva solicitud:
+{avatars_url}
+
+---
+Este email fue enviado automáticamente por Gem-AvatART
+        """
+        
+        return send_email(
+            subject    = subject,
+            recipients = [user.email],
+            body       = text_content,
+            html       = html_content
+        )
+        
+    except Exception as e:
+        logger.error(f"Error enviando notificación de rechazo de reel: {str(e)}")
+        return False
+    
+
+# ============================================================================
 # FUNCIONES PARA IMPLEMENTACIÓN FUTURA
 # ============================================================================
 
@@ -603,3 +848,5 @@ def get_email_analytics(start_date: datetime, end_date: datetime) -> Dict[str, A
         'open_rate': 0.0,  # Requiere tracking pixels
         'click_rate': 0.0  # Requiere tracking links
     }
+
+
