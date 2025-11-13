@@ -1056,6 +1056,11 @@ def edit_reel_request(request_id):
             reel_request.user_notes = form.user_notes.data
             reel_request.updated_at = datetime.utcnow()
             
+            # Si era rechazado, volver a borrador para que pueda enviarse nuevamente
+            if reel_request.status == ReelRequestStatus.REJECTED:
+                reel_request.status = ReelRequestStatus.DRAFT
+                reel_request.producer_notes = None  # Limpiar notas del productor
+            
             db.session.commit()
             
             flash(f'Borrador "{reel_request.title}" actualizado.', 'success')

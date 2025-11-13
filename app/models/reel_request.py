@@ -270,9 +270,9 @@ class ReelRequest(db.Model):
     def can_be_edited(self):
         """
         Determina si la solicitud puede ser editada.
-        Solo se pueden editar borradores.
+        Se pueden editar borradores y reels rechazados.
         """
-        return self.status == ReelRequestStatus.DRAFT
+        return self.status in [ReelRequestStatus.DRAFT, ReelRequestStatus.REJECTED]
     
     def can_be_deleted(self):
         """
