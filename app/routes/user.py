@@ -106,30 +106,33 @@ class ReelRequestForm(FlaskForm):
     que el productor pueda revisar y aprobar la solicitud.
     
     Attributes:
-        avatar_id (HiddenField)     : ID del avatar a usar (oculto)
-        title (StringField)         : Título del reel (3-200 caracteres)
-        script (TextAreaField)      : Texto que dirá el avatar (requerido)
-        background_url (StringField): URL del fondo personalizado (opcional)
-        resolution (SelectField)   : Resolución del video
-        user_notes (TextAreaField)  : Notas para el productor (opcional)
-        submit (SubmitField)        : Botón de envío de solicitud
+        avatar_id (HiddenField)       : ID del avatar a usar (oculto)
+        title (StringField)           : Título del reel (3-200 caracteres)
+        script (TextAreaField)        : Texto que dirá el avatar (requerido)
+        background_url (StringField)  : URL del fondo personalizado (opcional)
+        background_image (FileField)  : Imagen de fondo para subir (opcional)
+        resolution (SelectField)      : Resolución del video
+        user_notes (TextAreaField)    : Notas para el productor (opcional)
+        submit (SubmitField)          : Botón de envío de solicitud
     
     Note:
         - La solicitud requiere aprobación del productor propietario del avatar
         - Todos los campos son validados antes de crear la solicitud
         - El avatar_id se pasa como parámetro oculto desde la vista
+        - El usuario puede proporcionar URL de fondo O subir una imagen (no ambos)
     """
     
-    avatar_id      = HiddenField('Avatar ID', validators=[DataRequired()])
-    title          = StringField('Título del Reel', validators=[DataRequired(), Length(min=3, max=200)])
-    script         = TextAreaField('Script (Texto que dirá el avatar)', validators=[DataRequired(), Length(min=10, max=2000)])
-    background_url = StringField('URL del Fondo (opcional)', validators=[Optional(), Length(max=500)])
-    resolution     = SelectField('Resolución', choices=[
+    avatar_id        = HiddenField('Avatar ID', validators=[DataRequired()])
+    title            = StringField('Título del Reel', validators=[DataRequired(), Length(min=3, max=200)])
+    script           = TextAreaField('Script (Texto que dirá el avatar)', validators=[DataRequired(), Length(min=10, max=2000)])
+    background_url   = StringField('URL del Fondo', validators=[Optional(), Length(max=500)])
+    background_image = FileField('Subir Imagen de Fondo', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'webp'], 'Solo imágenes (JPG, PNG, WEBP)')])
+    resolution       = SelectField('Resolución', choices=[
         ('720p', '720p (HD)'),
         ('1080p', '1080p (Full HD)'),
         ('4K', '4K (Ultra HD)')
     ], default='1080p')
-    user_notes     = TextAreaField('Notas para el Productor (opcional)', validators=[Optional(), Length(max=500)])
+    user_notes       = TextAreaField('Notas para el Productor (opcional)', validators=[Optional(), Length(max=500)])
     
     submit = SubmitField('Solicitar Reel')
 
@@ -571,6 +574,31 @@ def request_reel(avatar_id):
         #     return redirect(url_for('user.avatars'))
         
         try:
+            # Procesar imagen de fondo (archivo subido tiene prioridad sobre URL)
+            background_url = None
+            if form.background_image.data:
+                # Procesar archivo subido
+                file = form.background_image.data
+                if file and file.filename:
+                    # Generar nombre único para el archivo
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    unique_filename = f"{timestamp}_{filename}"
+                    
+                    # Crear directorio si no existe
+                    backgrounds_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'backgrounds')
+                    os.makedirs(backgrounds_dir, exist_ok=True)
+                    
+                    # Guardar archivo
+                    file_path = os.path.join(backgrounds_dir, unique_filename)
+                    file.save(file_path)
+                    
+                    # Generar URL pública
+                    background_url = url_for('static', filename=f'uploads/backgrounds/{unique_filename}', _external=True)
+            elif form.background_url.data:
+                # Usar URL proporcionada si no se subió archivo
+                background_url = form.background_url.data
+            
             # Crear la solicitud de reel como borrador
             reel_request       = ReelRequest(
                 user_id        = current_user.id,
@@ -578,7 +606,7 @@ def request_reel(avatar_id):
                 producer_id    = avatar.producer.id,
                 title          = form.title.data,
                 script         = form.script.data,
-                background_url = form.background_url.data if form.background_url.data else None,
+                background_url = background_url,
                 resolution     = form.resolution.data,
                 user_notes     = form.user_notes.data,
                 status         = ReelRequestStatus.DRAFT,  # Ahora se crea como borrador
@@ -1048,10 +1076,35 @@ def edit_reel_request(request_id):
     
     if form.validate_on_submit():
         try:
+            # Procesar imagen de fondo (archivo subido tiene prioridad sobre URL)
+            background_url = reel_request.background_url  # Mantener URL actual si no se proporciona nueva
+            if form.background_image.data:
+                # Procesar archivo subido
+                file = form.background_image.data
+                if file and file.filename:
+                    # Generar nombre único para el archivo
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    unique_filename = f"{timestamp}_{filename}"
+                    
+                    # Crear directorio si no existe
+                    backgrounds_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'backgrounds')
+                    os.makedirs(backgrounds_dir, exist_ok=True)
+                    
+                    # Guardar archivo
+                    file_path = os.path.join(backgrounds_dir, unique_filename)
+                    file.save(file_path)
+                    
+                    # Generar URL pública
+                    background_url = url_for('static', filename=f'uploads/backgrounds/{unique_filename}', _external=True)
+            elif form.background_url.data:
+                # Usar URL proporcionada si no se subió archivo
+                background_url = form.background_url.data
+            
             # Actualizar campos
             reel_request.title = form.title.data
             reel_request.script = form.script.data
-            reel_request.background_url = form.background_url.data if form.background_url.data else None
+            reel_request.background_url = background_url
             reel_request.resolution = form.resolution.data
             reel_request.user_notes = form.user_notes.data
             reel_request.updated_at = datetime.utcnow()
