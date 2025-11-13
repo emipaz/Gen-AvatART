@@ -27,7 +27,7 @@ Dependencias:
     - app.config: Para configuración SMTP
 """
 
-from flask import current_app, render_template
+from flask import current_app, render_template, url_for
 from flask_mail import Message
 from app import mail
 import logging
@@ -645,8 +645,8 @@ def send_reel_request_approved_notification(user, reel_request, producer_notes=N
         
         subject = f"✅ Solicitud aprobada: {reel_request.title}"
         
-        # URLs
-        dashboard_url = f"{current_app.config.get('FRONTEND_URL', 'http://localhost:5000')}/user/dashboard"
+        # URLs - Redirigir a Mis Reels donde puede ver el reel aprobado
+        dashboard_url = url_for('user.my_reels', _external=True)
         
         # Renderizar template HTML
         html_content = render_template('emails/reel_request_approved.html',
