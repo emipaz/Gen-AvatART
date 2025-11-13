@@ -86,9 +86,26 @@ def create_app(config_name='default'):
     # Cargar configuración
     app.config.from_object(config_dict[config_name])
 
-    # Mostrar tracebacks en consola cuando está en DEBUG
+    # Configurar logging para desarrollo
     if app.config.get("DEBUG", False):
         app.config["PROPAGATE_EXCEPTIONS"] = True
+        
+        # Filtrar logs molestan de conexiones malformadas (bots, crawlers)
+        import logging
+        werkzeug_logger = logging.getLogger('werkzeug')
+        
+        class NoSSLFilter(logging.Filter):
+            def filter(self, record):
+                # Filtrar errores 400 con datos binarios (intentos SSL en puerto HTTP)
+                if hasattr(record, 'msg'):
+                    msg = str(record.msg)
+                    if 'code 400, message Bad request version' in msg:
+                        return False
+                    if '\\x16\\x03\\x01' in msg:  # SSL handshake signature
+                        return False
+                return True
+        
+        werkzeug_logger.addFilter(NoSSLFilter())
     
     # Inicializar extensiones con la app
     db.init_app(app)             # Configurar SQLAlchemy con la app
@@ -148,6 +165,16 @@ def create_app(config_name='default'):
     app.register_blueprint(user_bp, url_prefix='/user')               # /user/*   
     
     # Handlers de errores
+    @app.errorhandler(400)
+    def bad_request_error(error):
+        """
+        Manejador personalizado para errores 400 (Bad Request).
+        
+        Se ejecuta cuando se reciben datos malformados (bots, crawlers SSL, etc.).
+        Retorna respuesta simple sin renderizar template para evitar errores adicionales.
+        """
+        return "Bad Request", 400
+        
     @app.errorhandler(404)
     def not_found_error(error):
         """

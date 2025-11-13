@@ -1,0 +1,57 @@
+{# Perfil de miembro del equipo - subproductor o usuario final #}
+{% extends 'base.html' %}
+{% block title %}Perfil de {{ member.first_name }} {{ member.last_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Perfil de {{ member.first_name }} {{ member.last_name }}</h2>
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <img src="{{ member.avatar_url or url_for('static', filename='img/default-avatar.png') }}" class="rounded-circle mb-2" width="120" height="120" alt="Avatar">
+                    <h4>{{ member.first_name }} {{ member.last_name }}</h4>
+                    <p class="text-muted">@{{ member.username }}</p>
+                    <span class="badge bg-{{ 'success' if member.status.value == 'active' else 'danger' }}">
+                        {{ member.status.value.title() }}
+                    </span>
+                    <p class="mt-2"><strong>Rol:</strong> {{ member.role.value.title().replace('_', ' ') }}</p>
+                    <p><strong>Email:</strong> {{ member.email }}</p>
+                    <p><strong>Teléfono:</strong> {{ member.phone or '-' }}</p>
+                    <p><strong>País:</strong> {{ member.country or '-' }}</p>
+                    <p><strong>Ciudad:</strong> {{ member.city or '-' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header">Estadísticas</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><strong>Reels totales:</strong> {{ member_stats.total_reels }}</li>
+                        <li class="list-group-item"><strong>Fecha de ingreso:</strong> {{ member_stats.join_date.strftime('%d/%m/%Y') if member_stats.join_date else '-' }}</li>
+                        <li class="list-group-item"><strong>Última actividad:</strong> {{ member_stats.last_activity.strftime('%d/%m/%Y %H:%M') if member_stats.last_activity else '-' }}</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">Actividad Reciente</div>
+                <div class="card-body">
+                    {% if recent_activity %}
+                        <ul class="list-group list-group-flush">
+                            {% for reel in recent_activity %}
+                                <li class="list-group-item">
+                                    <strong>{{ reel.title or 'Reel #' ~ reel.id }}</strong> - {{ reel.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">Sin actividad reciente.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <a href="{{ url_for('producer.team') }}" class="btn btn-secondary mt-3">Volver al equipo</a>
+</div>
+{% endblock %}

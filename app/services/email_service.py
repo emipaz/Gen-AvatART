@@ -580,7 +580,7 @@ def send_avatar_reel_request_notification(producer, reel_request):
                                      producer      = producer,
                                      user          = user,
                                      reel_request  = reel_request,
-                                     dashboard_url = dashboard_url,
+                                     frontend_url  = current_app.config.get('FRONTEND_URL', 'http://localhost:5000'),
                                      app_name      = current_app.config.get('APP_NAME', 'Gem-AvatART'))
         
         # Contenido de texto plano
@@ -654,7 +654,7 @@ def send_reel_request_approved_notification(user, reel_request, producer_notes=N
                                      reel_request = reel_request,
                                      producer     = producer,
                                      producer_notes = producer_notes,
-                                     dashboard_url  = dashboard_url,
+                                     frontend_url   = current_app.config.get('FRONTEND_URL', 'http://localhost:5000'),
                                      app_name       = current_app.config.get('APP_NAME', 'Gem-AvatART'))
         
         text_content = f"""
@@ -720,8 +720,7 @@ def send_reel_request_rejected_notification(user, reel_request, producer_notes):
                                      reel_request   = reel_request,
                                      producer       = producer,
                                      producer_notes = producer_notes,
-                                     dashboard_url  = dashboard_url,
-                                     avatars_url    = avatars_url,
+                                     frontend_url   = current_app.config.get('FRONTEND_URL', 'http://localhost:5000'),
                                      app_name       = current_app.config.get('APP_NAME', 'Gem-AvatART'))
         
         text_content = f"""
