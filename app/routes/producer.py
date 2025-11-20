@@ -46,6 +46,7 @@ from app.models.avatar import Avatar, AvatarStatus
 from app.models.reel import Reel, ReelStatus
 from app.models.commission import Commission, CommissionStatus
 from app.models.reel_request import ReelRequest, ReelRequestStatus
+from app.models.clone_permission import ClonePermission, PermissionStatus, PermissionSubjectType
 from app.services.heygen_service import HeyGenService
 from app.services.snapshot_service import save_avatar_snapshot, load_avatar_snapshot
 from app.services.avatar_sync_service import sync_producer_heygen_avatars
@@ -1523,7 +1524,7 @@ def avatar_stats(avatar_id):
     })
 
 
-from app.models.clone_permission import ClonePermission, PermissionStatus, PermissionSubjectType
+
 # GET y POST: gestión de acceso granular a un avatar
 @producer_bp.route('/avatar/<int:avatar_id>/access', methods=['GET', 'POST'])
 @login_required
