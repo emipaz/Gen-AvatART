@@ -158,6 +158,28 @@ Flujo UX:
                             </div>
                         </div>
                         
+                        <!-- Selector de Voz -->
+                        <div class="mb-3">
+                            {{ form.voice_id.label(class="form-label") }}
+                            <!-- Campo hidden para capturar el voice_id seleccionado -->
+                            {{ form.voice_id(type="hidden", id="voice_id_field") }}
+                            <div id="voice-required-info" class="alert alert-info mb-2" style="display: none;">
+                                <i class="fas fa-info-circle"></i>
+                                <span id="voice-required-message"></span>
+                            </div>
+                            <div id="voice-selector-container">
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando voces...</span>
+                                    </div>
+                                    <p class="text-muted mt-2">Cargando voces disponibles...</p>
+                                </div>
+                            </div>
+                            <div class="form-text">
+                                <span id="voice-help-text">Selecciona la voz que usará el avatar. Puedes escuchar una muestra antes de elegir.</span>
+                            </div>
+                        </div>
+                        
                         <!-- Configuraciones del Video -->
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -270,4 +292,397 @@ Flujo UX:
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const avatarId = {{ avatar.id }};
+    const voiceContainer = document.getElementById('voice-selector-container');
+    let currentAudio = null;
+    let allVoices = [];
+    let defaultVoiceId = null;
+    const formElement = document.querySelector('form');
+    
+    // Mostrar info sobre voz requerida/opcional
+    function updateVoiceRequiredInfo() {
+        const infoDiv = document.getElementById('voice-required-info');
+        const messageSpan = document.getElementById('voice-required-message');
+        const helpText = document.getElementById('voice-help-text');
+        
+        // Validar que los elementos existan
+        if (!infoDiv || !messageSpan || !helpText) {
+            console.warn('Elementos de info de voz no encontrados en el DOM');
+            return;
+        }
+        
+        if (defaultVoiceId) {
+            infoDiv.style.display = 'block';
+            infoDiv.className = 'alert alert-success mb-2';
+            messageSpan.textContent = 'Este avatar tiene una voz predeterminada. Puedes dejarla seleccionada o elegir otra.';
+            helpText.textContent = 'Opcional: Puedes cambiar la voz si lo deseas.';
+        } else {
+            infoDiv.style.display = 'block';
+            infoDiv.className = 'alert alert-warning mb-2';
+            messageSpan.innerHTML = '<strong>Importante:</strong> Este avatar no tiene voz predeterminada. Debes seleccionar una.';
+            helpText.textContent = 'Obligatorio: Selecciona una voz para continuar.';
+        }
+    }
+    
+    // Validación antes de enviar el formulario
+    formElement.addEventListener('submit', function(e) {
+        if (!defaultVoiceId) {
+            // Si no hay voz por defecto, verificar que se haya seleccionado una
+            const selectedVoice = document.querySelector('input[name="voice_id"]:checked');
+            if (!selectedVoice || !selectedVoice.value) {
+                e.preventDefault();
+                alert('Por favor, selecciona una voz para el avatar antes de continuar.');
+                
+                // Hacer scroll hasta el selector de voces
+                document.getElementById('voice-selector-container').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                return false;
+            }
+        }
+    });
+    
+    // Cargar voces disponibles
+    fetch(`/api/avatars/${avatarId}/voices`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                voiceContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>Problema al cargar voces:</strong><br>
+                        ${data.error}
+                        <hr>
+                        <small>
+                            <i class="fas fa-info-circle"></i> 
+                            Puedes continuar creando el reel. Si el avatar tiene una voz predeterminada, se usará automáticamente.
+                            ${data.default_voice_id ? `<br><strong>Voz predeterminada disponible:</strong> Se usará la voz original del avatar.` : ''}
+                        </small>
+                    </div>
+                `;
+                // Si hay voz por defecto, actualizar la info
+                if (data.default_voice_id) {
+                    defaultVoiceId = data.default_voice_id;
+                    updateVoiceRequiredInfo();
+                }
+                return;
+            }
+            
+            allVoices = data.voices;
+            defaultVoiceId = data.default_voice_id;
+            updateVoiceRequiredInfo();
+            renderVoiceSelector(allVoices);
+        })
+        .catch(error => {
+            console.error('Error al cargar voces:', error);
+            voiceContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i> 
+                    <strong>Error de conexión</strong><br>
+                    No se pudieron cargar las voces disponibles. Verifica tu conexión e intenta recargar la página.
+                </div>
+            `;
+        });
+    
+    function renderVoiceSelector(voices) {
+        if (!voices || voices.length === 0) {
+            voiceContainer.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    No hay voces disponibles para este avatar
+                </div>
+            `;
+            return;
+        }
+        
+        // Extraer idiomas y géneros únicos
+        const languages = [...new Set(voices.map(v => v.language))].sort();
+        const genders = [...new Set(voices.map(v => v.gender))].sort();
+        
+        // Capitalizar primera letra de gender para display
+        const capitalizeFirst = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+        
+        let html = `
+            <!-- Filtros -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search-voice" class="form-label">
+                                <i class="fas fa-search"></i> Buscar por nombre
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="search-voice" 
+                                   placeholder="Escribe para buscar...">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="filter-language" class="form-label">
+                                <i class="fas fa-language"></i> Idioma
+                            </label>
+                            <select class="form-select" id="filter-language">
+                                <option value="">Todos los idiomas (${voices.length})</option>
+                                ${languages.map(lang => {
+                                    const count = voices.filter(v => v.language === lang).length;
+                                    return `<option value="${lang}">${lang} (${count})</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="filter-gender" class="form-label">
+                                <i class="fas fa-venus-mars"></i> Género
+                            </label>
+                            <select class="form-select" id="filter-gender">
+                                <option value="">Todos (${voices.length})</option>
+                                ${genders.map(gender => {
+                                    const count = voices.filter(v => v.gender === gender).length;
+                                    return `<option value="${gender}">${capitalizeFirst(gender)} (${count})</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Mostrando <span id="voice-count">${voices.length}</span> de ${allVoices.length} voces
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lista de voces -->
+            <div id="voices-list">
+        `;
+        
+        // Si hay voz por defecto, agregar opción para mantenerla (SIEMPRE VISIBLE, FUERA DEL SCROLL)
+        if (defaultVoiceId) {
+            html += `
+                <div class="card mb-3 border-success">
+                    <div class="card-body p-3 bg-light">
+                        <div class="list-group-item list-group-item-action voice-option-default border-success active" 
+                             data-voice-id=""
+                             style="cursor: pointer; background-color: #d1f4d1; border: 2px solid #28a745;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center">
+                                        <input type="radio" 
+                                               name="voice_id" 
+                                               value="" 
+                                               id="voice_default"
+                                               checked
+                                               class="form-check-input me-2">
+                                        <label for="voice_default" class="mb-0 flex-grow-1" style="cursor: pointer;">
+                                            <strong><i class="fas fa-check-circle text-success"></i> Usar voz predeterminada del avatar</strong>
+                                            <span class="badge bg-success ms-2">Recomendado</span>
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> Esta es la voz original del avatar. Siempre disponible independiente de los filtros.
+                                            </small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-2">
+                    <strong><i class="fas fa-list"></i> O elige una voz diferente:</strong>
+                </div>
+            `;
+        }
+        
+        // Contenedor con scroll para otras voces
+        html += `<div class="voices-scrollable-list" style="max-height: 400px; overflow-y: auto;">`;
+        
+        voices.forEach(voice => {
+            const isDefault = voice.is_default;
+            const badgeClass = 'bg-secondary';
+            const badgeText = isDefault ? 'Voz original del avatar' : '';
+            
+            html += `
+                <div class="list-group-item list-group-item-action voice-option" 
+                     data-voice-id="${voice.voice_id}"
+                     data-language="${voice.language}"
+                     data-gender="${voice.gender}"
+                     data-name="${voice.name.toLowerCase()}"
+                     style="cursor: pointer;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center">
+                                <input type="radio" 
+                                       name="voice_id" 
+                                       value="${voice.voice_id}" 
+                                       id="voice_${voice.voice_id}"
+                                       class="form-check-input me-2">
+                                <label for="voice_${voice.voice_id}" class="mb-0 flex-grow-1" style="cursor: pointer;">
+                                    <strong>${voice.name}</strong>
+                                    ${badgeText ? `<span class="badge ${badgeClass} ms-2">${badgeText}</span>` : ''}
+                                    <br>
+                                    <small class="text-muted">
+                                        <i class="fas fa-language"></i> ${voice.language} 
+                                        <i class="fas fa-${voice.gender === 'male' ? 'mars' : voice.gender === 'female' ? 'venus' : 'genderless'} ms-2"></i> 
+                                        ${voice.gender}
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                        ${voice.preview_audio ? `
+                        <button type="button" 
+                                class="btn btn-sm btn-outline-primary play-voice-btn ms-2" 
+                                data-audio-url="${voice.preview_audio}"
+                                data-voice-id="${voice.voice_id}">
+                            <i class="fas fa-play"></i> Preview
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div></div>'; // Cerrar voices-scrollable-list y voices-list
+        voiceContainer.innerHTML = html;
+        
+        // Event listener para la opción de voz predeterminada (fuera del filtrado)
+        const defaultOption = document.querySelector('.voice-option-default');
+        if (defaultOption) {
+            defaultOption.addEventListener('click', function(e) {
+                const radio = document.getElementById('voice_default');
+                radio.checked = true;
+                
+                // Actualizar campo hidden
+                const hiddenField = document.getElementById('voice_id_field');
+                if (hiddenField) {
+                    hiddenField.value = radio.value;
+                }
+                
+                // Desmarcar todas las otras voces
+                document.querySelectorAll('.voice-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                this.classList.add('active');
+            });
+        }
+        
+        // Event listeners para filtros
+        document.getElementById('search-voice').addEventListener('input', filterVoices);
+        document.getElementById('filter-language').addEventListener('change', filterVoices);
+        document.getElementById('filter-gender').addEventListener('change', filterVoices);
+        
+        // Event listeners para seleccionar voz
+        attachVoiceListeners();
+    }
+    
+    function filterVoices() {
+        const searchTerm = document.getElementById('search-voice').value.toLowerCase();
+        const selectedLanguage = document.getElementById('filter-language').value;
+        const selectedGender = document.getElementById('filter-gender').value;
+        
+        const voiceOptions = document.querySelectorAll('.voice-option');
+        let visibleCount = 0;
+        
+        voiceOptions.forEach(option => {
+            const name = option.dataset.name;
+            const language = option.dataset.language;
+            const gender = option.dataset.gender;
+            
+            const matchesSearch = !searchTerm || name.includes(searchTerm);
+            const matchesLanguage = !selectedLanguage || language === selectedLanguage;
+            const matchesGender = !selectedGender || gender === selectedGender;
+            
+            if (matchesSearch && matchesLanguage && matchesGender) {
+                option.style.display = '';
+                visibleCount++;
+            } else {
+                option.style.display = 'none';
+            }
+        });
+        
+        // Actualizar contador
+        document.getElementById('voice-count').textContent = visibleCount;
+    }
+    
+    function attachVoiceListeners() {
+        // Event listeners para seleccionar voz (solo las voces dentro del scroll)
+        document.querySelectorAll('.voice-option').forEach(option => {
+            option.addEventListener('click', function(e) {
+                if (e.target.closest('.play-voice-btn')) return;
+                
+                const voiceId = this.dataset.voiceId;
+                const radio = document.getElementById(`voice_${voiceId}`);
+                radio.checked = true;
+                
+                // Actualizar campo hidden
+                const hiddenField = document.getElementById('voice_id_field');
+                if (hiddenField) {
+                    hiddenField.value = voiceId;
+                }
+                
+                document.querySelectorAll('.voice-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                
+                // Desmarcar la opción predeterminada si existe
+                const defaultOption = document.querySelector('.voice-option-default');
+                if (defaultOption) {
+                    defaultOption.classList.remove('active');
+                }
+                
+                this.classList.add('active');
+            });
+        });
+        
+        // Event listeners para preview de audio
+        document.querySelectorAll('.play-voice-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const audioUrl = this.dataset.audioUrl;
+                playVoicePreview(audioUrl, this);
+            });
+        });
+    }
+    
+    function playVoicePreview(audioUrl, button) {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+            document.querySelectorAll('.play-voice-btn').forEach(btn => {
+                btn.innerHTML = '<i class="fas fa-play"></i> Preview';
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-outline-primary');
+            });
+        }
+        
+        if (button.innerHTML.includes('fa-stop')) {
+            return;
+        }
+        
+        currentAudio = new Audio(audioUrl);
+        button.innerHTML = '<i class="fas fa-stop"></i> Detener';
+        button.classList.remove('btn-outline-primary');
+        button.classList.add('btn-danger');
+        
+        currentAudio.play().catch(error => {
+            console.error('Error al reproducir audio:', error);
+            alert('No se pudo reproducir el preview de audio');
+            button.innerHTML = '<i class="fas fa-play"></i> Preview';
+            button.classList.remove('btn-danger');
+            button.classList.add('btn-outline-primary');
+        });
+        
+        currentAudio.addEventListener('ended', function() {
+            button.innerHTML = '<i class="fas fa-play"></i> Preview';
+            button.classList.remove('btn-danger');
+            button.classList.add('btn-outline-primary');
+            currentAudio = null;
+        });
+    }
+});
+</script>
 {% endblock %}

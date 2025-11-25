@@ -111,6 +111,7 @@ class ReelRequest(db.Model):
     script        = db.Column(db.Text, nullable=False)
     background_url = db.Column(db.String(500))
     resolution    = db.Column(db.String(20), default='1080p')
+    voice_id      = db.Column(db.String(100))  # ID de la voz seleccionada de HeyGen
     
     # Configuración y metadata
     config_data = db.Column(db.JSON)

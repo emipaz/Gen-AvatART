@@ -2,7 +2,7 @@
 Módulo de rutas API REST para la aplicación Gen-AvatART.
 
 Este módulo maneja todas las rutas de la API REST de la aplicación, proporcionando
-endpoints JSON para integración con aplicaciones externas, frontend SPA y servicios
+endpoints JSON para integración con aplicacion externas, frontend SPA y servicios
 de terceros. Incluye autenticación JWT y manejo completo de recursos.
 
 - FUNCIONALIDADES PRINCIPALES:
@@ -67,6 +67,10 @@ from app.services.snapshot_service import save_avatar_snapshot
 
 # Creación del blueprint para rutas de API REST
 api_bp = Blueprint('api', __name__)
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 # =================== AUTENTICACIÓN JWT ===================
 
@@ -398,6 +402,102 @@ def get_avatar(avatar_id):
         return jsonify({'error': 'Acceso denegado'}), 403
     
     return jsonify(avatar.to_dict())
+
+@api_bp.route('/avatars/<int:avatar_id>/voices', methods=['GET'])
+@login_required
+def get_avatar_voices(avatar_id):
+    """
+    Obtener voces disponibles para un avatar específico.
+    
+    Retorna la lista de voces disponibles en HeyGen para usar con el avatar,
+    incluyendo la voz por defecto del avatar y todas las voces compatibles.
+    Incluye previews de audio para cada voz.
+    
+    Args:
+        avatar_id (int): ID único del avatar
+    
+    Returns:
+        JSON: Lista de voces disponibles con sus detalles
+    
+    Response Structure:
+        {
+            "default_voice_id": "abc123",
+            "voices": [
+                {
+                    "voice_id": "abc123",
+                    "name": "Spanish Female Professional",
+                    "language": "Spanish",
+                    "language_code": "es",
+                    "gender": "female",
+                    "preview_audio": "https://...",
+                    "is_default": true
+                },
+                ...
+            ]
+        }
+    
+    Status Codes:
+        200: Lista de voces retornada exitosamente
+        404: Avatar no encontrado
+        500: Error al obtener voces de HeyGen
+    
+    Note:
+        - Requiere que el avatar tenga un productor con API key
+        - La voz por defecto se marca con is_default: true
+        - Los preview_audio permiten escuchar la voz antes de seleccionar
+    """
+    avatar = Avatar.query.get_or_404(avatar_id)
+    
+    if not avatar.producer or not avatar.producer.heygen_api_key:
+        return jsonify({'error': 'El avatar no tiene un productor con API key configurada'}), 400
+    
+    try:
+        # Inicializar servicio HeyGen con la API key del productor
+        heygen_service = HeyGenService(avatar.producer.heygen_api_key)
+        
+        # Obtener voz por defecto del avatar usando avatar_ref (retorna string o None)
+        default_voice_id = heygen_service.get_avatar_default_voice(avatar.avatar_ref)
+        
+        # Obtener TODAS las voces disponibles (sin filtro de idioma)
+        all_voices = heygen_service.list_voices(language=None)
+        
+        # Verificar si la API de HeyGen retornó datos
+        if not all_voices:
+            return jsonify({
+                'error': 'La API de HeyGen no está disponible temporalmente. Por favor, intenta de nuevo en unos momentos.',
+                'default_voice_id': default_voice_id,
+                'voices': []
+            }), 503
+        
+        # Formatear respuesta
+        voices_list = []
+        for voice in all_voices:
+            voice_data = {
+                'voice_id'      : voice.get('voice_id'),
+                'name'          : voice.get('name', 'Unknown'),
+                'language'      : voice.get('language', 'Unknown'),
+                'language_code' : voice.get('language_code', ''),
+                'gender'        : voice.get('gender', 'neutral'),
+                'preview_audio' : voice.get('preview_audio', voice.get('preview_audio_url', '')),
+                'is_default'    : voice.get('voice_id') == default_voice_id
+            }
+            voices_list.append(voice_data)
+        
+        # Ordenar: voz por defecto primero, luego por idioma y nombre
+        voices_list.sort(key=lambda x: (not x['is_default'], x['language'], x['name']))
+        
+        return jsonify({
+            'default_voice_id': default_voice_id,
+            'voices': voices_list
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al obtener voces para avatar {avatar_id}: {str(e)}")
+        return jsonify({
+            'error': f'Error al obtener voces: {str(e)}',
+            'default_voice_id': None,
+            'voices': []
+        }), 500
 
 @api_bp.route('/avatars', methods=['POST'])
 @jwt_required()
@@ -938,9 +1038,9 @@ def list_commissions():
         Authorization: Bearer <jwt_token>
     
     Query Parameters:
-        page (int, opcional): Número de página (default: 1)
-        per_page (int, opcional): Elementos por página (default: 20, max: 100)
-        status (str, opcional): Filtro por estado (pending, approved, paid, cancelled)
+        page (int, opcional)     : Número de página (default: 1)
+        per_page (int, opcional) : Elementos por página (default: 20, max: 100)
+        status (str, opcional)   : Filtro por estado (pending, approved, paid, cancelled)
     
     Returns:
         JSON: Lista paginada de comisiones con metadata

@@ -99,12 +99,38 @@
                                     <h6 class="mb-0">{{ draft.title }}</h6>
                                     <span class="badge bg-info">Borrador</span>
                                 </div>
+                                
+                                <!-- Imagen del Avatar -->
+                                {% if draft.avatar.thumbnail_url %}
+                                    <img src="{{ draft.avatar.thumbnail_url }}" 
+                                         class="card-img-top" 
+                                         alt="{{ draft.avatar.name }}"
+                                         style="height: 200px; object-fit: cover;">
+                                {% else %}
+                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                         style="height: 200px;">
+                                        <i class="fas fa-user-circle fa-4x text-muted"></i>
+                                    </div>
+                                {% endif %}
+                                
                                 <div class="card-body">
                                     <p class="card-text">
                                         <small class="text-muted">
                                             <i class="fas fa-user-circle"></i> {{ draft.avatar.name }}<br>
                                             <i class="fas fa-tv"></i> {{ draft.resolution }}<br>
-                                            <i class="fas fa-calendar"></i> {{ draft.created_at.strftime('%d/%m/%Y') }}
+                                            <i class="fas fa-calendar"></i> {{ draft.created_at.strftime('%d/%m/%Y') }}<br>
+                                            {% if draft.voice_id and voice_info.get(draft.voice_id) %}
+                                            <i class="fas fa-microphone"></i> 
+                                            <span>{{ voice_info[draft.voice_id]['name'] }}</span>
+                                            {% if voice_info[draft.voice_id]['preview_audio'] %}
+                                            <button class="btn btn-sm btn-link p-0 ms-1" 
+                                                    onclick="playVoicePreview('{{ voice_info[draft.voice_id]['preview_audio'] }}', this)"
+                                                    title="Escuchar voz">
+                                                <i class="fas fa-play-circle"></i>
+                                            </button>
+                                            {% endif %}
+                                            <br>
+                                            {% endif %}
                                         </small>
                                     </p>
                                     <div class="script-preview">
@@ -174,13 +200,39 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                
+                                <!-- Imagen del Avatar -->
+                                {% if request.avatar.thumbnail_url %}
+                                    <img src="{{ request.avatar.thumbnail_url }}" 
+                                         class="card-img-top" 
+                                         alt="{{ request.avatar.name }}"
+                                         style="height: 200px; object-fit: cover;">
+                                {% else %}
+                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                         style="height: 200px;">
+                                        <i class="fas fa-user-circle fa-4x text-muted"></i>
+                                    </div>
+                                {% endif %}
+                                
                                 <div class="card-body">
                                     <p class="card-text">
                                         <small class="text-muted">
                                             <i class="fas fa-user-circle"></i> {{ request.avatar.name }}<br>
                                             <i class="fas fa-tv"></i> {{ request.resolution }}<br>
                                             <i class="fas fa-calendar"></i> {{ request.created_at.strftime('%d/%m/%Y') }}<br>
-                                            <i class="fas fa-user-tie"></i> {{ request.producer.display_name }}
+                                            <i class="fas fa-user-tie"></i> {{ request.producer.display_name }}<br>
+                                            {% if request.voice_id and voice_info.get(request.voice_id) %}
+                                            <i class="fas fa-microphone"></i> 
+                                            <span>{{ voice_info[request.voice_id]['name'] }}</span>
+                                            {% if voice_info[request.voice_id]['preview_audio'] %}
+                                            <button class="btn btn-sm btn-link p-0 ms-1" 
+                                                    onclick="playVoicePreview('{{ voice_info[request.voice_id]['preview_audio'] }}', this)"
+                                                    title="Escuchar voz">
+                                                <i class="fas fa-play-circle"></i>
+                                            </button>
+                                            {% endif %}
+                                            <br>
+                                            {% endif %}
                                         </small>
                                     </p>
                                     <div class="script-preview">
@@ -230,6 +282,43 @@
 </div>
 
 <script>
+// Audio player para previsualización de voces
+let currentAudio = null;
+
+function playVoicePreview(audioUrl, button) {
+    // Si hay audio reproduciéndose, detenerlo
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+        // Restaurar todos los íconos a play
+        document.querySelectorAll('.btn-link i').forEach(icon => {
+            icon.className = 'fas fa-play-circle';
+        });
+    }
+    
+    // Si se hizo clic en el mismo botón que estaba reproduciéndose, solo detener
+    const icon = button.querySelector('i');
+    if (icon.classList.contains('fa-pause-circle')) {
+        icon.className = 'fas fa-play-circle';
+        return;
+    }
+    
+    // Reproducir nuevo audio
+    currentAudio = new Audio(audioUrl);
+    icon.className = 'fas fa-pause-circle';
+    
+    currentAudio.play().catch(error => {
+        console.error('Error reproduciendo audio:', error);
+        icon.className = 'fas fa-play-circle';
+    });
+    
+    // Cuando termine el audio, restaurar ícono
+    currentAudio.addEventListener('ended', function() {
+        icon.className = 'fas fa-play-circle';
+        currentAudio = null;
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Confirmación para enviar solicitudes
     const sendForms = document.querySelectorAll('.send-form');

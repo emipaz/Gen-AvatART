@@ -76,9 +76,59 @@ import logging
 from typing import Dict, Optional, List, Union, Any
 from datetime import datetime, timedelta
 from enum import Enum
+from functools import lru_cache
 
 # Configurar logging para el servicio de HeyGen
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# CACHE PARA VOCES (5 minutos de TTL)
+# ============================================================================
+
+@lru_cache(maxsize=50)
+def _fetch_all_voices_cached(api_key: str, base_url: str) -> tuple:
+    """
+    Función cacheada para obtener todas las voces de HeyGen.
+    Usa LRU cache para evitar llamadas repetidas a la API.
+    Cache individual por API key ya que cada productor puede tener voces personalizadas.
+    El cache se invalida automáticamente después de un tiempo.
+    
+    Args:
+        api_key: API key de HeyGen (único por productor)
+        base_url: URL base de la API
+    
+    Returns:
+        tuple: (lista_de_voces, timestamp)
+    
+    Note:
+        maxsize=50 permite cachear voces de hasta 50 productores diferentes.
+        Aumenta este valor si tienes más productores activos.
+    """
+    try:
+        session = requests.Session()
+        session.headers.update({
+            'X-Api-Key'     : api_key,
+            'Content-Type'  : 'application/json',
+            'Accept'        : 'application/json'
+        })
+        
+        response = session.get(
+            f"{base_url}/v2/voices",
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data   = response.json()
+            voices = data.get('data', {}).get('voices', [])
+            logger.info(f"Cache: Obtenidas {len(voices)} voces de HeyGen")
+            return (voices, datetime.now())
+        else:
+            logger.warning(f"Cache: Error obteniendo voces - Status: {response.status_code}")
+            return ([], datetime.now())
+    except Exception as e:
+        logger.error(f"Cache: Error obteniendo voces: {e}")
+        return ([], datetime.now())
 
 
 # ============================================================================
@@ -621,6 +671,7 @@ class HeyGenService:
         
         Como HeyGen no tiene endpoint individual para voces, busca la voz
         en la lista de voces disponibles para obtener su información.
+        Usa cache para mejorar el rendimiento.
         
         Args:
             voice_id (str): ID único de la voz en HeyGen
@@ -641,29 +692,19 @@ class HeyGenService:
             ...     print(f"Voz: {voice_info['name']} - {voice_info['gender']}")
         """
         try:
-            # Obtener todas las voces disponibles
-            response = self.session.get(
-                f"{self.base_url}/v2/voices",
-                timeout=self.timeout
-            )
+            # Obtener todas las voces desde cache (sin filtro)
+            voices, _ = _fetch_all_voices_cached(self.api_key, self.base_url)
             
-            if response.status_code == 200:
-                data   = response.json()
-                voices = data.get('data', {}).get('voices', [])
+            # Buscar la voz específica por ID
+            for voice in voices:
+                if voice.get('voice_id') == voice_id:
+                    logger.info(f"Voz {voice_id} encontrada en cache: {voice.get('name')}")
+                    return voice
+            
+            logger.warning(f"Voz {voice_id} no encontrada en cache")
+            return None
                 
-                # Buscar la voz específica por ID
-                for voice in voices:
-                    if voice.get('voice_id') == voice_id:
-                        logger.info(f"Voz {voice_id} encontrada: {voice.get('name')}")
-                        return voice
-                
-                logger.warning(f"Voz {voice_id} no encontrada en la lista disponible")
-                return None
-            else:
-                logger.warning(f"Error obteniendo lista de voces - Status: {response.status_code}")
-                return None
-                
-        except requests.RequestException as e:
+        except Exception as e:
             logger.error(f"Error buscando voz {voice_id}: {str(e)}")
             return None
 
@@ -738,7 +779,7 @@ class HeyGenService:
 
 
     def list_voices(self, 
-                   language   : str = 'es',
+                   language   : Optional[str] = 'es',
                    gender     : Optional[str] = None,
                    voice_type : Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -746,9 +787,11 @@ class HeyGenService:
         
         Obtiene todas las voces disponibles en HeyGen para el idioma especificado,
         con opciones de filtrado por género, tipo de voz y otras características.
+        Usa cache LRU para evitar llamadas repetidas a la API.
         
         Args:
-            language (str): Código de idioma (ej: 'es', 'en', 'fr')
+            language (str, opcional): Código o nombre de idioma (ej: 'es', 'Spanish'). 
+                                     Si es None, retorna todas las voces sin filtro.
             gender (str, opcional): Filtro por género ('male', 'female')
             voice_type (str, opcional): Tipo de voz ('standard', 'premium', 'neural')
         
@@ -768,60 +811,62 @@ class HeyGenService:
             >>> voices = service.list_voices(language='Spanish', gender='female')
             >>> for voice in voices:
             ...     print(f"{voice['name']} - {voice['gender']} - Emociones: {voice['emotion_support']}")
+            
+            >>> all_voices = service.list_voices(language=None)  # Sin filtro de idioma
         """
         try:
-            params = {}
+            # Obtener voces desde cache
+            voices, cache_time = _fetch_all_voices_cached(self.api_key, self.base_url)
             
-            # Nota: HeyGen v2/voices no soporta filtros por parámetros
-            # El filtrado se debe hacer después de obtener todas las voces
+            # Verificar si el cache tiene más de 5 minutos
+            cache_age = (datetime.now() - cache_time).total_seconds()
+            if cache_age > 300:  # 5 minutos
+                logger.info("Cache de voces expirado, invalidando...")
+                _fetch_all_voices_cached.cache_clear()
+                voices, cache_time = _fetch_all_voices_cached(self.api_key, self.base_url)
             
-            response = self.session.get(
-                f"{self.base_url}/v2/voices",
-                params  = params,
-                timeout = self.timeout
-            )
-            
-            if response.status_code == 200:
-                data   = response.json()
-                voices = data.get('data', {}).get('voices', [])
-                
-                # Filtrar por idioma si se especifica
-                if language:
-                    voices = [
-                        voice for voice in voices 
-                        if language.lower() in voice.get('language', '').lower()
-                        or language.upper() in voice.get('language', '').upper()
-                    ]
-                
-                # Filtrar por género si se especifica
-                if gender:
-                    voices = [
-                        voice for voice in voices
-                        if gender.lower() in voice.get('gender', '').lower()
-                    ]
-                
-                # Filtrar por tipo de voz si se especifica (basado en características)
-                if voice_type:
-                    if voice_type == 'premium':
-                        # Considerar premium las que soporten emociones
-                        voices = [
-                            voice for voice in voices
-                            if voice.get('emotion_support', False)
-                        ]
-                    elif voice_type == 'interactive':
-                        # Voces que soporten avatares interactivos
-                        voices = [
-                            voice for voice in voices
-                            if voice.get('support_interactive_avatar', False)
-                        ]
-                
-                logger.info(f"Obtenidas {len(voices)} voces filtradas")
-                return voices
-            else:
-                logger.warning(f"Error listando voces - Status: {response.status_code}")
+            # Si no hay voces en cache, retornar vacío
+            if not voices:
+                logger.warning("No se pudieron obtener voces desde cache")
                 return []
+            
+            # Aplicar filtros
+            filtered_voices = voices.copy()
+            
+            # Filtrar por idioma si se especifica
+            if language:
+                filtered_voices = [
+                    voice for voice in filtered_voices 
+                    if language.lower() in voice.get('language', '').lower()
+                    or language.upper() in voice.get('language', '').upper()
+                ]
+            
+            # Filtrar por género si se especifica
+            if gender:
+                filtered_voices = [
+                    voice for voice in filtered_voices
+                    if gender.lower() in voice.get('gender', '').lower()
+                ]
+            
+            # Filtrar por tipo de voz si se especifica (basado en características)
+            if voice_type:
+                if voice_type == 'premium':
+                    # Considerar premium las que soporten emociones
+                    filtered_voices = [
+                        voice for voice in filtered_voices
+                        if voice.get('emotion_support', False)
+                    ]
+                elif voice_type == 'interactive':
+                    # Voces que soporten avatares interactivos
+                    filtered_voices = [
+                        voice for voice in filtered_voices
+                        if voice.get('support_interactive_avatar', False)
+                    ]
+            
+            logger.info(f"Obtenidas {len(filtered_voices)} voces filtradas (de {len(voices)} en cache)")
+            return filtered_voices
                 
-        except requests.RequestException as e:
+        except Exception as e:
             logger.error(f"Error listando voces: {str(e)}")
             return []
 
