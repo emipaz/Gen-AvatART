@@ -351,6 +351,16 @@ Flujo de trabajo:
                         <div class="col-md-6">
                             <h6>Configuraciones:</h6>
                             <p><strong>Resolución:</strong> {{ req.resolution }}</p>
+                            {% if req.voice_id and voice_info.get(req.voice_id) %}
+                                <p><strong>Voz:</strong> {{ voice_info[req.voice_id]['name'] }}
+                                    <br><small class="text-muted">
+                                        <i class="fas fa-language"></i> {{ voice_info[req.voice_id]['language'] }}
+                                        <i class="fas fa-{{ 'mars' if voice_info[req.voice_id]['gender'] == 'male' else 'venus' }} ms-2"></i> {{ voice_info[req.voice_id]['gender'].title() }}
+                                    </small>
+                                </p>
+                            {% elif req.voice_id %}
+                                <p><strong>Voz:</strong> {{ req.voice_id }}</p>
+                            {% endif %}
                             {% if req.background_url %}
                                 <p><strong>Fondo:</strong> <a href="{{ req.background_url }}" target="_blank">Ver imagen</a></p>
                             {% endif %}

@@ -1714,11 +1714,41 @@ def reel_requests():
         ReelRequest.status != ReelRequestStatus.DRAFT  # Excluir borradores del total
     ).count()
     
+    # Obtener información de voces seleccionadas
+    voice_info_map = {}
+    if requests_paginated.items:
+        from app.services.heygen_service import HeyGenService
+        
+        # Recopilar voice_ids únicos
+        voice_ids = set()
+        for req in requests_paginated.items:
+            if req.voice_id:
+                voice_ids.add(req.voice_id)
+        
+        # Obtener nombres de voces
+        if voice_ids and current_user.producer_profile.heygen_api_key:
+            try:
+                heygen_service = HeyGenService(current_user.producer_profile.heygen_api_key)
+                for voice_id in voice_ids:
+                    try:
+                        voice_info = heygen_service.get_voice_details(voice_id)
+                        if voice_info:
+                            voice_info_map[voice_id] = {
+                                'name': voice_info.get('name', voice_id),
+                                'language': voice_info.get('language', 'Unknown'),
+                                'gender': voice_info.get('gender', 'Unknown')
+                            }
+                    except Exception as e:
+                        logger.warning(f"No se pudo obtener info de voz {voice_id}: {e}")
+            except Exception as e:
+                logger.error(f"Error al obtener información de voces: {e}")
+    
     return render_template('producer/reel_requests.html',
                          requests=requests_paginated,
                          pending_count=pending_count,
                          total_count=total_count,
-                         status_filter=status_filter)
+                         status_filter=status_filter,
+                         voice_info=voice_info_map)
 
 
 @producer_bp.route('/reel-requests/<int:request_id>/approve', methods=['POST'])
