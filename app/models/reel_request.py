@@ -112,6 +112,8 @@ class ReelRequest(db.Model):
     background_url = db.Column(db.String(500))
     resolution    = db.Column(db.String(20), default='1080p')
     voice_id      = db.Column(db.String(100))  # ID de la voz seleccionada de HeyGen
+    speed         = db.Column(db.Float, default=1.0)  # Velocidad de la voz (0.5 a 1.5)
+    pitch         = db.Column(db.Integer, default=0)  # Pitch de la voz (-50 a 50)
     
     # Configuración y metadata
     config_data = db.Column(db.JSON)

@@ -179,6 +179,30 @@ Flujo UX:
                                 <span id="voice-help-text">Selecciona la voz que usará el avatar. Puedes escuchar una muestra antes de elegir.</span>
                             </div>
                         </div>
+
+                            <!-- Velocidad de la voz -->
+                            <div class="mb-3">
+                                <label for="speed_slider" class="form-label">Velocidad de la voz</label>
+                                <input type="range" name="speed" id="speed_slider" class="form-range" min="0.5" max="1.5" step="0.05" value="{{ form.speed.data or 1.0 }}" oninput="speed_value.innerText = this.value">
+                                <div class="d-flex justify-content-between">
+                                    <small>0.50</small>
+                                    <span id="speed_value">{{ form.speed.data or 1.0 }}</span>
+                                    <small>1.50</small>
+                                </div>
+                                <div class="form-text">Rango: 0.50 (lento) a 1.50 (rápido). Valor por defecto: 1.0</div>
+                            </div>
+
+                            <!-- Pitch de la voz -->
+                            <div class="mb-3">
+                                <label for="pitch_slider" class="form-label">Pitch de la voz</label>
+                                <input type="range" name="pitch" id="pitch_slider" class="form-range" min="-50" max="50" step="1" value="{{ form.pitch.data or 0 }}" oninput="pitch_value.innerText = this.value">
+                                <div class="d-flex justify-content-between">
+                                    <small>-50</small>
+                                    <span id="pitch_value">{{ form.pitch.data or 0 }}</span>
+                                    <small>50</small>
+                                </div>
+                                <div class="form-text">Rango: -50 (grave) a 50 (agudo). Valor por defecto: 0</div>
+                            </div>
                         
                         <!-- Configuraciones del Video -->
                         <div class="row mb-3">

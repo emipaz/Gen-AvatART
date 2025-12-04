@@ -67,6 +67,9 @@ class Config:
     HEYGEN_BASE_URL = config('HEYGEN_BASE_URL', default='https://api.heygen.com')
     HEYGEN_OWNER_API_KEY = config('HEYGEN_API_KEY_OWNER', default=None)
     
+    # Frontend URL Configuration
+    FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5000')
+    
     # Mail Configuration
     MAIL_SERVER   = config('MAIL_SERVER', default='smtp.gmail.com')
     MAIL_PORT     = int(config('MAIL_PORT', default=587))

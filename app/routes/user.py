@@ -135,6 +135,14 @@ class ReelRequestForm(FlaskForm):
         ('4K', '4K (Ultra HD)')
     ], default='1080p')
     user_notes       = TextAreaField('Notas para el Productor (opcional)', validators=[Optional(), Length(max=500)])
+
+    speed = StringField('Velocidad de la voz', default='1.0',
+            description ='Rango: 0.50 (lento) a 1.50 (rápido). Valor por defecto: 1.0',
+            validators  =[DataRequired(), Length(max=5)])
+    
+    pitch = StringField('Pitch de la voz', default='0',
+            description ='Rango: -50 (grave) a 50 (agudo). Valor por defecto: 0',
+            validators  =[DataRequired(), Length(max=4)])
     
     submit = SubmitField('Solicitar Reel')
 
@@ -641,6 +649,8 @@ def request_reel(avatar_id):
                 title          = form.title.data,
                 script         = form.script.data,
                 voice_id       = form.voice_id.data if form.voice_id.data else None,
+                speed          = float(request.form.get('speed', 1.0)),
+                pitch          = int(request.form.get('pitch', 0)),
                 background_url = background_url,
                 resolution     = form.resolution.data,
                 user_notes     = form.user_notes.data,
@@ -1296,6 +1306,8 @@ def edit_reel_request(request_id):
             reel_request.title          = form.title.data
             reel_request.script         = form.script.data
             reel_request.voice_id       = form.voice_id.data if form.voice_id.data else None
+            reel_request.speed          = float(request.form.get('speed', 1.0))
+            reel_request.pitch          = int(request.form.get('pitch', 0))
             reel_request.background_url = background_url
             reel_request.resolution     = form.resolution.data
             reel_request.user_notes     = form.user_notes.data
@@ -1324,6 +1336,8 @@ def edit_reel_request(request_id):
         form.resolution.data     = reel_request.resolution
         form.user_notes.data     = reel_request.user_notes
         form.avatar_id.data      = reel_request.avatar_id
+        form.speed.data          = reel_request.speed
+        form.pitch.data          = reel_request.pitch
     
     return render_template('user/edit_reel_request.html', 
                          form         = form, 

@@ -129,6 +129,10 @@ class Reel(db.Model):
     resolution      = db.Column(db.String(20), default = '1080p')    # Resolución: 720p, 1080p, 4k
     background_type = db.Column(db.String(50), default = 'default')  # Tipo de fondo
     background_url  = db.Column(db.String(500))                    # URL del fondo personalizado
+
+    # Configuración de voz
+    speed = db.Column(db.Float, default=1.0)  # Velocidad de la voz (0.5 a 1.5)
+    pitch = db.Column(db.Integer, default=0)  # Pitch de la voz (-50 a 50)
     
     # Metadatos y categorización
     meta_data = db.Column(db.JSON)         # Configuración adicional del video

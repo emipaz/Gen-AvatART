@@ -454,24 +454,26 @@ def get_avatar_voices(avatar_id):
     try:
         # Inicializar servicio HeyGen con la API key del productor
         heygen_service = HeyGenService(avatar.producer.heygen_api_key)
-        
+
         # Obtener voz por defecto del avatar usando avatar_ref (retorna string o None)
         default_voice_id = heygen_service.get_avatar_default_voice(avatar.avatar_ref)
-        
-        # Obtener TODAS las voces disponibles (sin filtro de idioma)
-        all_voices = heygen_service.list_voices(language=None)
-        
-        # Verificar si la API de HeyGen retornó datos
-        if not all_voices:
+
+        # Leer parámetros de filtro
+        language = request.args.get('language')
+        gender = request.args.get('gender')
+
+        # Obtener voces filtradas desde el backend
+        filtered_voices = heygen_service.list_voices(language=language, gender=gender)
+
+        if not filtered_voices:
             return jsonify({
                 'error': 'La API de HeyGen no está disponible temporalmente. Por favor, intenta de nuevo en unos momentos.',
                 'default_voice_id': default_voice_id,
                 'voices': []
             }), 503
-        
-        # Formatear respuesta
+
         voices_list = []
-        for voice in all_voices:
+        for voice in filtered_voices:
             voice_data = {
                 'voice_id'      : voice.get('voice_id'),
                 'name'          : voice.get('name', 'Unknown'),
@@ -482,15 +484,14 @@ def get_avatar_voices(avatar_id):
                 'is_default'    : voice.get('voice_id') == default_voice_id
             }
             voices_list.append(voice_data)
-        
-        # Ordenar: voz por defecto primero, luego por idioma y nombre
+
         voices_list.sort(key=lambda x: (not x['is_default'], x['language'], x['name']))
-        
+
         return jsonify({
             'default_voice_id': default_voice_id,
             'voices': voices_list
         })
-        
+
     except Exception as e:
         logger.error(f"Error al obtener voces para avatar {avatar_id}: {str(e)}")
         return jsonify({

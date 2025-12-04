@@ -818,9 +818,9 @@ class HeyGenService:
             # Obtener voces desde cache
             voices, cache_time = _fetch_all_voices_cached(self.api_key, self.base_url)
             
-            # Verificar si el cache tiene más de 5 minutos
+            # Verificar si el cache tiene más de 30 minutos
             cache_age = (datetime.now() - cache_time).total_seconds()
-            if cache_age > 300:  # 5 minutos
+            if cache_age > 1800:  # 30 minutos
                 logger.info("Cache de voces expirado, invalidando...")
                 _fetch_all_voices_cached.cache_clear()
                 voices, cache_time = _fetch_all_voices_cached(self.api_key, self.base_url)

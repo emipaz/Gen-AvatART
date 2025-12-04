@@ -361,6 +361,8 @@ Flujo de trabajo:
                             {% elif req.voice_id %}
                                 <p><strong>Voz:</strong> {{ req.voice_id }}</p>
                             {% endif %}
+                                <p><strong>Velocidad:</strong> {{ req.speed }} <span class="text-muted">(0.50 a 1.50, default 1.0)</span></p>
+                                <p><strong>Pitch:</strong> {{ req.pitch }} <span class="text-muted">(-50 a 50, default 0)</span></p>
                             {% if req.background_url %}
                                 <p><strong>Fondo:</strong> <a href="{{ req.background_url }}" target="_blank">Ver imagen</a></p>
                             {% endif %}
