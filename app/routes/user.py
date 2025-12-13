@@ -830,9 +830,43 @@ def create_reel():
         ]
 
     if request.method == 'POST':
-        title         = request.form.get('title', '').strip()
-        script        = request.form.get('script', '').strip()
-        avatar_id_raw = request.form.get('avatar_id')  # '' si no eligen nada
+        title          = request.form.get('title', '').strip()
+        script         = request.form.get('script', '').strip()
+        avatar_id_raw  = request.form.get('avatar_id')  # '' si no eligen nada
+        voice_id       = request.form.get('voice_id', '').strip() or None
+        resolution     = request.form.get('resolution', '1080p')
+
+        # Parseo de velocidad y pitch (con valores por defecto seguros)
+        try:
+            voice_speed = float(request.form.get('speed', 1.0))
+        except (TypeError, ValueError):
+            voice_speed = 1.0
+
+        try:
+            voice_pitch = int(request.form.get('pitch', 0))
+        except (TypeError, ValueError):
+            voice_pitch = 0
+
+        # Procesamiento de fondo personalizado
+        background_url = None
+        background_file = request.files.get('background_image')
+        provided_background_url = request.form.get('background_url', '').strip()
+
+        try:
+            if background_file and background_file.filename:
+                filename        = secure_filename(background_file.filename)
+                timestamp       = datetime.now().strftime('%Y%m%d_%H%M%S')
+                unique_filename = f"{timestamp}_{filename}"
+                backgrounds_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'backgrounds')
+                os.makedirs(backgrounds_dir, exist_ok=True)
+                file_path = os.path.join(backgrounds_dir, unique_filename)
+                background_file.save(file_path)
+                background_url = url_for('static', filename=f'uploads/backgrounds/{unique_filename}', _external=True)
+            elif provided_background_url:
+                background_url = provided_background_url
+        except Exception as upload_error:
+            current_app.logger.error(f"Error guardando imagen de fondo: {upload_error}")
+            flash('No se pudo guardar la imagen de fondo. Inténtalo nuevamente o usa una URL.', 'warning')
 
         if not title or not script:
             flash('Título y guion son obligatorios.', 'error')
@@ -840,7 +874,12 @@ def create_reel():
                                    title              = title, 
                                    script             = script,
                                    avatars            = avatars, 
-                                   selected_avatar_id = avatar_id_raw)
+                                   selected_avatar_id = avatar_id_raw,
+                                   resolution         = resolution,
+                                   voice_speed        = voice_speed,
+                                   voice_pitch        = voice_pitch,
+                                   voice_id           = voice_id,
+                                   background_url     = background_url)
 
         # Si eligieron un avatar, validarlo y convertirlo a int
         avatar_id = None
@@ -882,7 +921,12 @@ def create_reel():
                                        title              = title, 
                                        script             = script, 
                                        avatars            = avatars, 
-                                       selected_avatar_id = avatar_id_raw)
+                                       selected_avatar_id = avatar_id_raw,
+                                       resolution         = resolution,
+                                       voice_speed        = voice_speed,
+                                       voice_pitch        = voice_pitch,
+                                       voice_id           = voice_id,
+                                       background_url     = background_url)
 
         r = Reel(
             title       = title,
@@ -892,8 +936,12 @@ def create_reel():
             avatar_id   = avatar_id,              # <- queda NULL si no eligieron
             status      = ReelStatus.PENDING,
             is_public   = False,
-            resolution  = '1080p',
-            background_type = 'default'
+            resolution  = resolution or '1080p',
+            background_type = 'image' if background_url else 'default',
+            background_url  = background_url,
+            voice_id        = voice_id,
+            speed           = voice_speed,
+            pitch           = voice_pitch
         )
         db.session.add(r)
         db.session.commit()
@@ -903,7 +951,12 @@ def create_reel():
 
     return render_template('user/reel_create.html', 
                            avatars            = avatars, 
-                           selected_avatar_id = selected_avatar_id)
+                           selected_avatar_id = selected_avatar_id,
+                           resolution         = request.args.get('resolution', '1080p'),
+                           voice_speed        = 1.0,
+                           voice_pitch        = 0,
+                           voice_id           = None,
+                           background_url     = None)
 
 # ver reel
 @user_bp.route('/reels/<int:reel_id>')
@@ -947,7 +1000,7 @@ def view_reel(reel_id):
         and not reel.is_public
     ):
         flash("No tenés permiso para ver este reel.", "danger")
-        return redirect(url_for("user.reels"))
+        return redirect(url_for("user.my_reels"))
 
     return render_template('user/reel_view.html', reel=reel)
 

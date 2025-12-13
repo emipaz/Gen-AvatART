@@ -389,7 +389,14 @@ Estados de reel manejados:
                                                 
                                                 <!-- Estado con badge colorido -->
                                                 <td>
-                                                    <span class="badge bg-{{ 'success' if reel.status.value == 'published' else 'warning' if reel.status.value == 'pending' else 'info' }}">
+                                                    {% set status_class = {
+                                                        'pending': 'warning',
+                                                        'processing': 'primary',
+                                                        'completed': 'success',
+                                                        'failed': 'danger',
+                                                        'published': 'success'
+                                                    }.get(reel.status.value, 'secondary') %}
+                                                    <span class="badge bg-{{ status_class }}">
                                                         {{ reel.status.value.title() }}
                                                     </span>
                                                 </td>

@@ -52,7 +52,7 @@ Características técnicas:
     - Headers CORS para integración cross-origin
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app import db
@@ -448,57 +448,84 @@ def get_avatar_voices(avatar_id):
     """
     avatar = Avatar.query.get_or_404(avatar_id)
     
-    if not avatar.producer or not avatar.producer.heygen_api_key:
-        return jsonify({'error': 'El avatar no tiene un productor con API key configurada'}), 400
-    
-    try:
-        # Inicializar servicio HeyGen con la API key del productor
-        heygen_service = HeyGenService(avatar.producer.heygen_api_key)
+    api_keys = []
+    if avatar.producer and avatar.producer.heygen_api_key:
+        api_keys.append(('producer', avatar.producer.heygen_api_key))
 
-        # Obtener voz por defecto del avatar usando avatar_ref (retorna string o None)
-        default_voice_id = heygen_service.get_avatar_default_voice(avatar.avatar_ref)
+    owner_api_key = current_app.config.get('HEYGEN_OWNER_API_KEY')
+    if owner_api_key:
+        api_keys.append(('owner', owner_api_key))
 
-        # Leer parámetros de filtro
-        language = request.args.get('language')
-        gender = request.args.get('gender')
+    if not api_keys:
+        return jsonify({'error': 'No hay API keys configuradas para obtener las voces de HeyGen.'}), 400
 
-        # Obtener voces filtradas desde el backend
-        filtered_voices = heygen_service.list_voices(language=language, gender=gender)
+    last_error = None
 
-        if not filtered_voices:
+    for source, api_key in api_keys:
+        try:
+            heygen_service = HeyGenService(api_key)
+
+            default_voice_id = heygen_service.get_avatar_default_voice(avatar.avatar_ref)
+
+            language = request.args.get('language')
+            gender = request.args.get('gender')
+
+            filtered_voices = heygen_service.list_voices(language=language, gender=gender)
+
+            voices_list = []
+
+            if filtered_voices:
+                for voice in filtered_voices:
+                    voice_data = {
+                        'voice_id'      : voice.get('voice_id'),
+                        'name'          : voice.get('name', 'Unknown'),
+                        'language'      : voice.get('language', 'Unknown'),
+                        'language_code' : voice.get('language_code', ''),
+                        'gender'        : voice.get('gender', 'neutral'),
+                        'preview_audio' : voice.get('preview_audio', voice.get('preview_audio_url', '')),
+                        'is_default'    : voice.get('voice_id') == default_voice_id
+                    }
+                    voices_list.append(voice_data)
+            elif default_voice_id:
+                voices_list.append({
+                    'voice_id'      : default_voice_id,
+                    'name'          : 'Voz predeterminada',
+                    'language'      : avatar.language or 'Desconocido',
+                    'language_code' : '',
+                    'gender'        : avatar.gender if hasattr(avatar, 'gender') else 'neutral',
+                    'preview_audio' : '',
+                    'is_default'    : True
+                })
+            else:
+                logger.warning(
+                    "No se obtuvieron voces ni voz predeterminada usando la API %s para el avatar %s",
+                    source,
+                    avatar_id
+                )
+                continue
+
+            voices_list.sort(key=lambda x: (not x['is_default'], x['language'], x['name']))
+
             return jsonify({
-                'error': 'La API de HeyGen no está disponible temporalmente. Por favor, intenta de nuevo en unos momentos.',
                 'default_voice_id': default_voice_id,
-                'voices': []
-            }), 503
+                'voices': voices_list
+            })
 
-        voices_list = []
-        for voice in filtered_voices:
-            voice_data = {
-                'voice_id'      : voice.get('voice_id'),
-                'name'          : voice.get('name', 'Unknown'),
-                'language'      : voice.get('language', 'Unknown'),
-                'language_code' : voice.get('language_code', ''),
-                'gender'        : voice.get('gender', 'neutral'),
-                'preview_audio' : voice.get('preview_audio', voice.get('preview_audio_url', '')),
-                'is_default'    : voice.get('voice_id') == default_voice_id
-            }
-            voices_list.append(voice_data)
+        except Exception as e:
+            last_error = str(e)
+            logger.error(
+                "Error al obtener voces para avatar %s con API %s: %s",
+                avatar_id,
+                source,
+                last_error
+            )
+            continue
 
-        voices_list.sort(key=lambda x: (not x['is_default'], x['language'], x['name']))
-
-        return jsonify({
-            'default_voice_id': default_voice_id,
-            'voices': voices_list
-        })
-
-    except Exception as e:
-        logger.error(f"Error al obtener voces para avatar {avatar_id}: {str(e)}")
-        return jsonify({
-            'error': f'Error al obtener voces: {str(e)}',
-            'default_voice_id': None,
-            'voices': []
-        }), 500
+    return jsonify({
+        'error': f'Error al obtener voces desde HeyGen: {last_error or "Sin detalles"}',
+        'default_voice_id': None,
+        'voices': []
+    }), 500
 
 @api_bp.route('/avatars', methods=['POST'])
 @jwt_required()
@@ -1281,3 +1308,127 @@ def api_internal_error(error):
         - Útil para mantener consistencia en respuestas API
     """
     return jsonify({'error': 'Error interno del servidor'}), 500
+
+
+# ============================================================================
+# WEBHOOK DE HEYGEN
+# ============================================================================
+
+@api_bp.route('/webhook/heygen', methods=['POST', 'OPTIONS'])
+def heygen_webhook():
+    """
+    Webhook para recibir notificaciones de HeyGen cuando un video está completado.
+    
+    HeyGen envía notificaciones POST cuando el estado de un video cambia a:
+    - completed: Video generado exitosamente
+    - failed: Error en la generación del video
+    
+    El endpoint también maneja OPTIONS para validación CORS de HeyGen.
+    
+    Payload esperado de HeyGen:
+    {
+        "event_type": "video.completed" | "video.failed",
+        "event_data": {
+            "video_id": "abc123...",
+            "status": "completed" | "failed",
+            "video_url": "https://...",  (solo si completed)
+            "thumbnail_url": "https://...",  (opcional)
+            "error_message": "..."  (solo si failed)
+        }
+    }
+    
+    Returns:
+        OPTIONS: 200 OK (para validación CORS de HeyGen)
+        POST: 200 OK con {"status": "success"} si se procesó correctamente
+        POST: 400 Bad Request si faltan datos requeridos
+        POST: 404 Not Found si no se encuentra el reel
+        POST: 500 Internal Server Error si hay error en el procesamiento
+    
+    Note:
+        - HeyGen puede reenviar eventos, implementar idempotencia
+        - Validar firma del webhook en producción (TODO)
+        - Logging detallado para debugging
+    """
+    import logging
+    from app.models.reel import Reel
+    from app import db
+    
+    logger = logging.getLogger(__name__)
+    
+    # Manejar OPTIONS para validación CORS de HeyGen
+    if request.method == 'OPTIONS':
+        logger.info("HeyGen webhook validation (OPTIONS) received")
+        return jsonify({'status': 'ok'}), 200
+    
+    try:
+        # Obtener payload del webhook
+        payload = request.get_json()
+        
+        if not payload:
+            logger.error("Webhook recibido sin payload JSON")
+            return jsonify({'error': 'No JSON payload'}), 400
+        
+        logger.info(f"Webhook HeyGen recibido: {payload}")
+        
+        # Extraer datos del evento
+        event_type = payload.get('event_type')
+        event_data = payload.get('event_data', {})
+        
+        video_id = event_data.get('video_id')
+        status = event_data.get('status')
+        
+        if not video_id:
+            logger.error("Webhook sin video_id")
+            return jsonify({'error': 'Missing video_id'}), 400
+        
+        # Buscar el reel por heygen_job_id o heygen_video_id
+        reel = Reel.query.filter(
+            (Reel.heygen_job_id == video_id) | 
+            (Reel.heygen_video_id == video_id)
+        ).first()
+        
+        if not reel:
+            logger.warning(f"No se encontró reel con video_id: {video_id}")
+            return jsonify({'error': 'Reel not found'}), 404
+        
+        logger.info(f"Reel encontrado: {reel.id} con estado: {reel.status}")
+        
+        # Procesar según el estado
+        if status == 'completed' or event_type == 'video.completed':
+            video_url = event_data.get('video_url')
+            thumbnail_url = event_data.get('thumbnail_url')
+            
+            if not video_url:
+                logger.error(f"Video completado pero sin video_url para reel {reel.id}")
+                return jsonify({'error': 'Missing video_url'}), 400
+            
+            # Actualizar reel como completado
+            reel.complete_processing(
+                video_url=video_url,
+                thumbnail_url=thumbnail_url,
+                video_id=video_id
+            )
+            
+            logger.info(f"✅ Reel {reel.id} completado exitosamente. URL: {video_url}")
+            
+            # TODO: Enviar email al usuario notificando que su reel está listo
+            
+        elif status == 'failed' or event_type == 'video.failed':
+            error_message = event_data.get('error_message', 'Error desconocido en HeyGen')
+            
+            # Actualizar reel como fallido
+            reel.fail_processing(error_message)
+            
+            logger.error(f"❌ Reel {reel.id} falló: {error_message}")
+            
+            # TODO: Enviar email al productor notificando el error
+        
+        else:
+            logger.warning(f"Estado desconocido en webhook: {status} / {event_type}")
+        
+        return jsonify({'status': 'success', 'reel_id': reel.id}), 200
+    
+    except Exception as e:
+        logger.error(f"Error procesando webhook HeyGen: {str(e)}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'error': 'Internal server error'}), 500

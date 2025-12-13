@@ -26,6 +26,7 @@ Flujo del sistema:
 
 from datetime import datetime
 from enum import Enum
+import logging
 from app import db
 
 
@@ -151,6 +152,11 @@ class ReelRequest(db.Model):
             Reel: El reel creado tras la aprobación
         """
         from app.models.reel import Reel, ReelStatus
+        from app.services.heygen_service import HeyGenService
+        from flask import current_app
+        import logging
+        
+        logger = logging.getLogger(__name__)
         
         # Actualizar estado de la solicitud
         self.status         = ReelRequestStatus.APPROVED
@@ -160,16 +166,22 @@ class ReelRequest(db.Model):
         self.updated_at     = datetime.utcnow()
         
         # Crear el reel
+        background_type = 'image' if self.background_url else 'default'
         new_reel = Reel(
             creator_id       = self.user_id,
+            owner_id         = self.user_id,
             avatar_id        = self.avatar_id,
             title            = self.title,
             script           = self.script,
             background_url   = self.background_url,
+            background_type  = background_type,
             resolution       = self.resolution,
             meta_data        = self.config_data,
             status           = ReelStatus.PENDING,
-            created_at       = datetime.utcnow()
+            created_at       = datetime.utcnow(),
+            voice_id         = self.voice_id,
+            speed            = self.speed if self.speed is not None else 1.0,
+            pitch            = self.pitch if self.pitch is not None else 0
         )
         
         db.session.add(new_reel)
@@ -177,6 +189,89 @@ class ReelRequest(db.Model):
         
         # Vincular el reel creado con la solicitud
         self.created_reel_id = new_reel.id
+        
+        # 🆕 INTEGRACIÓN CON HEYGEN API
+        try:
+            # Obtener API key de configuración
+            api_keys = []
+
+            # Intentar primero con la API key del productor
+            if self.producer and self.producer.heygen_api_key:
+                api_keys.append(('producer', self.producer.heygen_api_key))
+
+            # Fallback a la API master configurada en la app
+            owner_api_key = current_app.config.get('HEYGEN_OWNER_API_KEY')
+            if owner_api_key:
+                api_keys.append(('owner', owner_api_key))
+
+            if not api_keys:
+                logger.warning("No hay API keys disponibles para enviar el reel a HeyGen. Permanecerá en estado PENDING.")
+                return new_reel
+
+            if not self.avatar.avatar_ref:
+                logger.warning(f"Avatar {self.avatar.id} no tiene avatar_ref configurado")
+                return new_reel
+
+            last_error = None
+            for source, api_key in api_keys:
+                try:
+                    heygen_service = HeyGenService(api_key=api_key)
+
+                    logger.info(
+                        "Enviando reel %s a HeyGen usando API key %s",
+                        new_reel.id,
+                        source
+                    )
+
+                    video_response = heygen_service.create_reel_video(
+                        avatar_id=self.avatar.avatar_ref,
+                        script=self.script,
+                        title=self.title,
+                        resolution=self.resolution or '1080x1920',
+                        background_type='image' if self.background_url else 'color',
+                        background_value=self.background_url or '#ffffff',
+                        voice_id=self.voice_id,
+                        voice_speed=self.speed if self.speed is not None else 1.0,
+                        voice_pitch=self.pitch if self.pitch is not None else 0,
+                        check_quota=False  # No verificar cuota por ahora
+                    )
+
+                    if video_response and video_response.get('data', {}).get('video_id'):
+                        video_id = video_response['data']['video_id']
+                        new_reel.start_processing(job_id=video_id)
+                        logger.info(
+                            "Reel %s enviado a HeyGen con ID %s usando API %s",
+                            new_reel.id,
+                            video_id,
+                            source
+                        )
+                        break
+
+                    logger.error(
+                        "HeyGen no devolvió video_id para reel %s usando API %s",
+                        new_reel.id,
+                        source
+                    )
+
+                except Exception as e:
+                    last_error = str(e)
+                    logger.error(
+                        "Error enviando reel %s a HeyGen con API %s: %s",
+                        new_reel.id,
+                        source,
+                        last_error
+                    )
+            else:
+                if last_error:
+                    logger.error(
+                        "No se pudo enviar el reel %s a HeyGen. Último error: %s",
+                        new_reel.id,
+                        last_error
+                    )
+                
+        except Exception as e:
+            logger.error(f"Error al enviar reel {new_reel.id} a HeyGen: {str(e)}")
+            # No fallar la aprobación si HeyGen falla, solo log el error
         
         return new_reel
     

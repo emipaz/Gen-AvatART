@@ -64,6 +64,7 @@ class Reel(db.Model):
         id (int)                           : Identificador único del reel
         creator_id (int)                   : ID del usuario que creó el reel
         avatar_id (int)                    : ID del avatar/clone utilizado para el video
+        voice_id (str)                     : ID de la voz seleccionada en HeyGen
         title (str)                        : Título del reel
         description (str)                  : Descripción detallada del contenido
         script (str)                       : Texto que pronunciará el avatar
@@ -101,6 +102,7 @@ class Reel(db.Model):
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     owner_id   = db.Column(db.Integer, db.ForeignKey('users.id'))  # <-- NUEVO (propietario/cliente)
     avatar_id  = db.Column(db.Integer, db.ForeignKey('avatars.id'), nullable=True)  # <-- antes era False
+    voice_id   = db.Column(db.String(100))  # ID de voz seleccionada en HeyGen
 
     # relaciones (las usa tu template y propiedades)
     # overlaps: necesario para evitar warnings de SQLAlchemy por relaciones superpuestas sobre creator_id
@@ -243,6 +245,9 @@ class Reel(db.Model):
         self.processing_started_at = datetime.utcnow()
         if job_id:
             self.heygen_job_id = job_id
+            # HeyGen usa el mismo identificador para job/video; guardamos ambos para evitar polling fallido
+            if not self.heygen_video_id:
+                self.heygen_video_id = job_id
         db.session.commit()
     
     def complete_processing(self, video_url, thumbnail_url=None, video_id=None):
@@ -480,6 +485,9 @@ class Reel(db.Model):
             'background_type'           : self.background_type,
             'creator_name'              : self.creator_name,
             'avatar_name'               : self.avatar_name,
+            'voice_id'                  : self.voice_id,
+            'voice_speed'               : self.speed,
+            'voice_pitch'               : self.pitch,
             'category'                  : self.category,
             'tags'                      : self.tag_list,
             'view_count'                : self.view_count,

@@ -322,7 +322,14 @@ Elementos interactivos:
                                         </td>
                                         <td>{{ reel.creator.full_name }}</td>
                                         <td>
-                                            <span class="badge bg-{{ 'success' if reel.status.value == 'completed' else 'warning' if reel.status.value == 'pending' else 'info' }}">
+                                            {% set status_class = {
+                                                'pending': 'warning',
+                                                'processing': 'primary',
+                                                'completed': 'success',
+                                                'failed': 'danger',
+                                                'published': 'success'
+                                            }.get(reel.status.value, 'secondary') %}
+                                            <span class="badge bg-{{ status_class }}">
                                                 {{ reel.status.value.title() }}
                                             </span>
                                         </td>

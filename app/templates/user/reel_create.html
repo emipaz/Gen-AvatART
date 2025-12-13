@@ -2,10 +2,10 @@
 {% block title %}Crear Reel{% endblock %}
 {% block content %}
 
-<div class="container my-5" style="max-width: 720px;">
+<div class="container my-5" style="max-width: 860px;">
   <h3 class="mb-4"><i class="fas fa-video me-2"></i>Crear nuevo Reel</h3>
 
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     <!-- Campo: título -->
     <div class="mb-3">
       <label class="form-label fw-semibold">Título</label>
@@ -14,25 +14,115 @@
 
     <!-- Campo: avatar -->
     {% if avatars and avatars|length > 0 %}
-        <div class="mb-3">
-            <label class="form-label fw-semibold">Avatar</label>
-            <select name="avatar_id" class="form-select">
-        <option value="">— Seleccionar avatar —</option>
-        {% for avatar in avatars %}
-          <option value="{{ avatar.id }}" {% if selected_avatar_id and selected_avatar_id|string == avatar.id|string %}selected{% endif %}>{{ avatar.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Avatar</label>
+        <select name="avatar_id" class="form-select" id="avatar-select" required>
+          <option value="">— Seleccionar avatar —</option>
+          {% for avatar in avatars %}
+            <option value="{{ avatar.id }}" {% if selected_avatar_id and selected_avatar_id|string == avatar.id|string %}selected{% endif %}>{{ avatar.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text">Elegí el avatar que generará el reel.</div>
+      </div>
     {% else %}
-        <div class="alert alert-warning py-2">
-            No hay avatares disponibles por ahora. Podés crear el reel y asignar un avatar más tarde.
-        </div>
+      <div class="alert alert-warning py-2">
+        No hay avatares disponibles por ahora. Podés crear el reel y asignar un avatar más tarde.
+      </div>
     {% endif %}
 
     <!-- Campo: guion -->
-    <div class="mb-3">
+    <div class="mb-4">
       <label class="form-label fw-semibold">Guion / Texto del Reel</label>
-      <textarea name="script" class="form-control" rows="6" placeholder="Escribí el texto o guion del video...">{{ script or '' }}</textarea>
+      <textarea name="script" class="form-control" rows="6" placeholder="Escribí el texto o guion del video..." required>{{ script or '' }}</textarea>
+      <div class="form-text">Máximo recomendado: 2.000 caracteres.</div>
+    </div>
+
+    <!-- Resolución -->
+    <div class="row mb-4 g-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Resolución del video</label>
+        {% set current_resolution = resolution or '1080p' %}
+        <select name="resolution" class="form-select">
+          <option value="720p" {% if current_resolution == '720p' %}selected{% endif %}>720p (HD)</option>
+          <option value="1080p" {% if current_resolution == '1080p' %}selected{% endif %}>1080p (Full HD)</option>
+          <option value="4K" {% if current_resolution == '4K' %}selected{% endif %}>4K (Ultra HD)</option>
+        </select>
+        <div class="form-text">Elegí la calidad del video generado.</div>
+      </div>
+    </div>
+
+    <!-- Selector de Voz -->
+    <div class="mb-4">
+      <label class="form-label fw-semibold">Voz del avatar</label>
+      <input type="hidden" name="voice_id" id="voice_id_field" value="{{ voice_id or '' }}">
+      <div id="voice-required-info" class="alert alert-info mb-2" style="display: none;">
+        <i class="fas fa-info-circle"></i>
+        <span id="voice-required-message"></span>
+      </div>
+      <div id="voice-selector-container" class="border rounded p-3">
+        <p class="text-muted mb-0">Seleccioná un avatar para listar las voces disponibles.</p>
+      </div>
+      <div class="form-text" id="voice-help-text">Podés escuchar cada voz antes de elegirla.</div>
+    </div>
+
+    <!-- Velocidad y pitch -->
+    <div class="row g-4 mb-4">
+      <div class="col-md-6">
+        <label for="speed_slider" class="form-label fw-semibold">Velocidad de la voz</label>
+        <input type="range" name="speed" id="speed_slider" class="form-range" min="0.5" max="1.5" step="0.05" value="{{ voice_speed or 1.0 }}">
+        <div class="d-flex justify-content-between">
+          <small>0.50</small>
+          <span id="speed_value">{{ voice_speed or 1.0 }}</span>
+          <small>1.50</small>
+        </div>
+        <div class="form-text">Rango: 0.50 (lento) a 1.50 (rápido). Valor por defecto: 1.0</div>
+      </div>
+      <div class="col-md-6">
+        <label for="pitch_slider" class="form-label fw-semibold">Pitch de la voz</label>
+        <input type="range" name="pitch" id="pitch_slider" class="form-range" min="-50" max="50" step="1" value="{{ voice_pitch or 0 }}">
+        <div class="d-flex justify-content-between">
+          <small>-50</small>
+          <span id="pitch_value">{{ voice_pitch or 0 }}</span>
+          <small>50</small>
+        </div>
+        <div class="form-text">Rango: -50 (grave) a 50 (agudo). Valor por defecto: 0</div>
+      </div>
+    </div>
+
+    <!-- Fondo del video -->
+    <div class="mb-4">
+      <label class="form-label fw-semibold">Fondo del video (opcional)</label>
+      <ul class="nav nav-tabs" id="backgroundTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-content" type="button" role="tab">
+            <i class="fas fa-link"></i> URL de la imagen
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-content" type="button" role="tab">
+            <i class="fas fa-upload"></i> Subir imagen
+          </button>
+        </li>
+      </ul>
+      <div class="tab-content border border-top-0 p-3" id="backgroundTabContent">
+        <div class="tab-pane fade show active" id="url-content" role="tabpanel">
+          <input type="url" name="background_url" class="form-control" placeholder="https://ejemplo.com/fondo.jpg" value="{{ background_url or '' }}">
+          <div class="form-text">Pegá la URL de una imagen (JPG, PNG, WEBP).</div>
+        </div>
+        <div class="tab-pane fade" id="upload-content" role="tabpanel">
+          <input type="file" name="background_image" class="form-control" accept="image/*">
+          <div class="form-text">Formatos admitidos: JPG, PNG, WEBP. Tamaño máximo sugerido: 5MB.</div>
+        </div>
+      </div>
+      <div class="alert alert-info mt-2 small">
+        <i class="fas fa-lightbulb"></i> Si completás ambos campos, priorizaremos la imagen subida.
+      </div>
+      {% if background_url %}
+        <div class="mt-2">
+          <span class="fw-semibold">Fondo seleccionado:</span>
+          <a href="{{ background_url }}" target="_blank" rel="noopener">{{ background_url }}</a>
+        </div>
+      {% endif %}
     </div>
 
     <!-- Botones -->
@@ -47,4 +137,201 @@
   </form>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const avatarSelect = document.getElementById('avatar-select');
+  const voiceContainer = document.getElementById('voice-selector-container');
+  const voiceField = document.getElementById('voice_id_field');
+  const voiceInfo = document.getElementById('voice-required-info');
+  const voiceMessage = document.getElementById('voice-required-message');
+  const voiceHelpText = document.getElementById('voice-help-text');
+  const initialVoiceId = voiceField.value;
+  let currentAudio = null;
+
+  const speedSlider = document.getElementById('speed_slider');
+  const speedValue = document.getElementById('speed_value');
+  const pitchSlider = document.getElementById('pitch_slider');
+  const pitchValue = document.getElementById('pitch_value');
+
+  if (speedSlider && speedValue) {
+    speedSlider.addEventListener('input', () => {
+      speedValue.textContent = speedSlider.value;
+    });
+  }
+
+  if (pitchSlider && pitchValue) {
+    pitchSlider.addEventListener('input', () => {
+      pitchValue.textContent = pitchSlider.value;
+    });
+  }
+
+  function resetVoiceInfo() {
+    if (!voiceInfo || !voiceMessage) {
+      return;
+    }
+    voiceInfo.style.display = 'none';
+    voiceInfo.className = 'alert alert-info mb-2';
+    voiceMessage.textContent = '';
+    if (voiceHelpText) {
+      voiceHelpText.textContent = 'Seleccioná un avatar para listar las voces disponibles.';
+    }
+  }
+
+  function showVoiceInfo({ defaultVoiceId, hasVoices }) {
+    if (!voiceInfo || !voiceMessage) {
+      return;
+    }
+
+    voiceInfo.style.display = 'block';
+
+    if (hasVoices && defaultVoiceId) {
+      voiceInfo.className = 'alert alert-success mb-2';
+      voiceMessage.textContent = 'Este avatar tiene una voz predeterminada. Podés utilizarla o elegir otra voz disponible.';
+      if (voiceHelpText) {
+        voiceHelpText.textContent = 'Opcional: seleccioná una voz diferente o usá la predeterminada.';
+      }
+    } else if (hasVoices) {
+      voiceInfo.className = 'alert alert-warning mb-2';
+      voiceMessage.innerHTML = '<strong>Importante:</strong> Este avatar no tiene una voz predeterminada. Debés seleccionar una voz para continuar.';
+      if (voiceHelpText) {
+        voiceHelpText.textContent = 'Obligatorio: seleccioná una voz antes de guardar el reel.';
+      }
+    } else {
+      voiceInfo.className = 'alert alert-warning mb-2';
+      voiceMessage.innerHTML = 'No pudimos obtener las voces de HeyGen en este momento. Podés guardar el reel y volver a intentarlo más tarde.';
+      if (voiceHelpText) {
+        voiceHelpText.textContent = 'Si no hay voces disponibles, se intentará usar la predeterminada del avatar cuando HeyGen esté accesible.';
+      }
+    }
+  }
+
+  function renderVoices(voices, defaultVoiceId) {
+    voiceContainer.innerHTML = '';
+
+    if (!voices || voices.length === 0) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'alert alert-warning mb-0';
+      emptyMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> No pudimos obtener voces en este momento. Guardá el reel y volvé a intentar más tarde.';
+      voiceContainer.appendChild(emptyMessage);
+      return;
+    }
+
+    voices.forEach((voice) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'voice-option border rounded p-3 mb-2';
+
+      const radioId = `voice_${voice.voice_id}`;
+      const isChecked = voice.voice_id === (voiceField.value || defaultVoiceId);
+
+      wrapper.innerHTML = `
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="voice_choice" id="${radioId}" value="${voice.voice_id}" ${isChecked ? 'checked' : ''}>
+          <label class="form-check-label w-100" for="${radioId}">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+              <div>
+                <span class="fw-semibold">${voice.name || voice.voice_id}</span>
+                <div class="small text-muted">${voice.language || 'Idioma no disponible'} · ${voice.gender || 'Neutral'}</div>
+              </div>
+              ${voice.is_default ? '<span class="badge bg-success">Predeterminada</span>' : ''}
+            </div>
+          </label>
+        </div>
+        ${voice.preview_audio ? `
+          <div class="mt-2">
+            <button type="button" class="btn btn-sm btn-outline-primary play-voice" data-audio="${voice.preview_audio}">
+              <i class="fas fa-play"></i> Escuchar
+            </button>
+          </div>
+        ` : ''}
+      `;
+
+      voiceContainer.appendChild(wrapper);
+    });
+
+    voiceContainer.querySelectorAll('input[name="voice_choice"]').forEach((radio) => {
+      radio.addEventListener('change', (event) => {
+        voiceField.value = event.target.value;
+      });
+    });
+
+    voiceContainer.querySelectorAll('.play-voice').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        const audioUrl = event.currentTarget.dataset.audio;
+        if (!audioUrl) {
+          return;
+        }
+
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio = null;
+        }
+
+        currentAudio = new Audio(audioUrl);
+        currentAudio.play().catch((error) => {
+          console.error('No se pudo reproducir el audio:', error);
+        });
+      });
+    });
+  }
+
+  async function fetchVoices(avatarId) {
+    if (!avatarId) {
+      voiceField.value = '';
+      voiceContainer.innerHTML = '<p class="text-muted mb-0">Seleccioná un avatar para mostrar las voces disponibles.</p>';
+      resetVoiceInfo();
+      return;
+    }
+
+    voiceContainer.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando voces...</span>
+        </div>
+        <p class="text-muted mt-2">Cargando voces disponibles...</p>
+      </div>
+    `;
+
+    try {
+      const response = await fetch(`/api/avatars/${avatarId}/voices`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudieron obtener las voces.');
+      }
+
+      const voices = data.voices || [];
+      const defaultVoiceId = data.default_voice_id || null;
+
+      if (!voiceField.value && (initialVoiceId || defaultVoiceId)) {
+        voiceField.value = initialVoiceId || defaultVoiceId;
+      }
+
+      renderVoices(voices, defaultVoiceId);
+      showVoiceInfo({ defaultVoiceId, hasVoices: voices.length > 0 });
+    } catch (error) {
+      console.error('Error obteniendo voces:', error);
+      voiceContainer.innerHTML = `
+        <div class="alert alert-warning mb-0">
+          <i class="fas fa-exclamation-triangle"></i> ${error.message || 'Error al obtener las voces.'}
+        </div>
+      `;
+      showVoiceInfo({ defaultVoiceId: null, hasVoices: false });
+    }
+  }
+
+  if (avatarSelect) {
+    avatarSelect.addEventListener('change', (event) => {
+      voiceField.value = '';
+      fetchVoices(event.target.value);
+    });
+
+    if (avatarSelect.value) {
+      fetchVoices(avatarSelect.value);
+    }
+  }
+});
+</script>
 {% endblock %}

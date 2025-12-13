@@ -570,7 +570,14 @@ class HeyGenService:
                 logger.info(f"Video {video_id} creado exitosamente - Estado: pending")
                 return result
             else:
-                logger.warning(f"Error creando video - Status: {response.status_code}")
+                error_detail = "Sin detalles"
+                try:
+                    error_response = response.json()
+                    error_detail = error_response.get('message') or error_response.get('error') or str(error_response)
+                except:
+                    error_detail = response.text[:200] if response.text else "Sin contenido"
+                
+                logger.warning(f"Error creando video - Status: {response.status_code} - Detalle: {error_detail}")
                 return None
                 
         except requests.RequestException as e:
@@ -609,19 +616,25 @@ class HeyGenService:
         """
         try:
             response = self.session.get(
-                f"{self.base_url}/v1/video_status/{video_id}",
+                f"{self.base_url}/v1/video_status.get",
+                params={'video_id': video_id},
                 timeout=self.timeout
             )
-            
+
             if response.status_code == 200:
                 status_data    = response.json()
                 current_status = status_data.get('data', {}).get('status', 'unknown')
                 logger.info(f"Video {video_id} - Estado: {current_status}")
                 return status_data
             else:
-                logger.warning(f"Video {video_id} no encontrado - Status: {response.status_code}")
+                logger.warning(
+                    "Video %s no encontrado - Status: %s - Payload: %s",
+                    video_id,
+                    response.status_code,
+                    response.text[:200]
+                )
                 return None
-                
+
         except requests.RequestException as e:
             logger.error(f"Error obteniendo estado del video {video_id}: {str(e)}")
             return None
@@ -755,20 +768,48 @@ class HeyGenService:
         default_voice_id = self.get_avatar_default_voice(avatar_id)
         
         if default_voice_id:
-            voice_info = self.get_voice_details(default_voice_id)
-            if voice_info:
-                return {
-                    'voice_id'   : default_voice_id,
-                    'source'     : 'avatar_default', 
-                    'voice_info' : voice_info
-                }
-            else:
-                logger.warning(f"Voz predeterminada {default_voice_id} no encontrada en lista disponible")
-                # Continuar para requerir selección manual
+            voice_info = None
+            try:
+                voice_info = self.get_voice_details(default_voice_id)
+            except Exception as e:
+                logger.warning(
+                    "No se pudo obtener información detallada para la voz predeterminada %s: %s",
+                    default_voice_id,
+                    e
+                )
+
+            if not voice_info:
+                logger.info(
+                    "Usando voz predeterminada %s del avatar aunque no se obtuvo metadata adicional",
+                    default_voice_id
+                )
+
+            return {
+                'voice_id'   : default_voice_id,
+                'source'     : 'avatar_default', 
+                'voice_info' : voice_info
+            }
         
-        # Avatar no tiene voz predeterminada - usuario DEBE elegir
+        # FALLBACK: Si el avatar no tiene voz predeterminada, usar una voz por defecto en español
+        logger.warning(f"Avatar {avatar_id} no tiene voz predeterminada. Usando voz por defecto.")
+        
+        try:
+            # Intentar obtener la primera voz en español disponible
+            spanish_voices = self.list_voices(language='es')
+            if spanish_voices:
+                fallback_voice_id = spanish_voices[0]['voice_id']
+                logger.info(f"Usando voz fallback: {fallback_voice_id} ({spanish_voices[0].get('name', 'Sin nombre')})")
+                return {
+                    'voice_id'   : fallback_voice_id,
+                    'source'     : 'fallback', 
+                    'voice_info' : spanish_voices[0]
+                }
+        except Exception as e:
+            logger.error(f"Error obteniendo voz fallback: {str(e)}")
+        
+        # Si todo falla, lanzar excepción
         raise ValueError(
-            f"Avatar {avatar_id} no tiene voz predeterminada válida. "
+            f"Avatar {avatar_id} no tiene voz predeterminada válida y no se pudo obtener voz fallback. "
             "El usuario debe seleccionar una voz de la lista disponible."
         )
 
@@ -1374,13 +1415,13 @@ class HeyGenService:
                 raise
         
         # Configuración específica para reels
-        video_data = {
-            "avatar_id"     : avatar_id,
-            "input_text"    : script,
-            "dimension"     : kwargs.get('resolution', '1080x1920'),  # Formato vertical por defecto
-            "aspect_ratio"  : "9:16",  # Ratio específico para reels
-            "title"         : kwargs.get('title', f"Reel - {datetime.now().strftime('%Y%m%d_%H%M%S')}")
-        }
+        # Convertir resolución string a formato de diccionario que HeyGen espera
+        resolution_str = kwargs.get('resolution', '1080x1920')
+        if 'x' in resolution_str:
+            width, height = resolution_str.split('x')
+            dimension_dict = {"width": int(width), "height": int(height)}
+        else:
+            dimension_dict = {"width": 1080, "height": 1920}  # Default vertical
         
         # Configuración de voz usando la nueva lógica
         try:
@@ -1389,12 +1430,15 @@ class HeyGenService:
                 kwargs.get('voice_id')
             )
             
+            # Estructura de voz según API v2 de HeyGen
             voice_config = {
-                "voice_id"  : voice_config_result['voice_id'],
-                "speed"     : kwargs.get('voice_speed', 1.0),
-                "emotion"   : kwargs.get('voice_emotion', 'neutral')
+                "type": "text",  # Campo requerido por HeyGen
+                "voice_id": voice_config_result['voice_id'],
+                "speed": kwargs.get('voice_speed', 1.0),
             }
-            video_data['voice'] = voice_config
+
+            if 'voice_pitch' in kwargs and kwargs['voice_pitch'] is not None:
+                voice_config["pitch"] = kwargs['voice_pitch']
             
             logger.info(f"Voz configurada: {voice_config_result['voice_id']} (fuente: {voice_config_result['source']})")
             
@@ -1403,11 +1447,33 @@ class HeyGenService:
             raise HeyGenError(f"Error de configuración de voz: {str(e)}")
         
         # Configuración de fondo
-        background_config = {
-            "type"  : kwargs.get('background_type', 'color'),
-            "value" : kwargs.get('background_value', '#FFFFFF')
+        background_type = kwargs.get('background_type', 'color')
+        background_value = kwargs.get('background_value', '#FFFFFF')
+        
+        # El script va dentro del objeto voice cuando type="text"
+        voice_config["input_text"] = script
+        
+        # Estructura nueva de HeyGen API v2 - video_inputs
+        video_inputs = [{
+            "character": {
+                "type": "avatar",
+                "avatar_id": avatar_id,
+                "avatar_style": "normal"
+            },
+            "voice": voice_config,
+            "background": {
+                "type": background_type,
+                "value": background_value if background_type == 'color' else background_value,
+                "url": background_value if background_type in ['image', 'video'] else None
+            }
+        }]
+        
+        video_data = {
+            "video_inputs": video_inputs,
+            "dimension": dimension_dict,
+            "aspect_ratio": "9:16",
+            "title": kwargs.get('title', f"Reel - {datetime.now().strftime('%Y%m%d_%H%M%S')}")
         }
-        video_data['background'] = background_config
         
         # URL de webhook para notificaciones (opcional)
         if 'webhook_url' in kwargs:
@@ -1415,7 +1481,7 @@ class HeyGenService:
         
         # Configuraciones adicionales para optimización de reel
         video_data.update({
-            "test"                  : False,  # Producción
+            "test": False,  # Producción
             "caption"               : False,  # Sin subtítulos automáticos
             "optimize_for_mobile"   : True  # Optimización móvil
         })
