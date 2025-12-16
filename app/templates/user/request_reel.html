@@ -604,21 +604,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function filterVoices() {
-        const searchTerm = document.getElementById('search-voice').value.toLowerCase();
+        const searchTerm       = document.getElementById('search-voice').value.toLowerCase();
         const selectedLanguage = document.getElementById('filter-language').value;
-        const selectedGender = document.getElementById('filter-gender').value;
+        const selectedGender   = document.getElementById('filter-gender').value;
         
         const voiceOptions = document.querySelectorAll('.voice-option');
-        let visibleCount = 0;
+        let visibleCount   = 0;
         
         voiceOptions.forEach(option => {
-            const name = option.dataset.name;
+            const name     = option.dataset.name;
             const language = option.dataset.language;
-            const gender = option.dataset.gender;
+            const gender   = option.dataset.gender;
             
-            const matchesSearch = !searchTerm || name.includes(searchTerm);
+            const matchesSearch   = !searchTerm || name.includes(searchTerm);
             const matchesLanguage = !selectedLanguage || language === selectedLanguage;
-            const matchesGender = !selectedGender || gender === selectedGender;
+            const matchesGender   = !selectedGender || gender === selectedGender;
             
             if (matchesSearch && matchesLanguage && matchesGender) {
                 option.style.display = '';
@@ -687,7 +687,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        currentAudio = new Audio(audioUrl);
+        currentAudio     = new Audio(audioUrl);
         button.innerHTML = '<i class="fas fa-stop"></i> Detener';
         button.classList.remove('btn-outline-primary');
         button.classList.add('btn-danger');
@@ -707,6 +707,8 @@ document.addEventListener('DOMContentLoaded', function() {
             currentAudio = null;
         });
     }
+
 });
+
 </script>
 {% endblock %}

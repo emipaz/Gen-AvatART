@@ -181,7 +181,8 @@
                 {% if sent %}
                     <div class="row">
                         {% for request in sent %}
-                        <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="col-md-6 col-lg-4 mb-4" data-request-id="{{ request.id }}" 
+                             {% if request.created_reel %}data-status="{{ request.created_reel.status.name.lower() }}"{% endif %}>
                             <div class="card h-100">
                                 <div class="card-header d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0">{{ request.title }}</h6>
@@ -247,13 +248,47 @@
                                     </div>
                                     {% endif %}
                                     
-                                    {% if request.status.name == 'APPROVED' and request.reel %}
+                                    {% if request.status.name == 'APPROVED' and request.created_reel %}
                                     <div class="reel-info mt-2">
                                         <h6>Reel Creado:</h6>
-                                        <a href="{{ url_for('user.reel_detail', reel_id=request.reel.id) }}" 
-                                           class="btn btn-primary btn-sm">
-                                            <i class="fas fa-play"></i> Ver Reel
-                                        </a>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('user.reel_detail', reel_id=request.created_reel.id) }}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="fas fa-play"></i> Ver Reel
+                                            </a>
+                                            {% if request.created_reel.status.name == 'COMPLETED' %}
+                                            <button type="button" 
+                                                    class="btn btn-success btn-sm download-btn" 
+                                                    data-reel-id="{{ request.created_reel.id }}"
+                                                    onclick="handleDownload({{ request.created_reel.id }})">
+                                                <i class="fas fa-spinner fa-spin d-none" id="loading-{{ request.created_reel.id }}"></i>
+                                                <i class="fas fa-download" id="download-icon-{{ request.created_reel.id }}"></i>
+                                                <span id="download-text-{{ request.created_reel.id }}">Verificando...</span>
+                                            </button>
+                                            {% elif request.created_reel.status.name == 'PROCESSING' and request.created_reel.heygen_job_id %}
+                                            <button type="button" 
+                                                    class="btn btn-warning btn-sm job-status-btn" 
+                                                    data-job-id="{{ request.created_reel.heygen_job_id }}"
+                                                    data-reel-id="{{ request.created_reel.id }}"
+                                                    onclick="checkJobStatus('{{ request.created_reel.heygen_job_id }}', {{ request.created_reel.id }});">
+                                                <i class="fas fa-clock" id="status-icon-{{ request.created_reel.id }}"></i>
+                                                <span id="status-text-{{ request.created_reel.id }}">Verificar Estado</span>
+                                            </button>
+                                            {% else %}
+                                            <button type="button" class="btn btn-secondary btn-sm" disabled>
+                                                <i class="fas fa-hourglass-half"></i>
+                                                En proceso
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                        {% if request.created_reel.status.name == 'PROCESSING' %}
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> 
+                                                El reel está siendo procesado. Esto puede tomar varios minutos.
+                                            </small>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                     {% endif %}
                                 </div>
@@ -319,7 +354,170 @@ function playVoicePreview(audioUrl, button) {
     });
 }
 
+// Función para verificar estado del job en HeyGen
+function checkJobStatus(jobId, reelId) {
+    console.log(`🔍 Verificando estado del job ${jobId} para reel ${reelId}`);
+    
+    const statusIcon = document.getElementById(`status-icon-${reelId}`);
+    const statusText = document.getElementById(`status-text-${reelId}`);
+    const jobBtn = document.querySelector(`.job-status-btn[data-reel-id="${reelId}"]`);
+    
+    if (!statusIcon || !statusText || !jobBtn) {
+        console.error(`❌ No se encontraron elementos UI para reel ${reelId}`);
+        return;
+    }
+    
+    // Mostrar estado de carga
+    statusIcon.className = 'fas fa-spinner fa-spin';
+    statusText.textContent = 'Verificando...';
+    jobBtn.disabled = true;
+    
+    fetch(`/user/check-job-status/${jobId}`)
+        .then(response => {
+            console.log(`📡 Respuesta del servidor para job ${jobId}:`, response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log(`📊 Datos recibidos para job ${jobId}:`, data);
+            
+            if (data.error) {
+                console.error(`❌ Error del servidor: ${data.error}`);
+                statusIcon.className = 'fas fa-exclamation-circle';
+                statusText.textContent = 'Error';
+                return;
+            }
+            
+            const status = data.status.toLowerCase();
+            console.log(`📈 Estado del job ${jobId}: ${status}`);
+            
+            if (status === 'completed' && data.updated) {
+                console.log(`✅ Job ${jobId} completado, recargando página...`);
+                // El reel está completo, recargar la página para mostrar el botón de descarga
+                location.reload();
+            } else if (status === 'failed') {
+                console.log(`❌ Job ${jobId} falló`);
+                statusIcon.className = 'fas fa-times-circle';
+                statusText.textContent = 'Falló';
+                jobBtn.disabled = false;
+            } else if (status === 'processing') {
+                console.log(`⏳ Job ${jobId} aún procesando, verificando de nuevo en 30s...`);
+                statusIcon.className = 'fas fa-clock';
+                statusText.textContent = data.progress || 'Procesando...';
+                jobBtn.disabled = false;
+                
+                // Verificar de nuevo en 30 segundos
+                setTimeout(() => {
+                    checkJobStatus(jobId, reelId);
+                }, 30000);
+            } else {
+                console.log(`⏳ Job ${jobId} en estado: ${status}`);
+                statusIcon.className = 'fas fa-clock';
+                statusText.textContent = data.progress || 'En proceso';
+                jobBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error(`❌ Error verificando estado del job ${jobId}:`, error);
+            statusIcon.className = 'fas fa-exclamation-circle';
+            statusText.textContent = 'Error';
+            jobBtn.disabled = false;
+        });
+}
+
+// Función para manejar descarga de videos
+function handleDownload(reelId) {
+    const loadingIcon = document.getElementById(`loading-${reelId}`);
+    const downloadIcon = document.getElementById(`download-icon-${reelId}`);
+    const downloadText = document.getElementById(`download-text-${reelId}`);
+    const downloadBtn = document.querySelector(`.download-btn[data-reel-id="${reelId}"]`);
+    
+    // Mostrar estado de carga
+    loadingIcon.classList.remove('d-none');
+    downloadIcon.classList.add('d-none');
+    downloadText.textContent = 'Descargando...';
+    downloadBtn.disabled = true;
+    
+    // Crear enlace temporal para descarga
+    const downloadLink = document.createElement('a');
+    downloadLink.href = `/user/download-video/${reelId}`;
+    downloadLink.download = '';
+    downloadLink.style.display = 'none';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    // Restaurar estado del botón después de un breve delay
+    setTimeout(() => {
+        loadingIcon.classList.add('d-none');
+        downloadIcon.classList.remove('d-none');
+        downloadText.textContent = 'Descargar';
+        downloadBtn.disabled = false;
+    }, 2000);
+}
+
+// Función para verificar estado de descarga
+function checkDownloadStatus(reelId) {
+    fetch(`/user/check-download-status/${reelId}`)
+        .then(response => response.json())
+        .then(data => {
+            const downloadBtn = document.querySelector(`.download-btn[data-reel-id="${reelId}"]`);
+            const downloadText = document.getElementById(`download-text-${reelId}`);
+            
+            if (downloadBtn && downloadText) {
+                if (data.available) {
+                    downloadText.textContent = data.local ? 'Descargar' : 'Descargar (en línea)';
+                    downloadBtn.disabled = false;
+                } else {
+                    downloadText.textContent = 'No disponible';
+                    downloadBtn.disabled = true;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error verificando estado de descarga:', error);
+        });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔄 Inicializando my_reels.html...');
+    
+    // Verificar estado de descarga para todos los reels completados
+    const downloadBtns = document.querySelectorAll('.download-btn');
+    console.log(`📥 Encontrados ${downloadBtns.length} botones de descarga`);
+    downloadBtns.forEach(btn => {
+        const reelId = btn.getAttribute('data-reel-id');
+        if (reelId) {
+            console.log(`📥 Verificando descarga para reel ${reelId}`);
+            checkDownloadStatus(reelId);
+        }
+    });
+    
+    // Auto-verificar jobs en proceso
+    const jobBtns = document.querySelectorAll('.job-status-btn');
+    console.log(`⏳ Encontrados ${jobBtns.length} jobs en proceso`);
+    jobBtns.forEach(btn => {
+        const jobId = btn.getAttribute('data-job-id');
+        const reelId = btn.getAttribute('data-reel-id');
+        if (jobId && reelId) {
+            console.log(`⏳ Iniciando polling para job ${jobId}, reel ${reelId}`);
+            // Verificar inmediatamente y luego cada 30 segundos
+            setTimeout(() => {
+                checkJobStatus(jobId, reelId);
+            }, 2000);
+        }
+    });
+    
+    // Buscar reels en proceso sin job_id para auto-refresh
+    const processingReels = document.querySelectorAll('[data-status="processing"]');
+    console.log(`🔄 Encontrados ${processingReels.length} reels en proceso`);
+    if (processingReels.length > 0) {
+        console.log('🔄 Programando refresh automático en 60 segundos para reels sin job_id...');
+        setTimeout(() => {
+            console.log('🔄 Refrescando página para verificar reels en proceso...');
+            location.reload();
+        }, 60000); // Refresh cada minuto para reels sin job_id
+    }
+    
     // Confirmación para enviar solicitudes
     const sendForms = document.querySelectorAll('.send-form');
     sendForms.forEach(form => {

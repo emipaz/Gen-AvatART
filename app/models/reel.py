@@ -122,14 +122,15 @@ class Reel(db.Model):
     heygen_job_id   = db.Column(db.String(100), index=True)     # ID del job en HeyGen
     video_url       = db.Column(db.String(500))                 # URL del video generado
     thumbnail_url   = db.Column(db.String(500))                 # URL de la miniatura
+    local_video_path = db.Column(db.String(500))                # Ruta local del video descargado
     
     # Estado y configuración de acceso
     status    = db.Column(db.Enum(ReelStatus), nullable = False, default = ReelStatus.PENDING)
     is_public = db.Column(db.Boolean, default = False)  # Visibilidad pública
     
     # Configuración técnica del video
-    resolution      = db.Column(db.String(20), default = '1080p')    # Resolución: 720p, 1080p, 4k
-    background_type = db.Column(db.String(50), default = 'default')  # Tipo de fondo
+    resolution      = db.Column(db.String(20), default = '720x1280')  # Resolución: 720x1280, 1080x1920
+    background_type = db.Column(db.String(50), default = 'default')   # Tipo de fondo
     background_url  = db.Column(db.String(500))                    # URL del fondo personalizado
 
     # Configuración de voz
@@ -497,7 +498,7 @@ class Reel(db.Model):
             'video_url'                 : self.video_url,
             'thumbnail_url'             : self.thumbnail_url,
             'heygen_job_id'             : self.heygen_job_id,                  # ✅ NUEVO
-            'stripe_payment_intent_id'  : self.stripe_payment_intent_id,      # ✅ NUEVO
+            'stripe_payment_intent_id'  : self.stripe_payment_intent_id,       # ✅ NUEVO
             'processing_time'           : self.processing_time,
             'created_at'                : self.created_at.isoformat() if self.created_at else None,
             'published_at'              : self.published_at.isoformat() if self.published_at else None,

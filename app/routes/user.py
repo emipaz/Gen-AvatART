@@ -29,7 +29,7 @@ Características técnicas:
     - Conversión automática RGBA a RGB para compatibilidad
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, send_file, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -42,6 +42,7 @@ from app.models.reel_request import ReelRequest, ReelRequestStatus
 from app.services.email_service import send_avatar_reel_request_notification
 from app.services.heygen_service import HeyGenService
 import os
+import time
 import logging
 from PIL import Image
 from uuid import uuid4
@@ -130,10 +131,10 @@ class ReelRequestForm(FlaskForm):
     background_url   = StringField('URL del Fondo', validators=[Optional(), Length(max=500)])
     background_image = FileField('Subir Imagen de Fondo', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'webp'], 'Solo imágenes (JPG, PNG, WEBP)')])
     resolution       = SelectField('Resolución', choices=[
-        ('720p', '720p (HD)'),
-        ('1080p', '1080p (Full HD)'),
-        ('4K', '4K (Ultra HD)')
-    ], default='1080p')
+        ('720p', '720p (HD) - Compatible'),
+        ('1080p', '1080p (Full HD) - Requiere plan premium'),
+        ('4K', '4K (Ultra HD) - Requiere plan premium')
+    ], default='720p')
     user_notes       = TextAreaField('Notas para el Productor (opcional)', validators=[Optional(), Length(max=500)])
 
     speed = StringField('Velocidad de la voz', default='1.0',
@@ -834,7 +835,7 @@ def create_reel():
         script         = request.form.get('script', '').strip()
         avatar_id_raw  = request.form.get('avatar_id')  # '' si no eligen nada
         voice_id       = request.form.get('voice_id', '').strip() or None
-        resolution     = request.form.get('resolution', '1080p')
+        resolution     = request.form.get('resolution', '720p')
 
         # Parseo de velocidad y pitch (con valores por defecto seguros)
         try:
@@ -849,7 +850,7 @@ def create_reel():
 
         # Procesamiento de fondo personalizado
         background_url = None
-        background_file = request.files.get('background_image')
+        background_file         = request.files.get('background_image')
         provided_background_url = request.form.get('background_url', '').strip()
 
         try:
@@ -858,6 +859,7 @@ def create_reel():
                 timestamp       = datetime.now().strftime('%Y%m%d_%H%M%S')
                 unique_filename = f"{timestamp}_{filename}"
                 backgrounds_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'backgrounds')
+                
                 os.makedirs(backgrounds_dir, exist_ok=True)
                 file_path = os.path.join(backgrounds_dir, unique_filename)
                 background_file.save(file_path)
@@ -936,7 +938,7 @@ def create_reel():
             avatar_id   = avatar_id,              # <- queda NULL si no eligieron
             status      = ReelStatus.PENDING,
             is_public   = False,
-            resolution  = resolution or '1080p',
+            resolution  = resolution or '720p',
             background_type = 'image' if background_url else 'default',
             background_url  = background_url,
             voice_id        = voice_id,
@@ -952,7 +954,7 @@ def create_reel():
     return render_template('user/reel_create.html', 
                            avatars            = avatars, 
                            selected_avatar_id = selected_avatar_id,
-                           resolution         = request.args.get('resolution', '1080p'),
+                           resolution         = request.args.get('resolution', '720p'),
                            voice_speed        = 1.0,
                            voice_pitch        = 0,
                            voice_id           = None,
@@ -1024,10 +1026,10 @@ def avatares():
     Context Variables:
         - avatars (list)           : Lista de avatares activos (públicos y premium)
         - permission_status (dict) : Diccionario con estado de permisos por avatar_id
-            - status (str)       : Estado del permiso ('approved', 'rejected', 'pending', None)
-            - request_id (str)   : ID de la solicitud de permiso
-            - reason (str)       : Razón de la solicitud o rechazo
-            - requested_at (str) : Fecha de la solicitud
+            - status (str)         : Estado del permiso ('approved', 'rejected', 'pending', None)
+            - request_id (str)     : ID de la solicitud de permiso
+            - reason (str)         : Razón de la solicitud o rechazo
+           - requested_at (str)    : Fecha de la solicitud
     
     Features:
         - Búsqueda por nombre (case-insensitive)
@@ -1172,6 +1174,267 @@ def request_avatar_permission(avatar_id):
 # GESTIÓN DE REELS DEL USUARIO
 # ============================================================================
 
+@user_bp.route('/reel/<int:reel_id>')
+@login_required
+def reel_detail(reel_id):
+    """
+    Vista detallada de un reel específico para usuarios.
+    
+    Permite a los usuarios ver los detalles de sus reels creados
+    o reels públicos de otros usuarios.
+    
+    Args:
+        reel_id (int): ID único del reel a mostrar
+    
+    Returns:
+        Template: 'user/reel_detail.html' con información del reel
+    """
+    from app.models.reel import Reel
+    
+    reel = Reel.query.get_or_404(reel_id)
+    
+    # Verificar permisos: debe ser el creador del reel o el reel debe ser público
+    if reel.creator_id != current_user.id and not reel.is_public:
+        flash('No tienes permisos para ver este reel.', 'error')
+        return redirect(url_for('user.my_reels'))
+    
+    return render_template('user/reel_detail.html', reel=reel)
+
+
+@user_bp.route('/check-job-status/<string:job_id>')
+@login_required
+def check_job_status(job_id):
+    """
+    Verificar estado del job en HeyGen y actualizar reel si está completo.
+    
+    Args:
+        job_id (str): ID del job en HeyGen
+        
+    Returns:
+        JSON: {"status": str, "progress": str, "video_url": str|None, "updated": bool}
+    """
+    from app.models.reel import Reel, ReelStatus
+    
+    logger.info(f"🔍 Verificando estado del job: {job_id}")
+    
+    # Buscar el reel con este job_id
+    reel = Reel.query.filter_by(heygen_job_id=job_id).first()
+    if not reel:
+        logger.warning(f"❌ Job {job_id} no encontrado en la base de datos")
+        return jsonify({"error": "Job no encontrado"}), 404
+        
+    # Verificar permisos
+    if reel.creator_id != current_user.id:
+        logger.warning(f"❌ Usuario {current_user.id} sin permisos para job {job_id}")
+        return jsonify({"error": "No tienes permisos"}), 403
+    
+    logger.info(f"📝 Job {job_id} encontrado, reel ID: {reel.id}, estado actual: {reel.status.name}")
+    
+    try:
+        # Obtener el ReelRequest asociado para acceder al productor
+        from app.models.reel_request import ReelRequest
+        reel_request = ReelRequest.query.filter_by(created_reel_id=reel.id).first()
+        
+        if not reel_request or not reel_request.producer:
+            logger.error(f"❌ Job {job_id}: No se encontró request o productor para reel {reel.id}")
+            return jsonify({"error": "No se puede verificar el estado"}), 400
+        
+        producer = reel_request.producer
+        if not producer.heygen_api_key:
+            logger.error(f"❌ Job {job_id}: Productor {producer.company_name} sin API key")
+            return jsonify({"error": "API key no disponible"}), 400
+            
+        logger.info(f"🔑 Usando API key del productor {producer.company_name} para job {job_id}")
+        
+        heygen_service = HeyGenService(producer.heygen_api_key)
+        logger.info(f"🔍 Consultando HeyGen para job {job_id}")
+        job_status = heygen_service.get_video_status(job_id)
+        
+        if not job_status:
+            logger.error(f"❌ No se pudo obtener estado del job {job_id} desde HeyGen")
+            return jsonify({"error": "No se pudo obtener el estado del job"}), 500
+        
+        # Extraer estado correctamente de la estructura de HeyGen
+        data          = job_status.get('data', {})
+        status        = data.get('status', '').lower()
+        progress      = data.get('progress', '')
+        video_url     = data.get('video_url')
+        error_message = data.get('error_message', '')
+        
+        logger.info(f"📊 Estado de HeyGen para job {job_id}: {status}, progreso: {progress}, error: {error_message}")
+        
+        updated = False
+        
+        # Si el video está completo, actualizar el reel
+        if status == 'completed' and video_url:
+            logger.info(f"✅ Job {job_id} completado, actualizando reel {reel.id}")
+            reel.video_url = video_url
+            reel.status = ReelStatus.COMPLETED
+            db.session.commit()
+            updated = True
+        elif status == 'failed':
+            logger.info(f"❌ Job {job_id} falló, marcando reel {reel.id} como FAILED")
+            reel.status = ReelStatus.FAILED
+            db.session.commit()
+            updated = True
+        
+        # Si el job falló pero tenemos un heygen_video_id, verificar por video_id también
+        if status == 'failed' and reel.heygen_video_id:
+            logger.info(f"🔄 Job falló, verificando por video_id: {reel.heygen_video_id}")
+            video_status = heygen_service.get_video_status(reel.heygen_video_id)
+            
+            if video_status:
+                video_data         = video_status.get('data', {})
+                video_status_state = video_data.get('status', '').lower()
+                video_url_alt      = video_data.get('video_url')
+                
+                logger.info(f"📹 Estado directo del video {reel.heygen_video_id}: {video_status_state}")
+                
+                if video_status_state == 'completed' and video_url_alt:
+                    logger.info(f"✅ Video encontrado por video_id, actualizando reel {reel.id}")
+                    reel.video_url = video_url_alt
+                    reel.status = ReelStatus.COMPLETED
+                    db.session.commit()
+                    updated   = True
+                    status    = 'completed'
+                    video_url = video_url_alt
+            
+        response_data = {
+            "status"    : status,
+            "progress"  : progress or "Procesando...",
+            "video_url" : video_url,
+            "updated"   : updated
+        }
+        
+        logger.info(f"📤 Respuesta para job {job_id}: {response_data}")
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"💥 Error verificando estado del job {job_id}: {str(e)}")
+        return jsonify({"error": "Error al verificar el estado"}), 500
+
+
+@user_bp.route('/check-download-status/<int:reel_id>')
+@login_required
+def check_download_status(reel_id):
+    """
+    Verificar si el video está disponible para descarga sin forzar descarga.
+    
+    Args:
+        reel_id (int): ID del reel a verificar
+        
+    Returns:
+        JSON: {"available": bool, "local": bool}
+    """
+    from app.models.reel import Reel, ReelStatus
+    
+    reel = Reel.query.get_or_404(reel_id)
+    
+    if reel.creator_id != current_user.id and not reel.is_public:
+        return jsonify({"error": "No tienes permisos"}), 403
+    
+    if reel.status != ReelStatus.COMPLETED:
+        return jsonify({"available": False, "local": False})
+    
+    # Verificar si existe localmente
+    local_exists = bool(reel.local_video_path and os.path.exists(reel.local_video_path))
+    
+    # Disponible si existe localmente o hay URL de HeyGen
+    available = local_exists or bool(reel.video_url)
+    
+    return jsonify({
+        "available" : available,
+        "local"     : local_exists
+    })
+
+
+@user_bp.route('/download-video/<int:reel_id>')
+@login_required
+def download_video(reel_id):
+    """
+    Verificar y descargar video de reel al servidor, luego permitir descarga al usuario.
+    
+    Args:
+        reel_id (int): ID del reel a descargar
+        
+    Returns:
+        Response: Descarga del archivo de video o mensaje de error
+    """
+    from app.models.reel import Reel, ReelStatus
+    
+    logger.info(f"⬇️ Iniciando descarga de video para reel {reel_id}")
+    
+    # Verificar que el reel existe y pertenece al usuario o es público
+    reel = Reel.query.get_or_404(reel_id)
+    
+    logger.info(f"📝 Reel encontrado: ID={reel.id}, creator_id={reel.creator_id}, current_user_id={current_user.id}, status={reel.status.name}")
+    
+    if reel.creator_id != current_user.id and not reel.is_public:
+        logger.warning(f"❌ Usuario {current_user.id} sin permisos para descargar reel {reel_id}")
+        flash('No tienes permisos para descargar este reel.', 'error')
+        return redirect(url_for('user.my_reels'))
+    
+    if reel.status != ReelStatus.COMPLETED:
+        logger.warning(f"❌ Reel {reel_id} no está disponible para descarga. Estado: {reel.status.name}")
+        flash('El reel no está disponible para descarga.', 'warning')
+        return redirect(url_for('user.my_reels'))
+    
+    try:
+        # Verificar si el archivo ya está descargado localmente
+        if reel.local_video_path and os.path.exists(reel.local_video_path):
+            logger.info(f"📁 Archivo local existe para reel {reel_id}: {reel.local_video_path}")
+            # El archivo ya existe, permitir descarga directa
+            return send_file(
+                reel.local_video_path,
+                as_attachment = True,
+                download_name = f"reel_{reel.id}_{reel.title}.mp4"
+            )
+        
+        # Si no existe, intentar descargarlo desde HeyGen
+        if not reel.video_url:
+            logger.error(f"❌ Reel {reel_id} sin URL de video disponible")
+            flash('URL de video no disponible.', 'error')
+            return redirect(url_for('user.my_reels'))
+        
+        logger.info(f"🌐 Descargando video desde HeyGen para reel {reel_id}: {reel.video_url}")
+        
+        # Descargar el video al servidor
+        download_dir = os.path.join(current_app.root_path, 'static', 'videos')
+        os.makedirs(download_dir, exist_ok=True)
+        
+        filename   = f"reel_{reel.id}_{int(time.time())}.mp4"
+        local_path = os.path.join(download_dir, filename)
+        
+        logger.info(f"💾 Descargando a: {local_path}")
+        
+        # Descargar desde HeyGen
+        import requests
+        response = requests.get(reel.video_url, stream=True, timeout=60)
+        response.raise_for_status()
+        
+        with open(local_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        logger.info(f"✅ Video descargado exitosamente para reel {reel_id}")
+        
+        # Actualizar la ruta local en la base de datos
+        reel.local_video_path = local_path
+        db.session.commit()
+        
+        # Permitir descarga al usuario
+        return send_file(
+            local_path,
+            as_attachment = True,
+            download_name = f"reel_{reel.id}_{reel.title}.mp4"
+        )
+        
+    except Exception as e:
+        logger.error(f"💥 Error descargando video {reel_id}: {str(e)}", exc_info=True)
+        flash('Error al descargar el video. Inténtalo de nuevo.', 'error')
+        return redirect(url_for('user.my_reels'))
+
+
 @user_bp.route('/my-reels')
 @login_required
 def my_reels():
@@ -1192,13 +1455,13 @@ def my_reels():
     
     Categories:
         Drafts (Borradores):
-            - Status: DRAFT
-            - Acciones: Editar, Eliminar, Enviar
-            - Descripción: Solicitudes guardadas pero no enviadas
+            - Status      : DRAFT
+            - Acciones    : Editar, Eliminar, Enviar
+            - Descripción : Solicitudes guardadas pero no enviadas
         
         Sent (Enviadas):
-            - Status: PENDING, APPROVED, REJECTED, EXPIRED
-            - Acciones: Ver detalles, reenviar (si rechazado)
+            - Status      : PENDING, APPROVED, REJECTED, EXPIRED
+            - Acciones    : Ver detalles, reenviar (si rechazado)
             - Descripción: Solicitudes en revisión o procesadas
     
     Features:
@@ -1206,6 +1469,7 @@ def my_reels():
         - Badges de estado visual para cada solicitud
         - Acciones contextuales según estado
         - Contador total de solicitudes
+        - Verificación de disponibilidad de descarga para reels completados
     
     Note:
         - Solo muestra solicitudes del usuario actual
@@ -1217,7 +1481,19 @@ def my_reels():
     
     # Separar por estado
     drafts = [r for r in reel_requests if r.status == ReelRequestStatus.DRAFT]
-    sent = [r for r in reel_requests if r.status != ReelRequestStatus.DRAFT]
+    sent   = [r for r in reel_requests if r.status != ReelRequestStatus.DRAFT]
+    
+    # Para reels completados, verificar si están disponibles para descarga
+    for request in sent:
+        if hasattr(request, 'created_reel') and request.created_reel:
+            reel = request.created_reel
+            if reel.status == ReelStatus.COMPLETED:
+                # Verificar si el archivo está disponible localmente o se puede descargar
+                request.can_download = bool(reel.video_url or (reel.local_video_path and os.path.exists(reel.local_video_path)))
+            else:
+                request.can_download = False
+        else:
+            request.can_download = False
     
     # Obtener información de voces seleccionadas
     voice_info_map = {}  # {voice_id: {'name': str, 'preview_audio': str}}
@@ -1232,7 +1508,7 @@ def my_reels():
     if voice_data:
         try:
             # Usar el primer API key disponible (todas las voces son compartidas en HeyGen)
-            first_api_key = next(iter(voice_data.values()))
+            first_api_key  = next(iter(voice_data.values()))
             heygen_service = HeyGenService(first_api_key)
             
             for voice_id in voice_data.keys():
@@ -1240,19 +1516,19 @@ def my_reels():
                     voice_info = heygen_service.get_voice_details(voice_id)
                     if voice_info:
                         voice_info_map[voice_id] = {
-                            'name': voice_info.get('name', voice_id),
-                            'preview_audio': voice_info.get('preview_audio', voice_info.get('preview_audio_url', ''))
+                            'name'          : voice_info.get('name', voice_id),
+                            'preview_audio' : voice_info.get('preview_audio', voice_info.get('preview_audio_url', ''))
                         }
                     else:
                         voice_info_map[voice_id] = {
                             'name': voice_id,
-                            'preview_audio': ''
+                            'preview_audio' : ''
                         }
                 except Exception as e:
                     logger.warning(f"No se pudo obtener info de voz {voice_id}: {e}")
                     voice_info_map[voice_id] = {
-                        'name': voice_id,
-                        'preview_audio': ''
+                        'name'          : voice_id,
+                        'preview_audio' : ''
                     }
         except Exception as e:
             logger.error(f"Error al obtener información de voces: {e}")
@@ -1515,7 +1791,7 @@ def send_reel_request(request_id):
         try:
             success = send_avatar_reel_request_notification(
                 producer     = reel_request.producer,
-                reel_request =reel_request
+                reel_request = reel_request
             )
             if success:
                 email_sent = True

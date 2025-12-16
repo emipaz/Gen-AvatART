@@ -1416,12 +1416,26 @@ class HeyGenService:
         
         # Configuración específica para reels
         # Convertir resolución string a formato de diccionario que HeyGen espera
-        resolution_str = kwargs.get('resolution', '1080x1920')
+        resolution_str = kwargs.get('resolution', '720x1280')
+        
+        # Convertir formatos de frontend a formatos de backend
+        resolution_mapping = {
+            '720p': '720x1280',    # HD vertical
+            '1080p': '1080x1920',  # Full HD vertical  
+            '4K': '2160x3840',     # 4K vertical
+            '720x1280': '720x1280',   # Ya está en formato correcto
+            '1080x1920': '1080x1920', # Ya está en formato correcto
+            '2160x3840': '2160x3840'  # Ya está en formato correcto
+        }
+        
+        # Mapear resolución
+        resolution_str = resolution_mapping.get(resolution_str, '720x1280')  # Default a 720x1280 para cuentas básicas
+        
         if 'x' in resolution_str:
             width, height = resolution_str.split('x')
             dimension_dict = {"width": int(width), "height": int(height)}
         else:
-            dimension_dict = {"width": 1080, "height": 1920}  # Default vertical
+            dimension_dict = {"width": 720, "height": 1280}  # Default a resolución básica
         
         # Configuración de voz usando la nueva lógica
         try:
@@ -1500,9 +1514,194 @@ class HeyGenService:
             return None
 
 
+    def _prepare_background_config(self, bg_type: str, bg_value: str, local_path: str = None) -> Optional[Dict[str, Any]]:
+        """
+        Prepara la configuración de fondo, subiendo archivos locales si es necesario.
+        
+        Args:
+            bg_type (str): Tipo de fondo ('color', 'image', 'video')
+            bg_value (str): Valor del fondo (color hex o URL)
+            local_path (str, opcional): Ruta local del archivo a subir
+        
+        Returns:
+            Optional[Dict]: Configuración de fondo para la API
+        """
+        try:
+            if bg_type == 'color':
+                return {
+                    "type": "color",
+                    "value": bg_value
+                }
+            
+            elif bg_type in ['image', 'video'] and local_path:
+                # Si hay una ruta local, subir el archivo primero
+                logger.info(f"📤 Subiendo {bg_type} de fondo: {local_path}")
+                
+                # Detectar content-type
+                import mimetypes
+                content_type, _ = mimetypes.guess_type(local_path)
+                
+                if not content_type:
+                    logger.error(f"❌ No se pudo detectar el tipo MIME de {local_path}")
+                    return None
+                
+                # Subir el asset
+                asset_result = self.upload_asset(local_path, content_type)
+                
+                if not asset_result or asset_result.get('code') != 100:
+                    logger.error(f"❌ Error subiendo {bg_type}: {local_path}")
+                    return None
+                
+                asset_id = asset_result['data']['id']
+                logger.info(f"✅ {bg_type.capitalize()} subida exitosamente: {asset_id}")
+                
+                # Configurar usando asset_id
+                config = {
+                    "type": bg_type,
+                    f"{bg_type}_asset_id": asset_id
+                }
+                
+                # Para videos, agregar configuración de reproducción
+                if bg_type == 'video':
+                    config["play_style"] = "loop"
+                    config["fit"] = "cover"
+                
+                return config
+                
+            elif bg_type in ['image', 'video'] and bg_value:
+                # Usar URL directa (solo si no es localhost)
+                if 'localhost' in bg_value or '127.0.0.1' in bg_value:
+                    logger.warning(f"⚠️ URL localhost detectada: {bg_value} - No funcionará con HeyGen")
+                    return None
+                
+                config = {
+                    "type": bg_type,
+                    "url": bg_value
+                }
+                
+                if bg_type == 'video':
+                    config["play_style"] = "loop"
+                    config["fit"] = "cover"
+                
+                return config
+            
+            else:
+                logger.error(f"❌ Configuración de fondo inválida: tipo={bg_type}, valor={bg_value}, ruta={local_path}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"💥 Error preparando configuración de fondo: {str(e)}")
+            return None
+
+
     # ============================================================================
     # MÉTODOS DE GESTIÓN DE ARCHIVOS Y RECURSOS
     # ============================================================================
+
+
+    def upload_asset(self, file_path: str, content_type: str = None) -> Optional[Dict[str, Any]]:
+        """
+        Sube un archivo (imagen, video, audio) a HeyGen y retorna el asset ID.
+        
+        Este método soluciona el problema de URLs localhost subiendo los archivos
+        directamente a HeyGen para que puedan ser accesibles desde su API.
+        
+        Args:
+            file_path (str): Ruta local del archivo a subir
+            content_type (str, opcional): MIME type del archivo
+        
+        Returns:
+            Optional[Dict]: Información del asset subido:
+                - id (str): ID único del asset en HeyGen
+                - url (str): URL pública del asset
+                - file_type (str): Tipo de archivo (image, video, audio)
+                - created_ts (int): Timestamp de creación
+        
+        Example:
+            >>> asset = service.upload_asset('./background.jpg', 'image/jpeg')
+            >>> asset_id = asset['data']['id']
+        """
+        try:
+            import mimetypes
+            
+            if not os.path.exists(file_path):
+                logger.error(f"Archivo no encontrado: {file_path}")
+                return None
+            
+            # Detectar content-type automáticamente si no se proporciona
+            if not content_type:
+                content_type, _ = mimetypes.guess_type(file_path)
+                if not content_type:
+                    logger.error(f"No se pudo detectar el tipo MIME de {file_path}")
+                    return None
+            
+            logger.info(f"📤 Subiendo asset: {file_path} ({content_type})")
+            
+            # Leer el archivo como binario
+            with open(file_path, 'rb') as file:
+                file_data = file.read()
+            
+            # Headers para upload
+            headers = {
+                'Content-Type': content_type,
+                'X-API-KEY': self.api_key,
+                'accept': 'application/json'
+            }
+            
+            # Hacer la petición de upload
+            response = requests.post(
+                "https://upload.heygen.com/v1/asset",
+                headers=headers,
+                data=file_data,
+                timeout=60  # Upload puede tomar más tiempo
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                logger.info(f"✅ Asset subido exitosamente: {result.get('data', {}).get('id')}")
+                return result
+            else:
+                logger.error(f"❌ Error subiendo asset - Status: {response.status_code} - Response: {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"💥 Error subiendo asset {file_path}: {str(e)}")
+            return None
+
+
+    def create_video_v2(self, video_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Crea un video usando la API v2 de HeyGen (más potente y estable).
+        
+        La API v2 ofrece mejores características y manejo de assets.
+        
+        Args:
+            video_data (Dict): Configuración del video según API v2
+        
+        Returns:
+            Optional[Dict]: Respuesta de creación del video
+        """
+        try:
+            logger.info(f"🎬 Creando video con API v2: {video_data.get('title', 'Sin título')}")
+            
+            response = self.session.post(
+                f"{self.base_url}/v2/video/generate",
+                json=video_data,
+                timeout=self.timeout
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                logger.info(f"✅ Video v2 creado exitosamente: {result.get('data', {}).get('video_id')}")
+                return result
+            else:
+                error_detail = response.text[:200] if response.text else 'Sin detalles'
+                logger.warning(f"❌ Error creando video v2 - Status: {response.status_code} - Detalle: {error_detail}")
+                return None
+                
+        except requests.RequestException as e:
+            logger.error(f"💥 Error creando video v2: {str(e)}")
+            return None
 
 
     def upload_avatar_image(self, 
@@ -1958,7 +2157,7 @@ class HeyGenVideoProcessor:
             video_result = self.service.create_reel_video(
                 avatar_id=avatar.avatar_ref,
                 script=reel_model.script,
-                resolution=getattr(reel_model, 'resolution', '1080x1920'),
+                resolution=getattr(reel_model, 'resolution', '720x1280'),
                 background_type=getattr(reel_model, 'background_type', 'color'),
                 background_value=getattr(reel_model, 'background_value', '#FFFFFF'),
                 voice_id=getattr(reel_model, 'voice_id', None),  # Voz del usuario o None para usar default
@@ -2066,15 +2265,47 @@ class HeyGenVideoProcessor:
                     reel_model.duration = duration
                     reel_model.processing_completed_at = datetime.utcnow()
                     
+                    # 🆕 DESCARGAR VIDEO LOCALMENTE
+                    try:
+                        from app.services.video_download_service import VideoDownloadService
+                        
+                        logger.info(f"Iniciando descarga local del video para reel {reel_model.id}")
+                        local_path = VideoDownloadService.download_video(
+                            video_url=video_url,
+                            reel_id=reel_model.id,
+                            original_filename=f"reel_{reel_model.id}_{reel_model.title[:50]}.mp4"
+                        )
+                        
+                        if local_path:
+                            # Generar URL local para servir el video
+                            local_url = VideoDownloadService.get_local_video_url(local_path, reel_model.id)
+                            if local_url:
+                                # Guardar la ruta local en metadatos
+                                if not reel_model.meta_data:
+                                    reel_model.meta_data = {}
+                                reel_model.meta_data['local_video_path'] = local_path
+                                reel_model.meta_data['local_video_url'] = local_url
+                                reel_model.meta_data['downloaded_at'] = datetime.utcnow().isoformat()
+                                
+                                logger.info(f"Video descargado localmente para reel {reel_model.id}: {local_path}")
+                        else:
+                            logger.warning(f"No se pudo descargar el video localmente para reel {reel_model.id}")
+                            
+                    except Exception as e:
+                        logger.error(f"Error descargando video localmente para reel {reel_model.id}: {str(e)}")
+                        # No fallar el proceso completo por error de descarga
+                    
                     # Guardar cambios
                     from app import db
                     db.session.commit()
                     
                     logger.info(f"Reel {reel_model.id} completado exitosamente")
                     
-            # Enviar notificación de completado (opcional)
-            # NOTA: Deshabilitado hasta crear template reel_completed.html
-            # self._notify_reel_completed(reel_model)                    return True
+                    # Enviar notificación de completado (opcional)
+                    # NOTA: Deshabilitado hasta crear template reel_completed.html
+                    # self._notify_reel_completed(reel_model)
+                    
+                    return True
                 else:
                     error_msg = "Video marcado como completado pero sin URL de descarga"
                     self._mark_reel_failed(reel_model, error_msg)

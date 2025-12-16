@@ -41,11 +41,11 @@
     <div class="row mb-4 g-3">
       <div class="col-md-6">
         <label class="form-label fw-semibold">Resolución del video</label>
-        {% set current_resolution = resolution or '1080p' %}
+        {% set current_resolution = resolution or '720p' %}
         <select name="resolution" class="form-select">
-          <option value="720p" {% if current_resolution == '720p' %}selected{% endif %}>720p (HD)</option>
-          <option value="1080p" {% if current_resolution == '1080p' %}selected{% endif %}>1080p (Full HD)</option>
-          <option value="4K" {% if current_resolution == '4K' %}selected{% endif %}>4K (Ultra HD)</option>
+          <option value="720p" {% if current_resolution == '720p' %}selected{% endif %}>720p (HD) - Compatible</option>
+          <option value="1080p" {% if current_resolution == '1080p' %}selected{% endif %}>1080p (Full HD) - Requiere plan premium</option>
+          <option value="4K" {% if current_resolution == '4K' %}selected{% endif %}>4K (Ultra HD) - Requiere plan premium</option>
         </select>
         <div class="form-text">Elegí la calidad del video generado.</div>
       </div>

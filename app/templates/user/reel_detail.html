@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}{{ reel.title or 'Mi Reel' }}{% endblock %}
+
+{% block content %}
+<div class="container my-4" style="max-width: 900px;">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('user.my_reels') }}">Mis Reels</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ reel.title or 'Reel' }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">{{ reel.title or 'Mi Reel' }}</h3>
+        
+        <div class="d-flex gap-2">
+            {% if reel.status.name == 'COMPLETED' and reel.video_url %}
+                <a href="{{ reel.video_url }}" target="_blank" class="btn btn-primary btn-sm">
+                    <i class="fas fa-play"></i> Ver Video
+                </a>
+                {% if reel.creator_id == current_user.id %}
+                    <a href="{{ url_for('user.download_video', reel_id=reel.id) }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-download"></i> Descargar
+                    </a>
+                {% endif %}
+            {% endif %}
+            <a href="{{ url_for('user.my_reels') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Información del Reel -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información del Reel</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <th style="width: 30%;">Estado:</th>
+                            <td>
+                                {% if reel.status.name == 'COMPLETED' %}
+                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Completado</span>
+                                {% elif reel.status.name == 'PROCESSING' %}
+                                    <span class="badge bg-warning"><i class="fas fa-clock"></i> Procesando</span>
+                                {% elif reel.status.name == 'FAILED' %}
+                                    <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Falló</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ reel.status.value }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Creado:</th>
+                            <td>{{ reel.created_at.strftime('%d/%m/%Y %H:%M') if reel.created_at else '—' }}</td>
+                        </tr>
+                        {% if reel.updated_at and reel.updated_at != reel.created_at %}
+                        <tr>
+                            <th>Actualizado:</th>
+                            <td>{{ reel.updated_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if reel.avatar %}
+                        <tr>
+                            <th>Avatar:</th>
+                            <td>
+                                <i class="fas fa-user-circle text-primary"></i> {{ reel.avatar.name }}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Resolución:</th>
+                            <td>{{ reel.resolution or 'No especificada' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Visibilidad:</th>
+                            <td>
+                                {% if reel.is_public %}
+                                    <i class="fas fa-globe text-success"></i> Público
+                                {% else %}
+                                    <i class="fas fa-lock text-muted"></i> Privado
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if reel.speed and reel.speed != 1.0 %}
+                        <tr>
+                            <th>Velocidad:</th>
+                            <td>{{ reel.speed }}x</td>
+                        </tr>
+                        {% endif %}
+                        {% if reel.pitch and reel.pitch != 0 %}
+                        <tr>
+                            <th>Tono:</th>
+                            <td>{{ '+' if reel.pitch > 0 else '' }}{{ reel.pitch }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                    
+                    {% if reel.description %}
+                    <div class="mt-3">
+                        <h6><i class="fas fa-quote-left"></i> Descripción</h6>
+                        <p class="text-muted mb-0">{{ reel.description }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview y Script -->
+        <div class="col-md-6">
+            <!-- Thumbnail/Preview -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-image"></i> Preview</h5>
+                </div>
+                <div class="card-body text-center">
+                    {% if reel.thumbnail_url %}
+                        <img src="{{ reel.thumbnail_url }}" alt="Thumbnail del reel" class="img-fluid rounded shadow-sm" style="max-height: 250px;">
+                    {% elif reel.avatar and reel.avatar.thumbnail_url %}
+                        <img src="{{ reel.avatar.thumbnail_url }}" alt="Avatar del reel" class="img-fluid rounded shadow-sm" style="max-height: 250px;">
+                    {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <i class="fas fa-video fa-3x text-muted"></i>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Script -->
+            {% if reel.script %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-file-alt"></i> Script</h5>
+                </div>
+                <div class="card-body">
+                    <div class="bg-light p-3 rounded">
+                        <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ reel.script }}</pre>
+                    </div>
+                    {% if reel.script %}
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-calculator"></i> 
+                            {{ reel.script|length }} caracteres
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Estado del procesamiento -->
+    {% if reel.status.name == 'PROCESSING' %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-warning me-3" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <div>
+                            <h6 class="mb-1"><i class="fas fa-cogs"></i> Reel en Procesamiento</h6>
+                            <p class="mb-0 text-muted">Tu reel está siendo generado. Esto puede tomar varios minutos dependiendo de la duración del script.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% elif reel.status.name == 'FAILED' %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle text-danger fa-2x me-3"></i>
+                        <div>
+                            <h6 class="mb-1 text-danger">Error en el Procesamiento</h6>
+                            <p class="mb-0 text-muted">Hubo un error al generar tu reel. Por favor, contacta al soporte o intenta crear un nuevo reel.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

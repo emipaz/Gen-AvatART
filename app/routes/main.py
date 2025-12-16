@@ -20,13 +20,14 @@ Funcionalidades principales:
     - Sistema de actividad reciente para el dashboard
 """
 
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_file, abort
 from flask_login import login_required, current_user
 from app import db
 from app.models.user import User, UserRole
 from app.models.reel import Reel, ReelStatus
 from app.models.avatar import Avatar, AvatarStatus
 from app.models.commission import Commission
+import os
 
 import logging
 
@@ -353,3 +354,59 @@ def view_avatar(id):
         return render_template('errors/403.html'), 403
     
     return render_template('main/view_avatar.html', avatar=avatar)
+
+
+@main_bp.route('/video/<int:reel_id>')
+@login_required
+def serve_video(reel_id):
+    """
+    Servir video descargado localmente desde el almacenamiento del servidor.
+    
+    Args:
+        reel_id: ID del reel cuyo video se quiere servir
+        
+    Returns:
+        send_file: Archivo de video desde el almacenamiento local
+        
+    Raises:
+        403: Si el usuario no tiene permisos para ver el video
+        404: Si el video no existe o no se encuentra localmente
+    """
+    try:
+        # Buscar el reel en la base de datos
+        reel = Reel.query.get_or_404(reel_id)
+        
+        # Verificar permisos de acceso
+        # El usuario debe ser el propietario o un administrador
+        if current_user.id != reel.user_id and current_user.role != UserRole.ADMIN:
+            # Para productores y subproductores, verificar si tienen acceso a este usuario
+            if current_user.role in [UserRole.PRODUCER, UserRole.SUB_PRODUCER]:
+                # Verificar si el usuario está asignado a este productor/subproductor
+                if not hasattr(current_user, 'assigned_users') or reel.user_id not in [u.id for u in current_user.assigned_users]:
+                    abort(403)
+            else:
+                abort(403)
+        
+        # Verificar que el reel tenga video_url local
+        if not reel.local_video_path:
+            logger.warning(f"Reel {reel_id} no tiene video local disponible")
+            abort(404)
+        
+        # Construir la ruta completa del archivo
+        video_path = os.path.join(os.getcwd(), reel.local_video_path)
+        
+        # Verificar que el archivo existe físicamente
+        if not os.path.exists(video_path):
+            logger.error(f"Video local no encontrado en: {video_path}")
+            abort(404)
+        
+        # Servir el archivo
+        return send_file(
+            video_path,
+            as_attachment=False,
+            mimetype='video/mp4'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error sirviendo video {reel_id}: {str(e)}")
+        abort(500)
